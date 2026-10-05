@@ -443,7 +443,12 @@ describe('principal helpers', () => {
 			{ request: 'a write', options: { method: 'POST', path: '/api/roast-profiles' } },
 			{ request: 'a delete', options: { method: 'DELETE', path: '/api/roast-profiles' } },
 			{ request: 'the CLI approval page', options: { path: '/auth/cli' } },
-			{ request: 'the sign-in callback', options: { path: '/auth/callback' } }
+			{ request: 'the sign-in callback', options: { path: '/auth/callback' } },
+			// SvelteKit decodes the path before routing, so these reach the same pages.
+			{ request: 'the sign-in page spelled /%61uth', options: { path: '/%61uth' } },
+			{ request: 'CLI approval spelled /%61uth/cli', options: { path: '/%61uth/cli' } },
+			{ request: 'CLI approval spelled /a%75th/cl%69', options: { path: '/a%75th/cl%69' } },
+			{ request: 'a path that cannot be decoded', options: { path: '/%E0%A4%A' } }
 		])('always verifies $request with Parchment', async ({ options }) => {
 			successfulMe(verified);
 			await resolvePrincipal(makeCookieSessionEvent());
@@ -470,6 +475,81 @@ describe('principal helpers', () => {
 			successfulMe(verified);
 			expect((await resolvePrincipal(makeCookieSessionEvent())).isAuthenticated).toBe(true);
 			expect(mockMe).toHaveBeenCalledTimes(2);
+		});
+
+		it.each([
+			{ answer: 'a missing identity', me: { ...verified, sessionIdentity: null } },
+			{
+				answer: 'an identity for another user',
+				me: { ...verified, sessionIdentity: { id: 'other-user', email: null } }
+			},
+			{ answer: 'a malformed identity', me: { ...verified, sessionIdentity: { id: 'user-1' } } },
+			{ answer: 'an API key in a session cookie', me: { ...verified, authKind: 'api-key' } }
+		])('never remembers $answer, so a corrected answer signs the next read in', async ({ me }) => {
+			successfulMe(me);
+			expect((await resolvePrincipal(makeCookieSessionEvent())).isAuthenticated).toBe(false);
+
+			successfulMe(verified);
+			expect((await resolvePrincipal(makeCookieSessionEvent())).isAuthenticated).toBe(true);
+			expect(mockMe).toHaveBeenCalledTimes(2);
+		});
+
+		it.each([
+			{ answer: 'a missing identity', me: { ...verified, sessionIdentity: null } },
+			{ answer: 'an unknown kind of sign-in', me: { ...verified, authKind: 'service' } }
+		])('never remembers $answer for a bearer session', async ({ me }) => {
+			successfulMe(me);
+			expect(
+				(await resolvePrincipal(makeAuthorizationEvent('session-token'))).isAuthenticated
+			).toBe(false);
+
+			successfulMe(verified);
+			expect(
+				(await resolvePrincipal(makeAuthorizationEvent('session-token'))).isAuthenticated
+			).toBe(true);
+			expect(mockMe).toHaveBeenCalledTimes(2);
+		});
+
+		it('never remembers an answer the older-API identity check then rejects', async () => {
+			// viewerProjection has no sessionIdentity, so identity comes from Supabase Auth.
+			const rejected = makeCookieSessionEvent();
+			vi.mocked(rejected.locals.safeGetIdentity).mockResolvedValue({ session: null, user: null });
+			expect((await resolvePrincipal(rejected)).isAuthenticated).toBe(false);
+
+			expect((await resolvePrincipal(makeCookieSessionEvent())).isAuthenticated).toBe(true);
+			expect(mockMe).toHaveBeenCalledTimes(2);
+		});
+
+		it('gives every request sharing one check the same rejection, and remembers none of it', async () => {
+			let answer!: (value: unknown) => void;
+			mockMe.mockReturnValueOnce(new Promise((resolve) => (answer = resolve)));
+
+			const both = Promise.all([
+				resolvePrincipal(makeCookieSessionEvent()),
+				resolvePrincipal(makeCookieSessionEvent({ path: '/api/catalog' }))
+			]);
+			await Promise.resolve();
+			answer({
+				data: { ...verified, sessionIdentity: null },
+				error: undefined,
+				response: new Response(null, { status: 200 })
+			});
+			expect((await both).map((principal) => principal.isAuthenticated)).toEqual([false, false]);
+
+			successfulMe(verified);
+			expect((await resolvePrincipal(makeCookieSessionEvent())).isAuthenticated).toBe(true);
+			expect(mockMe).toHaveBeenCalledTimes(2);
+		});
+
+		it('returns the user ID and email from the last check, and nothing newer, while reusing it', async () => {
+			successfulMe({ ...verified, sessionIdentity: { id: 'user-1', email: 'first@example.test' } });
+			await resolvePrincipal(makeCookieSessionEvent());
+
+			successfulMe({ ...verified, sessionIdentity: { id: 'user-1', email: 'later@example.test' } });
+			const reused = await resolvePrincipal(makeCookieSessionEvent({ path: '/account' }));
+
+			expect(reused.user).toEqual({ id: 'user-1', email: 'first@example.test' });
+			expect(mockMe).toHaveBeenCalledTimes(1);
 		});
 
 		it('never remembers a failed check', async () => {
