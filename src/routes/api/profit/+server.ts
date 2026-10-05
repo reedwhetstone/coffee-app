@@ -11,6 +11,7 @@ import {
 	type ParchmentSaleCreateRequest,
 	type ParchmentSaleUpdateRequest
 } from '$lib/server/parchmentSales';
+import { parseRoastBatchId } from '$lib/server/parchmentRoastBatches';
 import { isSessionPrincipal, isTrustedMutationRequest } from '$lib/server/principal';
 import { principalHasRole } from '$lib/server/principal';
 
@@ -31,23 +32,61 @@ function parseSaleId(url: URL): number | null {
 	return Number.isInteger(id) && id > 0 ? id : null;
 }
 
+class SaleRequestError extends Error {}
+
+/**
+ * The batch and roast a sale is recorded against, by ID. A key that is absent is left out,
+ * so an update changes the link only when the form sends one. Null removes it.
+ */
+function readSaleLink(raw: Record<string, unknown>): {
+	batchId?: string | null;
+	roastId?: number | null;
+} {
+	const link: { batchId?: string | null; roastId?: number | null } = {};
+	if ('batch_id' in raw && raw.batch_id !== undefined) {
+		const batchId = raw.batch_id === null ? null : parseRoastBatchId(raw.batch_id);
+		if (raw.batch_id !== null && batchId === null) {
+			throw new SaleRequestError('Invalid roast batch');
+		}
+		link.batchId = batchId;
+	}
+	if ('roast_id' in raw && raw.roast_id !== undefined) {
+		const roastId = raw.roast_id;
+		if (roastId !== null && !(Number.isSafeInteger(roastId) && (roastId as number) > 0)) {
+			throw new SaleRequestError('Invalid roast');
+		}
+		link.roastId = roastId as number | null;
+	}
+	return link;
+}
+
 function toParchmentCreateRequest(raw: Record<string, unknown>): ParchmentSaleCreateRequest {
+	const link = readSaleLink(raw);
+	const linked = typeof link.batchId === 'string' || typeof link.roastId === 'number';
 	return {
 		greenCoffeeInvId: raw.green_coffee_inv_id as number,
 		ozSold: raw.oz_sold as number,
 		price: raw.price as number,
 		...(typeof raw.buyer === 'string' ? { buyer: raw.buyer } : {}),
-		...(typeof raw.batch_name === 'string' ? { batchName: raw.batch_name } : {}),
+		...(typeof link.batchId === 'string' ? { batchId: link.batchId } : {}),
+		...(typeof link.roastId === 'number' ? { roastId: link.roastId } : {}),
+		// A name is how a caller with no batch ID names a batch; beside an ID it says nothing.
+		...(!linked && typeof raw.batch_name === 'string' ? { batchName: raw.batch_name } : {}),
 		...(typeof raw.sell_date === 'string' ? { sellDate: raw.sell_date } : {})
 	};
 }
 
 function toParchmentUpdateRequest(raw: Record<string, unknown>): ParchmentSaleUpdateRequest {
+	const link = readSaleLink(raw);
 	const update: ParchmentSaleUpdateRequest = {};
 	if ('oz_sold' in raw) update.ozSold = raw.oz_sold as number;
 	if ('price' in raw) update.price = raw.price as number;
 	if ('buyer' in raw) update.buyer = raw.buyer === null ? '' : (raw.buyer as string);
-	if ('batch_name' in raw)
+	if (link.batchId !== undefined) update.batchId = link.batchId;
+	if (link.roastId !== undefined) update.roastId = link.roastId;
+	// A name alone moves the sale to the batch that name identifies, so it is sent only by a
+	// caller that sends no ID.
+	if ('batch_name' in raw && link.batchId === undefined && typeof link.roastId !== 'number')
 		update.batchName = raw.batch_name === null ? '' : (raw.batch_name as string);
 	if ('sell_date' in raw) update.sellDate = raw.sell_date as string;
 	return update;
@@ -90,6 +129,12 @@ function mutationAuthFailure(event: RequestEvent) {
 	return null;
 }
 
+/** Recording a sale, or changing what one is recorded against, is part of Mallard Studio. */
+function memberFailure(event: RequestEvent) {
+	if (principalHasRole(event.locals.principal, 'member')) return null;
+	return json({ error: 'Mallard Studio membership is required to record sales' }, { status: 403 });
+}
+
 export const GET: RequestHandler = async (event) => {
 	try {
 		if (!isCookieSessionEvent(event)) {
@@ -111,7 +156,7 @@ export const GET: RequestHandler = async (event) => {
 
 export const PUT: RequestHandler = async (event) => {
 	try {
-		const authFailure = mutationAuthFailure(event);
+		const authFailure = mutationAuthFailure(event) ?? memberFailure(event);
 		if (authFailure) return authFailure;
 
 		const id = parseSaleId(event.url);
@@ -120,10 +165,12 @@ export const PUT: RequestHandler = async (event) => {
 		}
 
 		const raw = (await event.request.json()) as Record<string, unknown>;
+		const update = toParchmentUpdateRequest(raw);
 		const client = await createParchmentServerClient(event, { mode: 'session' });
-		const data = await updateParchmentSale(client, id, toParchmentUpdateRequest(raw));
+		const data = await updateParchmentSale(client, id, update);
 		return json(data);
 	} catch (error) {
+		if (error instanceof SaleRequestError) return json({ error: error.message }, { status: 400 });
 		if (error instanceof ParchmentSalesError) return parchmentFailure(error);
 		console.error('Error updating sale:', error);
 		return json({ error: 'Failed to update sale' }, { status: 500 });
@@ -132,21 +179,17 @@ export const PUT: RequestHandler = async (event) => {
 
 export const POST: RequestHandler = async (event) => {
 	try {
-		const authFailure = mutationAuthFailure(event);
+		const authFailure = mutationAuthFailure(event) ?? memberFailure(event);
 		if (authFailure) return authFailure;
-		if (!principalHasRole(event.locals.principal, 'member')) {
-			return json(
-				{ error: 'Mallard Studio membership is required to record sales' },
-				{ status: 403 }
-			);
-		}
 
 		const raw = (await event.request.json()) as Record<string, unknown>;
+		const sale = toParchmentCreateRequest(raw);
 		const client = await createParchmentServerClient(event, { mode: 'session' });
 		const idempotencyKey = event.request.headers.get('idempotency-key')?.trim() || undefined;
-		const data = await createParchmentSale(client, toParchmentCreateRequest(raw), idempotencyKey);
+		const data = await createParchmentSale(client, sale, idempotencyKey);
 		return json(data);
 	} catch (error) {
+		if (error instanceof SaleRequestError) return json({ error: error.message }, { status: 400 });
 		if (error instanceof ParchmentSalesError) return parchmentFailure(error);
 		console.error('Error creating sale:', error);
 		return json({ error: 'Failed to create sale' }, { status: 500 });

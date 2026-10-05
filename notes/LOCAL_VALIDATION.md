@@ -30,6 +30,7 @@ For E2E (`pnpm test:e2e`), also require:
 - `E2E_TEST_EMAIL`
 - `E2E_TEST_USER_ID`
 - `PLAYWRIGHT_BASE_URL` (optional, defaults to localhost)
+- `E2E_EMPTY_BATCH_CLEANUP` (optional). The teardown removes the empty roast batches created during the run. `all` also removes the empty batches earlier runs left on the test account.
 
 Repo-local helpers:
 

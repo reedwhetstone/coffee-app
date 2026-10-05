@@ -18,6 +18,7 @@
  */
 
 import { test, expect } from '@playwright/test';
+import { createdBatchId } from './batch-cleanup';
 
 // Native fetch — completely isolated from Playwright's cookie jar.
 // Used for all unauthenticated request tests.
@@ -30,6 +31,8 @@ async function rawFetch(path: string, options?: RequestInit) {
 // IDs for test data created during this run — cleaned up in afterAll
 let testBeanId: number | null = null;
 let testRoastId: number | null = null;
+// The batch the test roast was created in. Deleting the roast keeps its batch.
+let testBatchId: string | null = null;
 let testSaleId: number | null = null;
 
 test.afterAll(async ({ request }) => {
@@ -40,6 +43,10 @@ test.afterAll(async ({ request }) => {
 	if (testRoastId) {
 		await request.delete(`/api/roast-profiles?id=${testRoastId}`).catch(() => {});
 		testRoastId = null;
+	}
+	if (testBatchId) {
+		await request.delete(`/api/roast-batches/${testBatchId}`).catch(() => {});
+		testBatchId = null;
 	}
 	if (testBeanId) {
 		await request.delete(`/api/beans?id=${testBeanId}`).catch(() => {});
@@ -71,6 +78,11 @@ test.describe('Unauthenticated requests are rejected', () => {
 		expect(resp.status).toBeLessThan(500);
 	});
 
+	test('GET /api/roast-batches without auth is refused', async () => {
+		const resp = await rawFetch('/api/roast-batches');
+		expect(resp.status).toBe(401);
+	});
+
 	test('GET /api/roast-chart-data without auth does not crash without auth', async () => {
 		const resp = await rawFetch('/api/roast-chart-data?roastId=1');
 		expect(resp.status).toBeLessThan(500);
@@ -91,6 +103,14 @@ test.describe('GET endpoints return expected shapes', () => {
 
 	test('GET /api/beans returns { data: [...] }', async ({ request }) => {
 		const resp = await request.get('/api/beans');
+		expect(resp.status()).toBe(200);
+		const body = await resp.json();
+		expect(body).toHaveProperty('data');
+		expect(Array.isArray(body.data)).toBe(true);
+	});
+
+	test('GET /api/roast-batches returns { data: [...] }', async ({ request }) => {
+		const resp = await request.get('/api/roast-batches?include_empty=true');
 		expect(resp.status()).toBe(200);
 		const body = await resp.json();
 		expect(body).toHaveProperty('data');
@@ -223,6 +243,9 @@ test.describe('POST /api/roast-profiles — create roast', () => {
 		const profiles = Array.isArray(body) ? body : (body.profiles ?? [body]);
 		testRoastId = profiles[0]?.roast_id ?? profiles[0]?.id ?? null;
 		expect(testRoastId).toBeTruthy();
+		// Every roast belongs to a batch, known by its ID.
+		testBatchId = createdBatchId(profiles[0]);
+		expect(testBatchId).toBeTruthy();
 	});
 });
 
@@ -286,6 +309,21 @@ test.describe('DELETE endpoints return success', () => {
 		const body = await resp.json();
 		expect(body).toHaveProperty('success', true);
 		testRoastId = null;
+	});
+
+	test('DELETE /api/roast-batches/X deletes the batch the test roast left behind', async ({
+		request
+	}) => {
+		if (!testBatchId) {
+			test.skip();
+			return;
+		}
+		const resp = await request.delete(`/api/roast-batches/${testBatchId}`);
+		expect(resp.status()).toBeLessThan(400);
+		const body = await resp.json();
+		expect(body).toHaveProperty('success', true);
+		expect(body).toHaveProperty('id', testBatchId);
+		testBatchId = null;
 	});
 
 	test('DELETE /api/beans?id=X deletes the test bean', async ({ request }) => {

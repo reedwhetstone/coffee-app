@@ -4,7 +4,6 @@ import { createParchmentServerClient, ParchmentConfigError } from '$lib/server/p
 import {
 	createParchmentRoasts,
 	deleteParchmentRoast,
-	deleteParchmentRoastBatch,
 	ParchmentRoastMutationError,
 	updateParchmentRoast,
 	type LegacyRoastCreateInput
@@ -121,20 +120,12 @@ export const DELETE: RequestHandler = async (event) => {
 		const authFailure = mutationAuthFailure(event);
 		if (authFailure) return authFailure;
 
-		const rawId = event.url.searchParams.get('id');
-		const batchName = event.url.searchParams.get('name');
+		// One roast, by ID. A batch is deleted by its own ID at /api/roast-batches/[id].
+		const id = parsePositiveInteger(event.url.searchParams.get('id'));
+		if (id === null) return json({ error: 'A positive roast ID is required' }, { status: 400 });
+
 		const client = await createParchmentServerClient(event, { mode: 'session' });
-
-		if (rawId !== null) {
-			const id = parsePositiveInteger(rawId);
-			if (id === null) return json({ error: 'A positive roast ID is required' }, { status: 400 });
-			await deleteParchmentRoast(client, id);
-		} else if (batchName !== null) {
-			await deleteParchmentRoastBatch(client, batchName);
-		} else {
-			return json({ error: 'No ID or batch name provided' }, { status: 400 });
-		}
-
+		await deleteParchmentRoast(client, id);
 		return json({ success: true });
 	} catch (error) {
 		if (error instanceof ParchmentRoastMutationError) return mutationFailure(error);

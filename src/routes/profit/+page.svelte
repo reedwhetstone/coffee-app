@@ -12,7 +12,8 @@
 	import { pageChatContext } from '$lib/stores/pageContextStore.svelte';
 	import type { PageData } from './$types';
 	import type { PageAuthView } from '$lib/types/auth.types';
-	import type { AvailableCoffee, BatchItem } from '$lib/types/component.types';
+	import { readSalePrefill, type BatchedRoast } from '$lib/roast/roast-batches';
+	import type { AvailableCoffee } from '$lib/types/component.types';
 
 	interface ProfitData {
 		id: number;
@@ -38,6 +39,10 @@
 		oz_sold: number;
 		price: number;
 		buyer: string;
+		/** The batch the sale is linked to, by ID. Null on a sale that names no one batch. */
+		batch_id?: string | null;
+		/** The roast the sale names, when it names one. */
+		roast_id?: number | null;
 		batch_name: string;
 		sell_date: string;
 		purchase_date: string;
@@ -54,6 +59,8 @@
 		$props<{ data?: Partial<PageData> & { auth?: PageAuthView } }>();
 	let canLogSales = $derived(canUseMallardControls(data.auth?.role ?? 'viewer'));
 	let isFormVisible = $derived(canLogSales && page.url.searchParams.get('modal') === 'new');
+	// "Log sale" on a batch or a roast opens the form with the coffee, batch, and roast in the link.
+	let salePrefill = $derived(readSalePrefill(page.url.searchParams));
 	let selectedSale = $state<SaleData | null>(null);
 	let isSaving = $state<string | null>(null);
 	// Loading, error, and legitimately-empty are distinct states: an account
@@ -64,7 +71,10 @@
 
 	// Form data state
 	let availableCoffees = $state<AvailableCoffee[]>([]);
-	let availableBatches = $state<BatchItem[]>([]);
+	let availableRoasts = $state<BatchedRoast[]>([]);
+	// True once the roasts above are the member's current list, so the sale form can tell a
+	// batch or roast that no longer exists from one that has not arrived yet.
+	let availableRoastsLoaded = $state(false);
 
 	// Convert reactive statements to use $derived
 	// Removed unused derived values (totalRevenue, totalCost, totalProfit)
@@ -161,21 +171,22 @@
 		}
 	}
 
-	// Function to fetch available batches (roast profiles) for sale form
-	async function fetchAvailableBatches() {
+	// Function to fetch the roasts the sale form works its batch choices out from
+	async function fetchAvailableRoasts() {
+		availableRoastsLoaded = false;
 		try {
 			const response = await fetch('/api/roast-profiles');
 			if (response.ok) {
 				const result = await response.json();
-				// Get roast profiles with coffee relationships for batch selection
-				availableBatches = result.data || [];
+				availableRoasts = result.data || [];
+				availableRoastsLoaded = true;
 			} else {
 				console.error('Failed to fetch available batches');
-				availableBatches = [];
+				availableRoasts = [];
 			}
 		} catch (error) {
 			console.error('Error fetching available batches:', error);
-			availableBatches = [];
+			availableRoasts = [];
 		}
 	}
 
@@ -183,7 +194,7 @@
 	async function fetchFormData() {
 		// formDataLoading = true;
 		try {
-			await Promise.all([fetchAvailableCoffees(), fetchAvailableBatches()]);
+			await Promise.all([fetchAvailableCoffees(), fetchAvailableRoasts()]);
 		} finally {
 			// formDataLoading = false;
 		}
@@ -254,7 +265,7 @@
 
 	function hideForm() {
 		const url = new URL(page.url);
-		url.searchParams.delete('modal');
+		for (const name of ['modal', 'coffee', 'batch', 'roast']) url.searchParams.delete(name);
 		const search = url.searchParams.toString();
 		goto(url.pathname + (search ? '?' + search : ''), {
 			replaceState: true,
@@ -281,7 +292,9 @@
 	<SaleForm
 		sale={selectedSale as unknown as Record<string, unknown> | undefined}
 		{availableCoffees}
-		{availableBatches}
+		{availableRoasts}
+		roastsLoaded={availableRoastsLoaded}
+		prefill={salePrefill}
 		onClose={() => {
 			hideForm();
 			selectedSale = null;

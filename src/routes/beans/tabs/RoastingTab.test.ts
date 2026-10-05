@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { InventoryWithCatalog } from '$lib/types/component.types';
+import { logSaleLink } from '$lib/roast/roast-batches';
 import { planNextRoastLink } from '$lib/roast/roast-plan';
 import RoastingTab from './RoastingTab.svelte';
 
@@ -349,8 +350,54 @@ describe('portfolio Roasting tab', () => {
 				.getByRole('link', { name: 'Plan next roast', hidden: true })
 				.getAttribute('href')
 		).toBe('/roast/plan?from=roast:4480');
-		// Logging a sale from here comes with the release that adds it.
+		// A page that offers only the plan link offers nothing else.
 		expect(screen.queryByText('Log sale')).toBeNull();
+	});
+
+	it('offers "Log sale" on every roast, with its coffee, its batch, and the roast filled in', async () => {
+		const WEDNESDAY = 'aaaaaaaa-0000-4000-8000-000000000001';
+		const LAST_WEDNESDAY = 'aaaaaaaa-0000-4000-8000-000000000002';
+		// Two roasts carry the name "Wednesday roast"; each is sold from its own batch.
+		respondWith(
+			roasts.map((roast) => ({
+				...roast,
+				batch_id:
+					roast.roast_id === 4531
+						? WEDNESDAY
+						: roast.roast_id === 4507
+							? LAST_WEDNESDAY
+							: `bbbbbbbb-0000-4000-8000-00000000${roast.roast_id}`,
+				artisan_file_available: roast.roast_id === 4531
+			}))
+		);
+		renderTab({
+			rowMenu: (roast: Parameters<typeof logSaleLink>[0]) => [
+				...planNextRoastLink(roast),
+				...logSaleLink(roast)
+			]
+		});
+
+		const rows = await dataRows();
+		expect(rows.map((row) => Boolean(within(row).queryByLabelText(/More for roast/)))).toEqual([
+			true,
+			true,
+			true,
+			true,
+			true
+		]);
+		// The newest roast has its Artisan file, so its menu holds both links, the plan first.
+		expect(
+			within(rows[0])
+				.getAllByRole('link', { hidden: true })
+				.filter((link) => link.closest('details'))
+				.map((link) => [link.textContent?.trim(), link.getAttribute('href')])
+		).toEqual([
+			['Plan next roast', '/roast/plan?from=roast:4531'],
+			['Log sale', `/profit?modal=new&coffee=101&batch=${WEDNESDAY}&roast=4531`]
+		]);
+		expect(
+			within(rows[3]).getByRole('link', { name: 'Log sale', hidden: true }).getAttribute('href')
+		).toBe(`/profit?modal=new&coffee=101&batch=${LAST_WEDNESDAY}&roast=4507`);
 	});
 
 	it('lets the last roast’s menu open below the table instead of cutting it off', async () => {

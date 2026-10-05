@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from 'vitest';
 import {
 	createParchmentRoasts,
 	deleteParchmentRoast,
-	deleteParchmentRoastBatch,
 	updateParchmentRoast
 } from './parchmentRoastMutations';
 
@@ -24,8 +23,7 @@ function client() {
 			createBatch: vi.fn(),
 			update: vi.fn(),
 			replaceLiveCurve: vi.fn(),
-			delete: vi.fn(),
-			deleteBatch: vi.fn()
+			delete: vi.fn()
 		}
 	};
 }
@@ -215,19 +213,12 @@ describe('Parchment roast mutations', () => {
 		});
 	});
 
-	it('verifies canonical single and batch delete acknowledgements', async () => {
+	it('verifies the canonical delete acknowledgement', async () => {
 		const parchment = client();
 		parchment.roasts.delete.mockResolvedValue({ data: { data: { id: 41, deleted: true } } });
-		parchment.roasts.deleteBatch.mockResolvedValue({
-			data: {
-				data: { batchName: 'Tuesday batch', ids: [41, 42], deleted: true }
-			}
-		});
 
 		await deleteParchmentRoast(parchment as never, 41);
-		await deleteParchmentRoastBatch(parchment as never, 'Tuesday batch');
 
 		expect(parchment.roasts.delete).toHaveBeenCalledWith(41);
-		expect(parchment.roasts.deleteBatch).toHaveBeenCalledWith('Tuesday batch');
 	});
 });

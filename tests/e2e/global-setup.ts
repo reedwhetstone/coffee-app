@@ -5,6 +5,9 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default function globalSetup() {
+	// The teardown removes only the roast batches created from here on, unless told otherwise.
+	process.env.E2E_RUN_STARTED_AT = new Date().toISOString();
+
 	if (!process.env.CI) {
 		// Load .env first (Supabase vars), then .env.test (test credentials override)
 		dotenv.config({ path: path.resolve(__dirname, '../../.env') });

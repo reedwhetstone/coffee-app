@@ -19,12 +19,15 @@
  */
 
 import { test, expect } from '@playwright/test';
+import { createdBatchId } from './batch-cleanup';
 
 test.use({ storageState: 'tests/e2e/.auth/user.json' });
 
 test.describe.serial('Critical business workflow', () => {
 	let testBeanId: number | null = null;
 	let testRoastId: number | null = null;
+	// The batch the test roast was created in. Deleting the roast keeps its batch.
+	let testBatchId: string | null = null;
 	let testSaleId: number | null = null;
 	const testBeanName = `E2E_TEST_BEAN_${Date.now()}`;
 	const testRoastName = `E2E_TEST_ROAST_${Date.now()}`;
@@ -38,6 +41,10 @@ test.describe.serial('Critical business workflow', () => {
 		if (testRoastId) {
 			await request.delete(`/api/roast-profiles?id=${testRoastId}`).catch(() => {});
 			testRoastId = null;
+		}
+		if (testBatchId) {
+			await request.delete(`/api/roast-batches/${testBatchId}`).catch(() => {});
+			testBatchId = null;
 		}
 		if (testBeanId) {
 			await request.delete(`/api/beans?id=${testBeanId}`).catch(() => {});
@@ -123,6 +130,8 @@ test.describe.serial('Critical business workflow', () => {
 		const profiles = Array.isArray(body) ? body : (body.profiles ?? [body]);
 		testRoastId = profiles[0]?.roast_id ?? profiles[0]?.id ?? null;
 		expect(testRoastId).toBeTruthy();
+		testBatchId = createdBatchId(profiles[0]);
+		expect(testBatchId).toBeTruthy();
 	});
 
 	// -------------------------------------------------------------------------
@@ -135,9 +144,11 @@ test.describe.serial('Critical business workflow', () => {
 		// renders instead of waiting for an initial browser API request.
 		await page.goto('/roast', { waitUntil: 'domcontentloaded' });
 		await expect(page).toHaveURL(/roast/);
-		await expect(page.getByText(testRoastName, { exact: true }).first()).toBeVisible({
-			timeout: 20000
-		});
+		// A batch header leads with the date ("Oct 5 · <name>"), so the name is no longer a
+		// text of its own. The header's control still names the batch.
+		await expect(
+			page.getByRole('button', { name: `Toggle ${testRoastName} batch` }).first()
+		).toBeVisible({ timeout: 20000 });
 	});
 
 	// -------------------------------------------------------------------------

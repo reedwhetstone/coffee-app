@@ -20,8 +20,7 @@ const testClasses = vi.hoisted(() => ({
 const mutationMocks = vi.hoisted(() => ({
 	createParchmentRoasts: vi.fn(),
 	updateParchmentRoast: vi.fn(),
-	deleteParchmentRoast: vi.fn(),
-	deleteParchmentRoastBatch: vi.fn()
+	deleteParchmentRoast: vi.fn()
 }));
 
 const parchmentMocks = vi.hoisted(() => ({
@@ -248,27 +247,30 @@ describe('/api/roast-profiles thin Parchment adapter', () => {
 		expect(await response.json()).toEqual(profile);
 	});
 
-	it('deletes either one roast or one exact named batch through Parchment', async () => {
+	it('deletes one roast by ID through Parchment', async () => {
 		const single = await DELETE(
 			makeEvent({
 				method: 'DELETE',
 				url: 'https://app.test/api/roast-profiles?id=41'
 			}) as never
 		);
-		const batch = await DELETE(
+
+		expect(single.status).toBe(200);
+		expect(mutationMocks.deleteParchmentRoast).toHaveBeenCalledWith({ kind: 'session-client' }, 41);
+	});
+
+	it('no longer deletes a batch by its name, which more than one batch can carry', async () => {
+		const byName = await DELETE(
 			makeEvent({
 				method: 'DELETE',
 				url: 'https://app.test/api/roast-profiles?name=Tuesday%20batch'
 			}) as never
 		);
 
-		expect(single.status).toBe(200);
-		expect(batch.status).toBe(200);
-		expect(mutationMocks.deleteParchmentRoast).toHaveBeenCalledWith({ kind: 'session-client' }, 41);
-		expect(mutationMocks.deleteParchmentRoastBatch).toHaveBeenCalledWith(
-			{ kind: 'session-client' },
-			'Tuesday batch'
-		);
+		expect(byName.status).toBe(400);
+		expect(await byName.json()).toEqual({ error: 'A positive roast ID is required' });
+		expect(mutationMocks.deleteParchmentRoast).not.toHaveBeenCalled();
+		expect(parchmentMocks.createParchmentServerClient).not.toHaveBeenCalled();
 	});
 
 	it('relays Parchment status and structured errors', async () => {

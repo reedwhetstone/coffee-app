@@ -40,10 +40,13 @@ const huila = coffee(8, 'Colombia Huila', { roast_count: 0, last_roast_date: nul
 // Finished and unstocked, so it is not among the cards on screen.
 const finished = coffee(99, 'Kenya Nyeri', { stocked: false });
 
+const WEDNESDAY_BATCH = 'aaaaaaaa-0000-4000-8000-000000000001';
+
 const gujiRoasts = [
 	{
 		roast_id: 4531,
 		coffee_id: 7,
+		batch_id: WEDNESDAY_BATCH,
 		batch_name: 'Wednesday roast',
 		roast_date: '2026-10-01',
 		oz_in: 16,
@@ -129,6 +132,20 @@ describe('/beans?coffee=&tab= round trip', () => {
 	afterEach(() => {
 		vi.useRealTimers();
 		vi.unstubAllGlobals();
+	});
+
+	it('offers "Log sale" in a roast\'s row menu, with the coffee, batch, and roast filled in', async () => {
+		renderPortfolio('/beans?coffee=7&tab=roasting');
+
+		const dialog = await screen.findByRole('dialog');
+		const menu = await within(dialog).findByLabelText('More for roast #4531');
+		expect(
+			within(menu.closest('details')!)
+				.getByRole('link', { name: 'Log sale', hidden: true })
+				.getAttribute('href')
+		).toBe(`/profit?modal=new&coffee=7&batch=${WEDNESDAY_BATCH}&roast=4531`);
+		// A roast whose batch is not known by its ID has no sale to offer.
+		expect(within(dialog).queryByLabelText('More for roast #4529')).toBeNull();
 	});
 
 	it('opens the linked coffee on the linked tab', async () => {

@@ -1,12 +1,18 @@
 import { fireEvent, render, screen, within } from '@testing-library/svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RoastTimer } from '$lib/roast';
+import { groupRoastsByBatch } from '$lib/roast/roast-batches';
 import type { RoastProfile } from '$lib/types/component.types';
 import RoastProfileTabs from './RoastProfileTabs.svelte';
+
+const WEDNESDAY = 'aaaaaaaa-0000-4000-8000-000000000001';
+const GUJI_TEST = 'aaaaaaaa-0000-4000-8000-000000000002';
+const LAST_WEDNESDAY = 'aaaaaaaa-0000-4000-8000-000000000003';
 
 function roast(overrides: Partial<RoastProfile>): RoastProfile {
 	return {
 		roast_id: 4531,
+		batch_id: WEDNESDAY,
 		batch_name: 'Wednesday roast',
 		coffee_id: 101,
 		coffee_name: 'Ethiopia Yirgacheffe Wush Wush',
@@ -34,21 +40,24 @@ const wushWush = roast({});
 const colombia = roast({ roast_id: 4530, coffee_id: 102, coffee_name: 'Colombia Sierra Nevada' });
 const guji = roast({
 	roast_id: 4529,
+	batch_id: GUJI_TEST,
 	batch_name: 'Guji drop test',
 	roast_date: '2026-09-27T00:00:00+00:00'
 });
+// The same name a week earlier: another batch.
+const lastWednesday = roast({
+	roast_id: 4521,
+	batch_id: LAST_WEDNESDAY,
+	roast_date: '2026-09-24T00:00:00+00:00'
+});
 
-const grouped = {
-	'Wednesday roast|||2026-10-01': [wushWush, colombia],
-	'Guji drop test|||2026-09-27': [guji]
-};
+const batches = groupRoastsByBatch([wushWush, colombia, guji]);
 
 const idleTimer = { isIdle: true } as RoastTimer;
 
 function props(overrides: Record<string, unknown> = {}) {
 	return {
-		sortedBatchNames: Object.keys(grouped),
-		sortedGroupedProfiles: grouped,
+		batches,
 		collapsedBatches: new Set<string>(),
 		currentRoastProfile: null,
 		currentProfileIndex: 0,
@@ -62,7 +71,7 @@ function props(overrides: Record<string, unknown> = {}) {
 		onSelectProfile: vi.fn(),
 		onProfileUpdate: vi.fn(),
 		onProfileDelete: vi.fn(),
-		onBatchDelete: vi.fn(),
+		onDeleteBatch: vi.fn(),
 		onClearProfile: vi.fn(async () => true),
 		onClearFilters: vi.fn(),
 		onSaveReference: vi.fn(),
@@ -112,30 +121,139 @@ describe('roast list', () => {
 				screen.getByRole('button', { name: new RegExp(`Toggle ${batch} batch`) })
 			).toHaveAttribute('aria-expanded', 'true');
 		}
-		expect(screen.getByRole('region', { name: 'Roasts in Wednesday roast' })).toBeInTheDocument();
+		expect(screen.getByRole('region', { name: /Roasts in .*Wednesday roast/ })).toBeInTheDocument();
 		expect(
-			within(screen.getByRole('region', { name: 'Roasts in Guji drop test' })).getByText(/ID: 4529/)
+			within(screen.getByRole('region', { name: /Roasts in .*Guji drop test/ })).getByText(
+				/ID: 4529/
+			)
 		).toBeInTheDocument();
 	});
 
 	it('closes only the batches the roaster closed', async () => {
 		const onToggleBatch = vi.fn();
-		render(
-			RoastProfileTabs,
-			props({ collapsedBatches: new Set(['Guji drop test|||2026-09-27']), onToggleBatch })
-		);
+		render(RoastProfileTabs, props({ collapsedBatches: new Set([GUJI_TEST]), onToggleBatch }));
 
-		expect(screen.queryByRole('region', { name: 'Roasts in Guji drop test' })).toBeNull();
-		expect(screen.getByRole('region', { name: 'Roasts in Wednesday roast' })).toBeInTheDocument();
+		expect(screen.queryByRole('region', { name: /Roasts in .*Guji drop test/ })).toBeNull();
+		expect(screen.getByRole('region', { name: /Roasts in .*Wednesday roast/ })).toBeInTheDocument();
 
 		await fireEvent.click(screen.getByRole('button', { name: /Toggle Guji drop test batch/ }));
-		expect(onToggleBatch).toHaveBeenCalledWith('Guji drop test|||2026-09-27');
+		expect(onToggleBatch).toHaveBeenCalledWith(GUJI_TEST);
 	});
 
-	it('shows each roast on the calendar day it was stored with', () => {
+	it('heads each batch with its date, on the calendar day it was stored with', () => {
+		vi.useFakeTimers({ now: new Date('2026-10-05T12:00:00Z'), toFake: ['Date'] });
 		render(RoastProfileTabs, props());
 
-		expect(screen.getByText(/2 roasts • Oct 1, 2026/)).toBeInTheDocument();
+		expect(
+			screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent?.trim())
+		).toEqual(['Oct 1 · Wednesday roast', 'Sep 27 · Guji drop test']);
+		expect(screen.getByText('2 roasts')).toBeInTheDocument();
+		vi.useRealTimers();
+	});
+
+	it('lists two batches that share a name separately, each under its own date', () => {
+		vi.useFakeTimers({ now: new Date('2026-10-05T12:00:00Z'), toFake: ['Date'] });
+		render(
+			RoastProfileTabs,
+			props({ batches: groupRoastsByBatch([wushWush, colombia, guji, lastWednesday]) })
+		);
+
+		expect(
+			screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent?.trim())
+		).toEqual(['Oct 1 · Wednesday roast', 'Sep 27 · Guji drop test', 'Sep 24 · Wednesday roast']);
+		expect(
+			screen.getByRole('button', {
+				name: 'Toggle Wednesday roast batch, Oct 1, 2026 (2 roasts)'
+			})
+		).toBeInTheDocument();
+		expect(
+			screen.getByRole('button', {
+				name: 'Toggle Wednesday roast batch, Sep 24, 2026 (1 roast)'
+			})
+		).toBeInTheDocument();
+		vi.useRealTimers();
+	});
+
+	it('keeps a batch whose roasts span two days as one group, and says which days', () => {
+		vi.useFakeTimers({ now: new Date('2026-10-05T12:00:00Z'), toFake: ['Date'] });
+		const afterMidnight = roast({
+			roast_id: 4532,
+			roast_date: '2026-10-02T00:00:00+00:00'
+		});
+		render(
+			RoastProfileTabs,
+			props({ batches: groupRoastsByBatch([afterMidnight, wushWush, colombia, guji]) })
+		);
+
+		expect(
+			screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent?.trim())
+		).toEqual(['Oct 1 · Wednesday roast', 'Sep 27 · Guji drop test']);
+		expect(screen.getByText('3 roasts · Oct 1 to Oct 2')).toBeInTheDocument();
+		vi.useRealTimers();
+	});
+
+	it('offers "Log sale" on each batch header, with the batch filled in by its ID', () => {
+		render(
+			RoastProfileTabs,
+			props({ batches: groupRoastsByBatch([wushWush, colombia, guji, lastWednesday]) })
+		);
+
+		const links = screen.getAllByRole('link', { name: /^Log sale from / });
+		expect(links.map((link) => link.getAttribute('href'))).toEqual([
+			// Two coffees were roasted on Oct 1, so the form asks which one was sold.
+			`/profit?modal=new&batch=${WEDNESDAY}`,
+			`/profit?modal=new&coffee=101&batch=${GUJI_TEST}`,
+			`/profit?modal=new&coffee=101&batch=${LAST_WEDNESDAY}`
+		]);
+		// A plain link beside the header's toggle, not inside it.
+		for (const link of links) {
+			expect(link.tagName).toBe('A');
+			expect(link.closest('button')).toBeNull();
+			expect(link).toHaveTextContent('Log sale');
+		}
+	});
+
+	it('does not offer "Log sale" to an account that cannot record one', () => {
+		render(RoastProfileTabs, props({ canCreateRoast: false }));
+
+		expect(screen.queryByRole('link', { name: /Log sale/ })).toBeNull();
+	});
+
+	it('names the batch the list is narrowed to in a chip that can be removed', async () => {
+		const onClearBatchFilter = vi.fn();
+		render(
+			RoastProfileTabs,
+			props({
+				listBatches: batches.filter((batch) => batch.id === GUJI_TEST),
+				batchFilter: { id: GUJI_TEST, label: 'Sep 27 · Guji drop test' },
+				onClearBatchFilter
+			})
+		);
+
+		expect(screen.getAllByRole('heading', { level: 3 })).toHaveLength(1);
+		const remove = screen.getByRole('button', { name: 'Show every batch' });
+		expect(remove.parentElement).toHaveTextContent('Sep 27 · Guji drop test');
+
+		await fireEvent.click(remove);
+		expect(onClearBatchFilter).toHaveBeenCalledOnce();
+	});
+
+	it('says so when the batch a link names has no roasts', () => {
+		render(
+			RoastProfileTabs,
+			props({
+				listBatches: [],
+				batchFilter: { id: LAST_WEDNESDAY, label: null }
+			})
+		);
+
+		expect(screen.getByRole('heading', { name: 'No roasts match.' })).toBeInTheDocument();
+		expect(
+			screen.getByText('That batch has no roasts. It may have been deleted.')
+		).toBeInTheDocument();
+		expect(
+			screen.getByRole('button', { name: 'Show every batch' }).parentElement
+		).toHaveTextContent('One batch');
 	});
 
 	it('opens a roast when its row is chosen', async () => {
@@ -154,10 +272,7 @@ describe('roast list', () => {
 	});
 
 	it('says there are no roasts yet when the account has none', () => {
-		render(
-			RoastProfileTabs,
-			props({ sortedBatchNames: [], sortedGroupedProfiles: {}, totalRoasts: 0 })
-		);
+		render(RoastProfileTabs, props({ batches: [], totalRoasts: 0 }));
 
 		expect(screen.getByRole('heading', { name: 'No roasts yet.' })).toBeInTheDocument();
 		expect(
@@ -169,10 +284,7 @@ describe('roast list', () => {
 
 	it('says no roasts match, and offers to clear the filters, when filters hide them all', async () => {
 		const onClearFilters = vi.fn();
-		render(
-			RoastProfileTabs,
-			props({ sortedBatchNames: [], sortedGroupedProfiles: {}, totalRoasts: 3, onClearFilters })
-		);
+		render(RoastProfileTabs, props({ batches: [], totalRoasts: 3, onClearFilters }));
 
 		expect(screen.getByRole('heading', { name: 'No roasts match.' })).toBeInTheDocument();
 		expect(screen.queryByText('No roasts yet.')).toBeNull();
@@ -447,10 +559,32 @@ describe("an open roast's actions", () => {
 		expect(plan).toHaveClass('hidden', 'sm:inline-flex');
 	});
 
-	it('keeps the sale action for the release that adds it', () => {
+	it('links to the sale form with the coffee, the batch, and this roast filled in', () => {
 		render(RoastProfileTabs, props({ currentRoastProfile: wushWush }));
 
-		expect(screen.queryByText('Log sale')).toBeNull();
+		const sale = screen.getByRole('link', { name: 'Log sale' });
+		expect(sale).toHaveAttribute(
+			'href',
+			`/profit?modal=new&coffee=101&batch=${WEDNESDAY}&roast=4531`
+		);
+		// A plain link, like "Compare with…": the live-roast guard sees the navigation.
+		expect(sale.tagName).toBe('A');
+		// On a phone it gives way to "Compare with…" and sits in More instead.
+		expect(sale).toHaveClass('hidden', 'sm:inline-flex');
+	});
+
+	it('offers no sale or batch deletion for a roast whose batch is not known by its ID', async () => {
+		const orphan = roast({ roast_id: 4600, batch_id: undefined as never });
+		render(
+			RoastProfileTabs,
+			props({ currentRoastProfile: orphan, batches: groupRoastsByBatch([orphan]) })
+		);
+
+		expect(screen.queryByRole('link', { name: 'Log sale' })).toBeNull();
+		await openMore();
+		expect(screen.queryByRole('menuitem', { name: 'Log sale' })).toBeNull();
+		expect(screen.queryByRole('menuitem', { name: 'Delete batch' })).toBeNull();
+		expect(screen.getByRole('menuitem', { name: 'Delete roast' })).toBeEnabled();
 	});
 
 	it('holds the six further actions in More, with the two deletions last', async () => {
@@ -464,6 +598,7 @@ describe("an open roast's actions", () => {
 		expect(more).toHaveAttribute('aria-expanded', 'true');
 		expect(moreItems().map((item) => item.textContent?.trim())).toEqual([
 			'Plan next roast from this',
+			'Log sale',
 			'Save as reference',
 			'Edit details',
 			'Import Artisan file',
@@ -482,6 +617,19 @@ describe("an open roast's actions", () => {
 		expect(plan.tagName).toBe('A');
 		expect(plan).toHaveAttribute('href', '/roast/plan?from=roast:4531');
 		expect(plan).toHaveClass('sm:hidden');
+	});
+
+	it('carries the sale link in More for a phone as well', async () => {
+		render(RoastProfileTabs, props({ currentRoastProfile: wushWush }));
+		await openMore();
+
+		const sale = screen.getByRole('menuitem', { name: 'Log sale' });
+		expect(sale.tagName).toBe('A');
+		expect(sale).toHaveAttribute(
+			'href',
+			`/profit?modal=new&coffee=101&batch=${WEDNESDAY}&roast=4531`
+		);
+		expect(sale).toHaveClass('sm:hidden');
 	});
 
 	it('closes More on Escape and returns to its button', async () => {
@@ -542,6 +690,7 @@ describe("an open roast's actions", () => {
 
 		expect(moreItems().map((item) => item.textContent?.trim())).toEqual([
 			'Plan next roast from this',
+			'Log sale',
 			'Save as reference',
 			'Edit details',
 			'Import Artisan file',
@@ -609,32 +758,43 @@ describe("an open roast's actions", () => {
 		expect(clearRoastData).toHaveBeenCalledOnce();
 	});
 
-	it('deletes the roast, or its whole batch, only once the member confirms', async () => {
+	it('deletes the roast only once the member confirms', async () => {
 		const fetchMock = vi.fn(async () => new Response(JSON.stringify({}), { status: 200 }));
 		vi.stubGlobal('fetch', fetchMock);
 		const confirm = vi.fn(() => false);
 		vi.stubGlobal('confirm', confirm);
 		const onProfileDelete = vi.fn();
-		const onBatchDelete = vi.fn();
-		render(
-			RoastProfileTabs,
-			props({ currentRoastProfile: wushWush, onProfileDelete, onBatchDelete })
-		);
+		render(RoastProfileTabs, props({ currentRoastProfile: wushWush, onProfileDelete }));
 
 		await chooseFromMore('Delete roast');
-		await chooseFromMore('Delete batch');
 		expect(fetchMock).not.toHaveBeenCalled();
 
 		confirm.mockReturnValue(true);
 		await chooseFromMore('Delete roast');
 		await vi.waitFor(() => expect(onProfileDelete).toHaveBeenCalledOnce());
 		expect(fetchMock).toHaveBeenLastCalledWith('/api/roast-profiles?id=4531', { method: 'DELETE' });
+	});
+
+	it("hands the open roast's batch, by its ID, to the page to delete", async () => {
+		const fetchMock = vi.fn();
+		vi.stubGlobal('fetch', fetchMock);
+		const onDeleteBatch = vi.fn();
+		render(
+			RoastProfileTabs,
+			props({
+				// The roast open is from the earlier of two batches named "Wednesday roast".
+				currentRoastProfile: lastWednesday,
+				batches: groupRoastsByBatch([wushWush, colombia, guji, lastWednesday]),
+				onDeleteBatch
+			})
+		);
 
 		await chooseFromMore('Delete batch');
-		await vi.waitFor(() => expect(onBatchDelete).toHaveBeenCalledOnce());
-		expect(fetchMock).toHaveBeenLastCalledWith('/api/roast-profiles?name=Wednesday%20roast', {
-			method: 'DELETE'
-		});
+
+		expect(onDeleteBatch).toHaveBeenCalledOnce();
+		expect(onDeleteBatch).toHaveBeenCalledWith(LAST_WEDNESDAY);
+		// The page asks first and sends the request; nothing is deleted from here.
+		expect(fetchMock).not.toHaveBeenCalled();
 	});
 
 	it('offers nothing to compare, plan from, keep, or clear for a roast with nothing recorded', async () => {
@@ -666,6 +826,7 @@ describe("an open roast's actions", () => {
 		);
 		expect(enabled).toEqual({
 			'Plan next roast from this': false,
+			'Log sale': true,
 			'Save as reference': false,
 			'Edit details': true,
 			'Import Artisan file': true,
