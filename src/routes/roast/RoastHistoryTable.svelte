@@ -158,8 +158,10 @@
 	}
 </script>
 
+<!-- On a phone the list ends with room under it, so its last button can be scrolled clear of
+     the chat button fixed to the bottom of the screen. -->
 <div
-	class="w-full max-w-[100vw] overflow-x-hidden transition-opacity duration-200"
+	class="w-full max-w-[100vw] overflow-x-hidden pb-24 transition-opacity duration-200 sm:pb-0"
 	class:opacity-60={isRefreshing}
 	aria-busy={isRefreshing}
 >

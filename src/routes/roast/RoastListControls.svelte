@@ -84,8 +84,11 @@
 		onChange(NO_ROAST_LIST_FILTERS);
 	}
 
-	const selectClass =
-		'min-w-0 max-w-full rounded-md border border-line bg-surface-canvas px-2 py-1.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-accent';
+	const fieldClass =
+		'min-w-0 max-w-full rounded-md border border-line bg-surface-canvas py-1.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-accent';
+	// Room on the right for the select's arrow, so a long choice is not drawn under it.
+	const selectClass = `${fieldClass} pl-2 pr-8`;
+	const dateClass = `${fieldClass} px-2`;
 </script>
 
 <div class="mb-4 rounded-lg border border-line bg-surface-panel px-4 py-3" data-roast-list-controls>
@@ -105,7 +108,8 @@
 			/>
 		</div>
 
-		<div class="min-w-0 max-w-full">
+		<!-- On a phone the coffee and the date share a row, under the search. -->
+		<div class="flex min-w-0 basis-full gap-2 sm:basis-auto">
 			<select
 				aria-label="Coffee"
 				value={filters.coffee === null ? '' : String(filters.coffee)}
@@ -114,21 +118,19 @@
 						...filters,
 						coffee: event.currentTarget.value ? Number(event.currentTarget.value) : null
 					})}
-				class="{selectClass} sm:max-w-[16rem]"
+				class="{selectClass} flex-1 sm:max-w-[16rem] sm:flex-none"
 			>
 				<option value="">All coffees</option>
 				{#each coffeeChoices as option (option.id)}
 					<option value={String(option.id)}>{option.name}</option>
 				{/each}
 			</select>
-		</div>
 
-		<div class="min-w-0 max-w-full">
 			<select
 				aria-label="Roast date"
 				value={dateChoice}
 				onchange={(event) => chooseDates(event.currentTarget.value)}
-				class={selectClass}
+				class="{selectClass} shrink-0"
 			>
 				<option value="">Any time</option>
 				{#each ROAST_RANGES as option (option.value)}
@@ -168,7 +170,7 @@
 					value={filters.from ?? ''}
 					max={filters.to ?? undefined}
 					onchange={(event) => setDay('from', event.currentTarget.value)}
-					class={selectClass}
+					class={dateClass}
 				/>
 			</label>
 			<label class="inline-flex items-center gap-2">
@@ -178,7 +180,7 @@
 					value={filters.to ?? ''}
 					min={filters.from ?? undefined}
 					onchange={(event) => setDay('to', event.currentTarget.value)}
-					class={selectClass}
+					class={dateClass}
 				/>
 			</label>
 		</div>
