@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { getDocsPage } from '$lib/docs/content';
+import { getDocsPage, getPublishedDocsPages } from '$lib/docs/content';
 
 describe('api docs contract', () => {
 	const page = getDocsPage('api', 'catalog');
@@ -173,6 +173,26 @@ describe('api docs contract', () => {
 		const serializedDocs = `${JSON.stringify(overview)} ${JSON.stringify(roastProfiles)} ${JSON.stringify(analytics)}`;
 
 		expect(serializedDocs).not.toContain('/api/ai/classify-roast');
+	});
+
+	it('names no Studio but Mallard Studio in the pages written here', () => {
+		// CLI reference pages are generated from the pinned CLI manifest and follow its wording.
+		const authored = getPublishedDocsPages().filter(
+			(docsPage) => docsPage.section !== 'cli' || docsPage.slug === 'overview'
+		);
+		expect(authored.length).toBeGreaterThan(0);
+
+		for (const docsPage of authored) {
+			const { sections, ...lead } = docsPage;
+			const text = JSON.stringify(docsPage.section === 'cli' ? lead : { ...lead, sections });
+			expect(text, `${docsPage.section}/${docsPage.slug}`).not.toMatch(
+				/profile studio|roast studio/i
+			);
+			expect(
+				text.replaceAll('Mallard Studio', ''),
+				`${docsPage.section}/${docsPage.slug}`
+			).not.toMatch(/\bStudio\b/);
+		}
 	});
 
 	it('states one consistent inventory session and share-token contract', () => {

@@ -93,6 +93,23 @@ describe('authenticated app navigation taxonomy', () => {
 		).toBe('Cherry Synthesis Agent');
 	});
 
+	it('keeps Mallard Studio as the only Studio, with the roast pages under Roast', () => {
+		const sections = getAuthenticatedNavSections('admin', { ppiAccess: true });
+		const roast = sectionById('member', 'maillard')?.items.find((item) => item.href === '/roast');
+
+		expect(roast).toMatchObject({ label: 'Roast', description: 'Log, compare, and plan roasts' });
+		for (const section of sections) {
+			for (const text of [
+				section.label,
+				...section.items.flatMap((item) => [item.label, item.description ?? ''])
+			]) {
+				expect(text.replaceAll('Mallard Studio', '')).not.toMatch(/studio/i);
+				expect(text).not.toMatch(/\bprofiles?\b/i);
+			}
+		}
+		expect(getCurrentRouteLabel('/roast/saved', 'member')).toBe('Roast');
+	});
+
 	it('hides admin navigation from non-admin users', () => {
 		expect(sectionById('member', 'admin')).toBeUndefined();
 		expect(sectionById('admin', 'admin')?.items.map((item) => item.href)).toContain('/admin');

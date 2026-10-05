@@ -172,6 +172,7 @@ describe('/roast/plan', () => {
 			)
 		).toBeInTheDocument();
 		expect(screen.getByRole('link', { name: '← Roasts' })).toHaveAttribute('href', '/roast');
+		expect(document.body.textContent).not.toMatch(/profile studio|roast studio/i);
 
 		// The four steps, in order, with nothing chosen yet.
 		await screen.findByRole('combobox', { name: 'Roast or saved reference' });
