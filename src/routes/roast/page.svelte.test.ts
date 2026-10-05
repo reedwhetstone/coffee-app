@@ -55,6 +55,18 @@ function json(body: unknown, status = 200): Response {
 	});
 }
 
+// Bytes that are not UTF-8, so a download that passed through text would not match.
+const ARTISAN_BYTES = new Uint8Array([0x7b, 0xe9, 0x80, 0x00, 0xff, 0x7d]);
+const storedArtisanFile = () =>
+	new Response(ARTISAN_BYTES, {
+		headers: {
+			'Content-Type': 'application/octet-stream',
+			'Content-Disposition': 'attachment; filename="Ethiopia 10-01.alog"'
+		}
+	});
+/** What the Artisan file request answers; a test swaps in a refusal. */
+let artisanFile: () => Response = storedArtisanFile;
+
 const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
 	const url = String(input);
 	const method = init?.method ?? 'GET';
@@ -66,6 +78,7 @@ const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => 
 	if (url.startsWith('/api/beans')) {
 		return json({ data: [{ id: 7, name: 'Ethiopia', stocked: true }] });
 	}
+	if (/^\/api\/roast-profiles\/\d+\/artisan-file$/.test(url)) return artisanFile();
 	if (url.startsWith('/api/roast-profiles')) {
 		if (method === 'PUT') return json(roast({ roast_notes: 'Windy day', last_updated: EDITED_AT }));
 		if (method === 'POST') {
@@ -180,6 +193,7 @@ beforeEach(() => {
 	vi.clearAllMocks();
 	requests = [];
 	listedRoasts = roasts;
+	artisanFile = storedArtisanFile;
 	navigationGuards.length = 0;
 	sessionStorage.clear();
 	vi.stubGlobal('fetch', fetchMock);
@@ -522,6 +536,101 @@ describe('roast page live roast guard', () => {
 
 		await waitFor(() => expect(goto).toHaveBeenCalledOnce());
 		expect(String(goto.mock.calls[0][0])).toBe('http://localhost/roast/plan?from=roast:1');
+	});
+
+	it('asks before leaving a recording roast for the saved library', async () => {
+		await openRoast('?roast=1');
+		await startRoast();
+		await logEvent('Charge');
+		const logged = loggedEvents();
+		goto.mockClear();
+
+		expect(leavePage('/roast/saved')).toHaveBeenCalledOnce();
+		await fireEvent.click(await screen.findByRole('button', { name: 'Keep roasting' }));
+		await selectionSettled();
+
+		expect(goto).not.toHaveBeenCalled();
+		expect(timerButton()).toHaveTextContent('Stop');
+		expect(loggedEvents()).toEqual(logged);
+
+		expect(leavePage('/roast/saved')).toHaveBeenCalledOnce();
+		await fireEvent.click(await screen.findByRole('button', { name: 'Leave' }));
+
+		await waitFor(() => expect(goto).toHaveBeenCalledOnce());
+		expect(String(goto.mock.calls[0][0])).toBe('http://localhost/roast/saved');
+	});
+
+	it('lets the saved library open without asking when nothing is recording', async () => {
+		await openRoast('?roast=1');
+
+		expect(leavePage('/roast/saved')).not.toHaveBeenCalled();
+		expect(leaveQuestion()).not.toBeInTheDocument();
+	});
+
+	it('downloads the Artisan file of a recording roast without leaving or stopping it', async () => {
+		// jsdom has no object URLs; the page only needs one to hand the file to the browser.
+		const saved: Blob[] = [];
+		URL.createObjectURL = vi.fn((blob: Blob) => (saved.push(blob), 'blob:artisan-file'));
+		URL.revokeObjectURL = vi.fn();
+		const clicked: string[] = [];
+		const click = vi
+			.spyOn(HTMLAnchorElement.prototype, 'click')
+			.mockImplementation(function (this: HTMLAnchorElement) {
+				clicked.push(this.download);
+			});
+		await openRoast('?roast=1', [roast({ roast_id: 1, artisan_file_available: true }), roasts[1]]);
+		await startRoast();
+		await logEvent('Charge');
+		const logged = loggedEvents();
+		goto.mockClear();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'More' }));
+		await fireEvent.click(screen.getByRole('menuitem', { name: 'Download Artisan file' }));
+
+		const notice = await screen.findByText(/Downloading Ethiopia 10-01\.alog\./);
+		expect(notice).toHaveTextContent(
+			'It is the Artisan file this roast was imported from, unchanged.'
+		);
+		expect(requests.some((request) => request.url === '/api/roast-profiles/1/artisan-file')).toBe(
+			true
+		);
+		// The browser is handed the bytes that arrived, under the name they came with.
+		expect(clicked).toEqual(['Ethiopia 10-01.alog']);
+		expect(Array.from(new Uint8Array(await saved[0].arrayBuffer()))).toEqual(
+			Array.from(ARTISAN_BYTES)
+		);
+		// Nothing navigated, so the guard was not asked and the roast is still recording.
+		expect(goto).not.toHaveBeenCalled();
+		expect(leaveQuestion()).not.toBeInTheDocument();
+		expect(timerButton()).toHaveTextContent('Stop');
+		expect(loggedEvents()).toEqual(logged);
+		click.mockRestore();
+	});
+
+	it('says what to do next when Parchment has no Artisan file for the roast', async () => {
+		artisanFile = () =>
+			json(
+				{
+					error: 'This roast has no Artisan file on record',
+					code: 'roast_artisan_source_unavailable',
+					reason: 'artisan_file_not_retained'
+				},
+				400
+			);
+		const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+		await openRoast('?roast=1', [roast({ roast_id: 1, artisan_file_available: true }), roasts[1]]);
+
+		await fireEvent.click(screen.getByRole('button', { name: 'More' }));
+		await fireEvent.click(screen.getByRole('menuitem', { name: 'Download Artisan file' }));
+
+		expect(
+			await screen.findByText(
+				'This roast was imported before Artisan files were kept, so there is no file to download. Import its .alog again to keep a copy with the roast.'
+			)
+		).toBeInTheDocument();
+		// Nothing was saved in the file's place.
+		expect(click).not.toHaveBeenCalled();
+		click.mockRestore();
 	});
 
 	it('lets the plan page open without asking when nothing is recording', async () => {

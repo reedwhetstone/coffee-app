@@ -307,6 +307,8 @@ describe('hooks auth guard integration', () => {
 			'/roast/plan?from=ref:aaaaaaaa-0000-4000-8000-000000000001',
 			'/roast/plan?plan=aaaaaaaa-0000-4000-8000-000000000003',
 			'/roast/saved',
+			'/roast/saved/',
+			'/roast/saved?ref=aaaaaaaa-0000-4000-8000-000000000001',
 			'/roast/4531',
 			// Not the roast list page. SvelteKit strips the data suffix before the hook runs,
 			// so `/roast/__data.json` only arrives if that changes.
@@ -544,7 +546,9 @@ describe('hooks auth guard integration', () => {
 			'/roast/plan',
 			'/roast/plan?from=roast:4531',
 			'/roast/plan?from=ref:aaaaaaaa-0000-4000-8000-000000000001',
-			'/roast/plan?plan=aaaaaaaa-0000-4000-8000-000000000003'
+			'/roast/plan?plan=aaaaaaaa-0000-4000-8000-000000000003',
+			'/roast/saved',
+			'/roast/saved?ref=aaaaaaaa-0000-4000-8000-000000000001'
 		];
 		const paths = ['/roast', ...childPaths];
 
@@ -626,6 +630,8 @@ describe('hooks auth guard integration', () => {
 			'/%72oast/compare', // /roast/compare
 			'/roast/%70lan', // /roast/plan
 			'/%72oast/plan?from=roast:4531',
+			'/roast/%73aved', // /roast/saved
+			'/%72oast/saved?ref=aaaaaaaa-0000-4000-8000-000000000001',
 			'/roas%74/4531'
 		];
 
