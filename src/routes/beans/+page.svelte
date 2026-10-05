@@ -10,7 +10,15 @@
 	import OperationsHero from '$lib/components/ui/OperationsHero.svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { canManagePortfolio } from '$lib/services/portfolioAccess';
+	import { canManagePortfolio, canUseMallardControls } from '$lib/services/portfolioAccess';
+	import {
+		readPortfolioUrl,
+		writePortfolioUrl,
+		type PortfolioPanelTab,
+		type PortfolioSection
+	} from '$lib/portfolio/panel-url';
+	import { newRoastHref } from '$lib/roast/coffee-links';
+	import { roastDayLabel } from '$lib/roast/coffee-trend';
 	import { loadBeanPickerCatalog } from './catalogPicker';
 	import { deletePortfolioBean } from './deleteBean';
 	import { createTrackedLotStateController } from '$lib/client/trackedLots';
@@ -122,9 +130,87 @@
 			])
 		)
 	);
-	let portfolioTab = $state<'purchased' | 'bookmarked'>(
-		page.url.searchParams.get('tab') === 'bookmarked' ? 'bookmarked' : 'purchased'
-	);
+	// The section, the open coffee, and its tab are kept in the URL:
+	// `/beans?tab=bookmarked` and `/beans?coffee=<inventory id>&tab=roasting`.
+	const linkedState = readPortfolioUrl(page.url.searchParams);
+	let portfolioTab = $state<PortfolioSection>(linkedState.section);
+	let openCoffeeId = $state<number | null>(linkedState.coffeeId);
+	let panelTab = $state<PortfolioPanelTab>(linkedState.tab);
+	// Address changes this page started. While one is under way the page does not read
+	// its own half-finished address back.
+	let ownUrlWrites = 0;
+	// Opening a coffee adds one history entry, so Back closes it. That entry is reused by
+	// the coffees opened after it, so the history does not grow with every card.
+	let panelEntryAdded = false;
+
+	function portfolioAddress(): string {
+		const search = writePortfolioUrl(page.url.searchParams, {
+			section: portfolioTab,
+			coffeeId: openCoffeeId,
+			tab: panelTab
+		}).toString();
+		return page.url.pathname + (search ? `?${search}` : '');
+	}
+
+	function currentAddress(): string {
+		const search = new URLSearchParams(page.url.search).toString();
+		return page.url.pathname + (search ? `?${search}` : '');
+	}
+
+	function writePortfolioAddress(addEntry = false, settle = true) {
+		const address = portfolioAddress();
+		if (ownUrlWrites === 0 && address === currentAddress()) return;
+		ownUrlWrites += 1;
+		void Promise.resolve(
+			goto(address, { replaceState: !addEntry, keepFocus: true, noScroll: true })
+		).finally(() => {
+			ownUrlWrites -= 1;
+			// A later change can overtake an earlier one. The last state is written once more.
+			if (settle && ownUrlWrites === 0) writePortfolioAddress(false, false);
+		});
+	}
+
+	// Back, Forward, and links change the address; the page follows it.
+	$effect(() => {
+		const linked = readPortfolioUrl(page.url.searchParams);
+		untrack(() => {
+			if (ownUrlWrites > 0) return;
+			portfolioTab = linked.section;
+			openCoffeeId = linked.coffeeId;
+			panelTab = linked.tab;
+			if (linked.coffeeId === null) panelEntryAdded = false;
+		});
+	});
+
+	function selectSection(section: PortfolioSection) {
+		if (portfolioTab === section) return;
+		portfolioTab = section;
+		openCoffeeId = null;
+		panelTab = 'overview';
+		writePortfolioAddress();
+	}
+
+	function handlePanelOpen(coffeeId: number) {
+		if (openCoffeeId === coffeeId) return;
+		openCoffeeId = coffeeId;
+		panelTab = 'overview';
+		writePortfolioAddress(!panelEntryAdded);
+		panelEntryAdded = true;
+	}
+
+	function handlePanelClose(coffeeId: number) {
+		// Opening another coffee closes this one; the address already names the new one.
+		if (openCoffeeId !== coffeeId) return;
+		openCoffeeId = null;
+		panelTab = 'overview';
+		writePortfolioAddress();
+	}
+
+	function handlePanelTab(coffeeId: number, tab: PortfolioPanelTab) {
+		if (openCoffeeId !== coffeeId || panelTab === tab) return;
+		panelTab = tab;
+		writePortfolioAddress();
+	}
 
 	let trackedIds = $state<Set<number>>(new Set());
 	$effect(() => {
@@ -240,6 +326,10 @@
 	);
 	let isSharedPortfolioView = $derived(Boolean(page.url.searchParams.get('share')));
 	let canAddPortfolioCoffee = $derived(canManagePortfolioRows && !isSharedPortfolioView);
+	// Roasting is part of Mallard Studio, and only the owner roasts from a portfolio.
+	let canRoastFromPortfolio = $derived(
+		canUseMallardControls(data.auth?.role || 'viewer') && !isSharedPortfolioView
+	);
 	let error = $state<string | null>(null);
 	let deleteError = $state<string | null>(null);
 	let isSaving = $state<string | null>(null);
@@ -502,6 +592,19 @@
 		if (bean.purchased_qty_lbs) notes.push(`${bean.purchased_qty_lbs.toFixed(1)} lb purchased`);
 		const remainingLbs = getRemainingLbs(bean);
 		if (remainingLbs >= 0) notes.push(`${remainingLbs.toFixed(1)} lb remaining`);
+		// Present only when the account's roasts were read with the portfolio.
+		const { roast_count: roastCount, last_roast_date: lastRoastDate } =
+			bean as InventoryWithCatalog & {
+				roast_count?: number;
+				last_roast_date?: string | null;
+			};
+		if (roastCount === 0) {
+			notes.push('not roasted yet');
+		} else if (roastCount != null) {
+			const lastRoasted = roastDayLabel(lastRoastDate);
+			if (lastRoasted) notes.push(`last roasted ${lastRoasted}`);
+			notes.push(`${roastCount} ${roastCount === 1 ? 'roast' : 'roasts'}`);
+		}
 		if (bean.rank != null) notes.push(`Rated ${bean.rank}`);
 		if (bean.cupping_notes) notes.push('Cupped');
 		return notes.join(' · ');
@@ -555,6 +658,41 @@
 						}))
 		});
 		return () => pageChatContext.clear();
+	});
+
+	// A linked coffee that is not among the cards on screen (filtered out, or on another
+	// page) still opens: its row is read on its own and its panel is drawn without a card.
+	let linkedCoffee = $state<InventoryWithCatalog | null>(null);
+	let openCoffeeOnPage = $derived(
+		openCoffeeId !== null && (typedFilteredData ?? []).some((bean) => bean.id === openCoffeeId)
+	);
+	$effect(() => {
+		const coffeeId = openCoffeeId;
+		if (
+			coffeeId === null ||
+			isLoading ||
+			portfolioTab !== 'purchased' ||
+			openCoffeeOnPage ||
+			isSharedPortfolioView
+		) {
+			linkedCoffee = null;
+			return;
+		}
+		if (untrack(() => linkedCoffee?.id) === coffeeId) return;
+		const controller = new AbortController();
+		void fetch(`/api/beans?id=${coffeeId}`, { signal: controller.signal })
+			.then(async (response) => {
+				if (!response.ok) throw new Error('Coffee not found');
+				const result = (await response.json()) as { data?: InventoryWithCatalog[] };
+				const row = result.data?.find((bean) => bean.id === coffeeId);
+				if (!row) throw new Error('Coffee not found');
+				if (!controller.signal.aborted) linkedCoffee = row;
+			})
+			.catch(() => {
+				// Not in this portfolio: the link opens the portfolio with no panel.
+				if (!controller.signal.aborted) handlePanelClose(coffeeId);
+			});
+		return () => controller.abort();
 	});
 
 	/**
@@ -647,28 +785,30 @@
 
 		{#if canUseWatchlist}
 			<div
-				class="inline-flex gap-1 rounded-lg border border-line bg-surface-panel p-1"
+				class="inline-flex rounded-lg border border-line bg-surface-panel p-1"
 				role="tablist"
 				aria-label="Portfolio sections"
 			>
 				<button
+					type="button"
 					role="tab"
 					aria-selected={portfolioTab === 'purchased'}
-					onclick={() => (portfolioTab = 'purchased')}
-					class="rounded-md px-4 py-1.5 text-sm font-medium transition-all duration-150 {portfolioTab ===
+					onclick={() => selectSection('purchased')}
+					class="rounded-md px-3 py-2 text-sm font-medium transition-colors {portfolioTab ===
 					'purchased'
-						? 'bg-accent text-ink shadow-sm'
+						? 'bg-surface-raised text-ink shadow-sm'
 						: 'text-muted hover:text-ink'}"
 				>
 					Purchased
 				</button>
 				<button
+					type="button"
 					role="tab"
 					aria-selected={portfolioTab === 'bookmarked'}
-					onclick={() => (portfolioTab = 'bookmarked')}
-					class="rounded-md px-4 py-1.5 text-sm font-medium transition-all duration-150 {portfolioTab ===
+					onclick={() => selectSection('bookmarked')}
+					class="rounded-md px-3 py-2 text-sm font-medium transition-colors {portfolioTab ===
 					'bookmarked'
-						? 'bg-accent text-ink shadow-sm'
+						? 'bg-surface-raised text-ink shadow-sm'
 						: 'text-muted hover:text-ink'}"
 				>
 					Bookmarked{watchlistLoaded ? ` (${trackedLotsList.length})` : ''}
@@ -758,40 +898,6 @@
 						detail={`of ${portfolioSummary.totalCount} selected coffees`}
 						tone="intelligence"
 					/>
-				</div>
-
-				<!-- Source Distribution Chart -->
-				<div class="rounded-lg border border-line bg-surface-panel p-5 shadow-sm">
-					<h3 class="text-xl font-semibold tracking-tight text-ink">Portfolio by source</h3>
-					<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-						{#each Object.entries(portfolioContext?.sources ?? typedFilteredData.reduce((acc, bean) => {
-										const source = bean.coffee_catalog?.source || 'Unknown';
-										if (!acc[source]) {
-											acc[source] = { count: 0, weight: 0, value: 0 };
-										}
-										acc[source].count += 1;
-										acc[source].weight += bean.purchased_qty_lbs || 0;
-										acc[source].value += (bean.bean_cost || 0) + (bean.tax_ship_cost || 0);
-										return acc;
-									}, {} as Record<string, { count: number; weight: number; value: number }>)) as entry}
-							{@const [source, stats] = entry as [
-								string,
-								{ count: number; weight: number; value: number }
-							]}
-							<div class="rounded-lg border border-line bg-surface-canvas p-3">
-								<h4 class="text-base font-semibold text-ink">
-									{formatSourceName(source) || 'Unknown'}
-								</h4>
-								<div class="mt-2 space-y-1 text-sm text-muted">
-									<div>{stats.count} coffee{stats.count !== 1 ? 's' : ''}</div>
-									<div>{stats.weight.toFixed(1)} lbs</div>
-									<div class="font-medium text-accent">
-										${stats.value.toFixed(2)}
-									</div>
-								</div>
-							</div>
-						{/each}
-					</div>
 				</div>
 			{/if}
 
@@ -897,6 +1003,16 @@
 									{parseTastingNotes}
 									annotation={portfolioAnnotation(bean)}
 									showCatalogLink={bean.coffee_catalog?.public_coffee === true}
+									open={openCoffeeId === bean.id}
+									onDetailOpen={() => handlePanelOpen(bean.id)}
+									onDetailClose={() => handlePanelClose(bean.id)}
+									cardAction={canRoastFromPortfolio
+										? {
+												label: 'Roast',
+												href: newRoastHref(bean.id, coffee.name || 'Unknown Coffee'),
+												ariaLabel: `Roast ${coffee.name}`
+											}
+										: undefined}
 								>
 									{#snippet detailContent()}
 										{@const DetailComponent = portfolioContext
@@ -907,6 +1023,9 @@
 											role={data.auth?.role || 'viewer'}
 											canManagePortfolio={canManagePortfolioRows}
 											embedded={true}
+											sharedView={isSharedPortfolioView}
+											tab={openCoffeeId === bean.id ? panelTab : 'overview'}
+											onTabChange={(tab: PortfolioPanelTab) => handlePanelTab(bean.id, tab)}
 											onUpdate={(updatedBean: InventoryWithCatalog) => {
 												if (portfolioContext) {
 													void refreshData();
@@ -930,6 +1049,75 @@
 					</div>
 				{/if}
 			</div>
+
+			{#if linkedCoffee && !openCoffeeOnPage}
+				{@const linked = linkedCoffee}
+				{#key linked.id}
+					<CoffeeCard
+						coffee={portfolioCoffee(linked)}
+						{parseTastingNotes}
+						detailOnly={true}
+						open={openCoffeeId === linked.id}
+						showCatalogLink={linked.coffee_catalog?.public_coffee === true}
+						onDetailClose={() => handlePanelClose(linked.id)}
+					>
+						{#snippet detailContent()}
+							<BeanProfileTabs
+								selectedBean={linked}
+								role={data.auth?.role || 'viewer'}
+								canManagePortfolio={canManagePortfolioRows}
+								embedded={true}
+								tab={panelTab}
+								onTabChange={(tab: PortfolioPanelTab) => handlePanelTab(linked.id, tab)}
+								onUpdate={(updatedBean: InventoryWithCatalog) => {
+									linkedCoffee = updatedBean;
+									void refreshData();
+								}}
+								onDelete={async (id) => {
+									await deleteBean(id);
+									handlePanelClose(id);
+								}}
+							/>
+						{/snippet}
+					</CoffeeCard>
+				{/key}
+			{/if}
+
+			{#if typedFilteredData && typedFilteredData.length > 0}
+				<!-- Source Distribution Chart -->
+				<div class="rounded-lg border border-line bg-surface-panel p-5 shadow-sm">
+					<h3 class="text-xl font-semibold tracking-tight text-ink">Portfolio by source</h3>
+					<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+						{#each Object.entries(portfolioContext?.sources ?? typedFilteredData.reduce((acc, bean) => {
+										const source = bean.coffee_catalog?.source || 'Unknown';
+										if (!acc[source]) {
+											acc[source] = { count: 0, weight: 0, value: 0 };
+										}
+										acc[source].count += 1;
+										acc[source].weight += bean.purchased_qty_lbs || 0;
+										acc[source].value += (bean.bean_cost || 0) + (bean.tax_ship_cost || 0);
+										return acc;
+									}, {} as Record<string, { count: number; weight: number; value: number }>)) as entry}
+							{@const [source, stats] = entry as [
+								string,
+								{ count: number; weight: number; value: number }
+							]}
+							<div class="rounded-lg border border-line bg-surface-canvas p-3">
+								<h4 class="text-base font-semibold text-ink">
+									{formatSourceName(source) || 'Unknown'}
+								</h4>
+								<div class="mt-2 space-y-1 text-sm text-muted">
+									<div>{stats.count} coffee{stats.count !== 1 ? 's' : ''}</div>
+									<div>{stats.weight.toFixed(1)} lbs</div>
+									<div class="font-medium text-accent">
+										${stats.value.toFixed(2)}
+									</div>
+								</div>
+							</div>
+						{/each}
+					</div>
+				</div>
+			{/if}
 		{/if}
 	</div>
 {/if}

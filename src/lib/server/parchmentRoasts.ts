@@ -13,15 +13,20 @@ const PAGE_LIMIT = 200;
  * exhaust every page to preserve the legacy route's all-roasts response. The
  * stable `roast_date DESC, roast_id DESC` ordering makes that traversal
  * deterministic for a static result set.
+ *
+ * `coffeeId` is a portfolio inventory id. With it, Parchment returns only that
+ * coffee's roasts.
  */
 export async function fetchParchmentRoasts(
-	client: ParchmentClient
+	client: ParchmentClient,
+	options: { coffeeId?: number } = {}
 ): Promise<ParchmentRoastProfile[]> {
+	const filter = options.coffeeId === undefined ? {} : { coffee_id: options.coffeeId };
 	return collectOffsetPages({
 		// These BFF projections are called only after session authorization (no API-key cap).
 		pageSize: PAGE_LIMIT,
 		fetchPage: async (offset) =>
-			unwrapParchment(await client.roasts.list({ limit: PAGE_LIMIT, offset })).data,
+			unwrapParchment(await client.roasts.list({ ...filter, limit: PAGE_LIMIT, offset })).data,
 		key: (row) => row.roast_id
 	});
 }

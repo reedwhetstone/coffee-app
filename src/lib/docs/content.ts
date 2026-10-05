@@ -1460,7 +1460,7 @@ const docsPages: DocsPage[] = [
 							'GET POST PUT DELETE',
 							'Session',
 							'Internal product route',
-							'CRUD for roast profiles. POST supports single and batch creation. DELETE accepts id or batch name.'
+							'CRUD for roast profiles. GET accepts coffee_id, a portfolio inventory id, to list one coffee’s roasts. POST supports single and batch creation. DELETE accepts id or batch name.'
 						],
 						[
 							'/api/artisan-import',

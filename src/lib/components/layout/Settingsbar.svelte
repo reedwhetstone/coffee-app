@@ -22,7 +22,11 @@
 	// The catalog has its own filter panel; this sidebar serves the portfolio
 	// and roast lists.
 	let filterableColumns = $derived(filterStore.getFilterableColumns(routeId));
-	let visibleSortColumns = $derived(filterableColumns);
+	let visibleSortColumns = $derived([
+		...filterableColumns,
+		// The portfolio sorts by what is left to roast. It is a sort only, never a filter.
+		...(routeId === '/beans' && $filterStore.portfolioServerSide ? ['remaining'] : [])
+	]);
 	let visibleFilterColumns = $derived(filterableColumns);
 
 	// Update route tracking and close sidebar on navigation

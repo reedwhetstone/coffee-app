@@ -13,6 +13,7 @@
 		collapsedBatches,
 		currentRoastProfile,
 		totalRoasts = 0,
+		emptyDetail = '',
 		onToggleBatch,
 		onSelectProfile,
 		onClearFilters
@@ -24,6 +25,8 @@
 		currentRoastProfile: TableRoastProfile | null | undefined;
 		/** Roasts on the account before any filter, to tell "none yet" from "none match". */
 		totalRoasts?: number;
+		/** What the filters in force left out, said under "No roasts match." */
+		emptyDetail?: string;
 		onToggleBatch: (batchName: string) => void;
 		onSelectProfile: (profile: TableRoastProfile) => void;
 		onClearFilters?: () => void;
@@ -147,6 +150,9 @@
 			</svg>
 			{#if totalRoasts > 0}
 				<h3 class="text-lg font-semibold text-ink">No roasts match.</h3>
+				{#if emptyDetail}
+					<p class="mt-2 text-muted">{emptyDetail}</p>
+				{/if}
 				{#if onClearFilters}
 					<button
 						type="button"

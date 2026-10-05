@@ -2,11 +2,15 @@
 	import BeanProfileTabs from './BeanProfileTabs.svelte';
 	import type { InventoryWithCatalog } from '$lib/types/component.types';
 	import type { UserRole } from '$lib/types/auth.types';
+	import type { PortfolioPanelTab } from '$lib/portfolio/panel-url';
 	let {
 		selectedBean,
 		role,
 		canManagePortfolio,
 		embedded = true,
+		sharedView = false,
+		tab = undefined,
+		onTabChange = undefined,
 		onUpdate,
 		onDelete
 	} = $props<{
@@ -14,6 +18,9 @@
 		role: UserRole;
 		canManagePortfolio: boolean;
 		embedded?: boolean;
+		sharedView?: boolean;
+		tab?: PortfolioPanelTab;
+		onTabChange?: (tab: PortfolioPanelTab) => void;
 		onUpdate: (bean: InventoryWithCatalog) => void;
 		onDelete: (id: number) => Promise<void>;
 	}>();
@@ -47,6 +54,9 @@
 		{role}
 		{canManagePortfolio}
 		{embedded}
+		{sharedView}
+		{tab}
+		{onTabChange}
 		{onUpdate}
 		{onDelete}
 	/>

@@ -445,4 +445,67 @@ describe('catalog summary detail hydration', () => {
 		await fireEvent.click(screen.getByRole('button', { name: 'Close' }));
 		expect(signal?.aborted).toBe(true);
 	});
+
+	it('draws a labeled action link in the action row without opening the panel', async () => {
+		const onDetailOpen = vi.fn();
+		render(CoffeeCard, {
+			coffee: createCoffee({ id: 7, name: 'Ethiopia Guji' }),
+			parseTastingNotes,
+			onDetailOpen,
+			cardAction: {
+				label: 'Roast',
+				href: '/roast?modal=new&beanId=7&beanName=Ethiopia%20Guji',
+				ariaLabel: 'Roast Ethiopia Guji'
+			}
+		});
+
+		const action = screen.getByRole('link', { name: 'Roast Ethiopia Guji' });
+		expect(action.textContent?.trim()).toBe('Roast');
+		expect(action.getAttribute('href')).toBe('/roast?modal=new&beanId=7&beanName=Ethiopia%20Guji');
+
+		await fireEvent.click(action);
+		expect(onDetailOpen).not.toHaveBeenCalled();
+		expect(screen.queryByRole('dialog')).toBeNull();
+	});
+
+	it('draws no action link unless one is given', () => {
+		render(CoffeeCard, { coffee: createCoffee(), parseTastingNotes });
+
+		expect(screen.queryByRole('link', { name: /Roast/ })).toBeNull();
+	});
+
+	it('follows an owner that keeps the open state, and reports only what the reader did', async () => {
+		const onDetailOpen = vi.fn();
+		const onDetailClose = vi.fn();
+		const props = {
+			coffee: createCoffee({ id: 7, name: 'Ethiopia Guji' }),
+			parseTastingNotes,
+			onDetailOpen,
+			onDetailClose
+		};
+		const view = render(CoffeeCard, { ...props, open: false });
+		expect(screen.queryByRole('dialog')).toBeNull();
+
+		// The owner opens and closes it, as a link, Back, or Forward would.
+		await view.rerender({ ...props, open: true });
+		expect(await screen.findByRole('dialog')).toBeTruthy();
+		await view.rerender({ ...props, open: false });
+		expect(screen.queryByRole('dialog')).toBeNull();
+		expect(onDetailOpen).not.toHaveBeenCalled();
+		expect(onDetailClose).not.toHaveBeenCalled();
+
+		// The reader opens and closes it.
+		await fireEvent.click(screen.getByRole('button', { name: 'View details for Ethiopia Guji' }));
+		expect(onDetailOpen).toHaveBeenCalledTimes(1);
+		await view.rerender({ ...props, open: true });
+		await fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+		expect(onDetailClose).toHaveBeenCalledTimes(1);
+		expect(screen.queryByRole('dialog')).toBeNull();
+	});
+
+	it('opens at once when its owner says it is open on arrival', () => {
+		render(CoffeeCard, { coffee: createCoffee(), parseTastingNotes, open: true });
+
+		expect(screen.getByRole('dialog')).toBeTruthy();
+	});
 });
