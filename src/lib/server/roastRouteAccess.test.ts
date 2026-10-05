@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { anonymousPrincipal, cookieSessionPrincipal } from '$lib/server/principal.test-utils';
+import {
+	anonymousPrincipal,
+	apiKeyPrincipal,
+	cookieSessionPrincipal
+} from '$lib/server/principal.test-utils';
 import type { RequestPrincipal } from '$lib/server/principal';
 
 /**
@@ -133,7 +137,15 @@ const ACCOUNTS = {
 	intelligenceOnly: () => cookieSessionPrincipal('viewer', { ppiAccess: true }),
 	member: () => cookieSessionPrincipal('member'),
 	memberWithIntelligence: () => cookieSessionPrincipal('member', { ppiAccess: true }),
-	admin: () => cookieSessionPrincipal('admin')
+	admin: () => cookieSessionPrincipal('admin'),
+	memberApiKey: () =>
+		apiKeyPrincipal({
+			appRoles: ['member'],
+			primaryAppRole: 'member',
+			apiPlan: 'enterprise',
+			apiScopes: ['roast:read', 'roast:write']
+		}),
+	viewerApiKey: () => apiKeyPrincipal({ apiScopes: ['roast:read', 'roast:write'] })
 } satisfies Record<string, () => RequestPrincipal>;
 
 function call(route: RouteCase, principal: RequestPrincipal) {
@@ -185,6 +197,18 @@ describe.each(ROUTES)('$method $path ($name)', (route) => {
 
 		expect(response.status).toBe(403);
 		expect(await refusedBody(response)).toMatch(/Mallard Studio|Member role required/);
+		expect(parchment.createParchmentServerClient).not.toHaveBeenCalled();
+	});
+
+	// These routes serve the signed-in app. A request that carries an API key resolves as the
+	// key, whatever cookie comes with it, and is asked to sign in.
+	it.each([
+		['an API key whose owner has Mallard Studio', ACCOUNTS.memberApiKey],
+		['an API key whose owner does not', ACCOUNTS.viewerApiKey]
+	])('does not accept %s', async (_label, account) => {
+		const response = await call(route, account());
+
+		expect(response.status).toBe(401);
 		expect(parchment.createParchmentServerClient).not.toHaveBeenCalled();
 	});
 
