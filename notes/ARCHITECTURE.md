@@ -70,7 +70,9 @@ view share one `/v1/me` check. The rule, which that file owns:
   browser session's write sets the `purveyors_identity_recheck` cookie for
   fifteen seconds. Reads carrying that cookie are always verified, on whichever
   server instance they land. The page data reloaded after a purchase therefore
-  comes from a new check.
+  comes from a new check. A header-authenticated caller (bearer session or API
+  key) has no cookie: a read of its own that overlaps its write may keep the
+  earlier projection for the usual ten seconds.
 - **Freshness:** after a session is revoked, a role or entitlement changes, or
   an account is deleted, a read request may keep the previous projection for up
   to ten seconds. That covers the access guard, the page shell, and the user ID
