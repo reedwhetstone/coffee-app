@@ -26,6 +26,7 @@
 		type CatalogProofSummary
 	} from '$lib/catalog/proofSummary';
 	import { getPurveyorScoreSummary } from '$lib/catalog/purveyorScore';
+	import { dryingDisplay, varietyDisplay } from '$lib/catalog/taxonomyDisplay';
 	import type { LotPriceContext, LotPriceTier } from '$lib/catalog/priceContext';
 	import { formatSourceName } from '$lib/utils/formatters';
 	import PriceHistorySparkline from '$lib/components/catalog/PriceHistorySparkline.svelte';
@@ -243,6 +244,7 @@
 			coffee.continent ||
 			'Origin unavailable'
 	);
+	let variety = $derived(varietyDisplay(coffee));
 	let longLocationSummary = $derived.by(
 		() =>
 			[coffee.continent, coffee.country, coffee.region].filter(Boolean).join(' > ') ||
@@ -341,7 +343,7 @@
 		const fermentationType = normalizeProcessDisplayValue(process.fermentation_type);
 		const additiveSummary = formatAdditives(process.additives);
 		const additiveDetail = normalizeProcessDisplayValue(process.additive_detail);
-		const dryingMethod = normalizeProcessDisplayValue(process.drying_method);
+		const drying = dryingDisplay(coffeeItem, normalizeProcessDisplayValue(process.drying_method));
 		const notes = normalizeProcessDisplayValue(process.notes);
 		const disclosureLabel = formatDisclosureLabel(process.disclosure_level);
 		const confidenceLabel = formatConfidenceLabel(process.confidence);
@@ -354,7 +356,11 @@
 			process.fermentation_duration_hours
 				? `Fermentation time: ${process.fermentation_duration_hours} hours`
 				: null,
-			dryingMethod ? `Drying: ${formatProcessDisplayValue(dryingMethod)}` : null,
+			drying.value
+				? `Drying: ${formatProcessDisplayValue(drying.value)}${
+						drying.supplierText ? ` (listed by supplier as: ${drying.supplierText})` : ''
+					}`
+				: null,
 			notes
 		].filter((detail): detail is string => Boolean(detail));
 
@@ -786,10 +792,15 @@
 										<dt class="font-semibold text-ink">Importer type</dt>
 										<dd class="text-muted">{coffee.type ?? 'Not disclosed'}</dd>
 									</div>
-									{#if coffee.cultivar_detail}
+									{#if variety.value}
 										<div>
-											<dt class="font-semibold text-ink">Cultivar</dt>
-											<dd class="text-muted">{coffee.cultivar_detail}</dd>
+											<dt class="font-semibold text-ink">Variety</dt>
+											<dd class="text-muted">{variety.value}</dd>
+											{#if variety.supplierText}
+												<dd class="mt-0.5 text-xs text-muted">
+													Listed by supplier as: {variety.supplierText}
+												</dd>
+											{/if}
 										</div>
 									{/if}
 									{#if coffee.grade}

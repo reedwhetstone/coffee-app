@@ -1,6 +1,6 @@
 # ADR-018: Variety, species, and drying taxonomy
 
-**Status:** Proposed
+**Status:** Accepted (Reed, 2026-10-04, #purveyors)
 
 **Date:** 2026-10-02
 
