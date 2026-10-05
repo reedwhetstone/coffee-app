@@ -573,11 +573,11 @@ describe('roast page live roast guard', () => {
 		URL.createObjectURL = vi.fn((blob: Blob) => (saved.push(blob), 'blob:artisan-file'));
 		URL.revokeObjectURL = vi.fn();
 		const clicked: string[] = [];
-		const click = vi
-			.spyOn(HTMLAnchorElement.prototype, 'click')
-			.mockImplementation(function (this: HTMLAnchorElement) {
-				clicked.push(this.download);
-			});
+		const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
+			this: HTMLAnchorElement
+		) {
+			clicked.push(this.download);
+		});
 		await openRoast('?roast=1', [roast({ roast_id: 1, artisan_file_available: true }), roasts[1]]);
 		await startRoast();
 		await logEvent('Charge');
