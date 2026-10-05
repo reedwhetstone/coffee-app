@@ -15,6 +15,7 @@ const {
 	principalHasRole,
 	principalHasScope,
 	requiresSessionOriginCheck,
+	resetIdentityReuse,
 	resolvePrincipal
 } = await import('./principal');
 
@@ -37,11 +38,13 @@ function successfulMe(data: typeof viewerProjection | Record<string, unknown>) {
 	});
 }
 
-function makeCookieSessionEvent() {
+function makeCookieSessionEvent(options: { method?: string; path?: string; token?: string } = {}) {
+	const url = `https://app.test${options.path ?? '/catalog'}`;
+	const token = options.token ?? 'cookie-token';
 	return {
 		fetch: vi.fn(),
-		request: new Request('https://app.test/catalog'),
-		url: new URL('https://app.test/catalog'),
+		request: new Request(url, { method: options.method ?? 'GET' }),
+		url: new URL(url),
 		locals: {
 			principal: undefined,
 			supabase: {
@@ -50,7 +53,7 @@ function makeCookieSessionEvent() {
 					getSession: vi.fn().mockResolvedValue({
 						data: {
 							session: {
-								access_token: 'cookie-token',
+								access_token: token,
 								user: { id: 'forged-cookie-id', email: 'forged@example.test' }
 							}
 						},
@@ -59,7 +62,7 @@ function makeCookieSessionEvent() {
 				}
 			},
 			safeGetIdentity: vi.fn().mockResolvedValue({
-				session: { access_token: 'cookie-token' },
+				session: { access_token: token },
 				user: { id: 'user-1' }
 			})
 		}
@@ -124,6 +127,7 @@ function apiKeyPrincipal(overrides: Partial<ApiKeyPrincipal> = {}): ApiKeyPrinci
 
 beforeEach(() => {
 	vi.clearAllMocks();
+	resetIdentityReuse();
 	successfulMe(viewerProjection);
 });
 
@@ -380,17 +384,131 @@ describe('principal helpers', () => {
 		}
 	);
 
-	it('does not reuse canonical identity across requests or bypass revocation', async () => {
-		successfulMe({ ...viewerProjection, sessionIdentity: { id: 'user-1', email: null } });
-		expect((await resolvePrincipal(makeCookieSessionEvent())).isAuthenticated).toBe(true);
-		successfulMe({
+	describe('reusing a verified identity for a few seconds', () => {
+		const verified = { ...viewerProjection, sessionIdentity: { id: 'user-1', email: null } };
+		const revoked = {
 			...viewerProjection,
 			authenticated: false,
 			authKind: 'anonymous',
 			userId: null
+		};
+
+		it('asks Parchment once for the read requests of one page view', async () => {
+			successfulMe(verified);
+
+			const page = await resolvePrincipal(makeCookieSessionEvent({ path: '/roast' }));
+			const data = await resolvePrincipal(makeCookieSessionEvent({ path: '/api/roast-profiles' }));
+			const head = await resolvePrincipal(makeCookieSessionEvent({ method: 'HEAD' }));
+
+			expect(page.isAuthenticated && data.isAuthenticated && head.isAuthenticated).toBe(true);
+			expect(data.userId).toBe('user-1');
+			expect(mockMe).toHaveBeenCalledTimes(1);
 		});
-		expect((await resolvePrincipal(makeCookieSessionEvent())).isAuthenticated).toBe(false);
-		expect(mockMe).toHaveBeenCalledTimes(2);
+
+		it('shares one check between read requests that arrive together', async () => {
+			let answer!: (value: unknown) => void;
+			mockMe.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+
+			const both = Promise.all([
+				resolvePrincipal(makeCookieSessionEvent()),
+				resolvePrincipal(makeCookieSessionEvent({ path: '/api/catalog' }))
+			]);
+			await Promise.resolve();
+			answer({ data: verified, error: undefined, response: new Response(null, { status: 200 }) });
+
+			expect((await both).map((principal) => principal.isAuthenticated)).toEqual([true, true]);
+			expect(mockMe).toHaveBeenCalledTimes(1);
+		});
+
+		it('verifies again once ten seconds have passed, so a revoked session stops being accepted', async () => {
+			vi.useFakeTimers();
+			try {
+				successfulMe(verified);
+				expect((await resolvePrincipal(makeCookieSessionEvent())).isAuthenticated).toBe(true);
+
+				successfulMe(revoked);
+				vi.advanceTimersByTime(9_999);
+				expect((await resolvePrincipal(makeCookieSessionEvent())).isAuthenticated).toBe(true);
+				expect(mockMe).toHaveBeenCalledTimes(1);
+
+				vi.advanceTimersByTime(1);
+				expect((await resolvePrincipal(makeCookieSessionEvent())).isAuthenticated).toBe(false);
+				expect(mockMe).toHaveBeenCalledTimes(2);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it.each([
+			{ request: 'a write', options: { method: 'POST', path: '/api/roast-profiles' } },
+			{ request: 'a delete', options: { method: 'DELETE', path: '/api/roast-profiles' } },
+			{ request: 'the CLI approval page', options: { path: '/auth/cli' } },
+			{ request: 'the sign-in callback', options: { path: '/auth/callback' } }
+		])('always verifies $request with Parchment', async ({ options }) => {
+			successfulMe(verified);
+			await resolvePrincipal(makeCookieSessionEvent());
+
+			successfulMe(revoked);
+			expect((await resolvePrincipal(makeCookieSessionEvent(options))).isAuthenticated).toBe(false);
+			expect(mockMe).toHaveBeenCalledTimes(2);
+		});
+
+		it('stops reusing an identity as soon as any check finds it revoked', async () => {
+			successfulMe(verified);
+			await resolvePrincipal(makeCookieSessionEvent());
+
+			successfulMe(revoked);
+			await resolvePrincipal(makeCookieSessionEvent({ method: 'POST', path: '/api/beans' }));
+
+			expect((await resolvePrincipal(makeCookieSessionEvent())).isAuthenticated).toBe(false);
+		});
+
+		it('never remembers a caller who was not signed in, so signing in takes effect at once', async () => {
+			successfulMe(revoked);
+			expect((await resolvePrincipal(makeCookieSessionEvent())).isAuthenticated).toBe(false);
+
+			successfulMe(verified);
+			expect((await resolvePrincipal(makeCookieSessionEvent())).isAuthenticated).toBe(true);
+			expect(mockMe).toHaveBeenCalledTimes(2);
+		});
+
+		it('never remembers a failed check', async () => {
+			mockMe.mockRejectedValueOnce(new Error('network down'));
+			await expect(resolvePrincipal(makeCookieSessionEvent())).rejects.toThrow();
+
+			successfulMe(verified);
+			expect((await resolvePrincipal(makeCookieSessionEvent())).isAuthenticated).toBe(true);
+			expect(mockMe).toHaveBeenCalledTimes(2);
+		});
+
+		it('keeps each credential separate', async () => {
+			successfulMe(verified);
+			await resolvePrincipal(makeCookieSessionEvent({ token: 'first-token' }));
+			await resolvePrincipal(makeCookieSessionEvent({ token: 'second-token' }));
+
+			expect(mockMe).toHaveBeenCalledTimes(2);
+			expect(mockCreateParchmentPrincipalClient).toHaveBeenNthCalledWith(
+				2,
+				expect.anything(),
+				'second-token'
+			);
+		});
+
+		it('reuses a verified API key the same way, for reads only', async () => {
+			const key = {
+				...viewerProjection,
+				authKind: 'api-key' as const,
+				userId: 'user-2',
+				apiPlan: 'member' as const
+			};
+			successfulMe(key);
+
+			await resolvePrincipal(makeAuthorizationEvent('pk_live_key'));
+			const again = await resolvePrincipal(makeAuthorizationEvent('pk_live_key'));
+
+			expect(again.authKind).toBe('api-key');
+			expect(mockMe).toHaveBeenCalledTimes(1);
+		});
 	});
 
 	it('retains live identity verification with an older API', async () => {

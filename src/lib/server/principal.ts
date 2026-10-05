@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { createParchmentPrincipalClient } from '$lib/server/parchmentClient';
 import { checkRole, type UserRole } from '$lib/types/auth.types';
 import type { RequestEvent } from '@sveltejs/kit';
@@ -279,6 +280,91 @@ async function resolveCanonicalPrincipal(
 	}
 }
 
+/**
+ * How long a verified identity is reused for read requests.
+ *
+ * One page view is a burst of requests carrying the same credential: the page,
+ * the reads it makes of this app's own `/api` routes while rendering, and the
+ * data calls the browser makes as it loads. Each used to ask Parchment who the
+ * caller is before doing anything else. Within this window they share one
+ * answer.
+ *
+ * What that changes: after a session is revoked, a role is removed or an
+ * account is deleted, this app may keep treating the caller as it did for up
+ * to this long, on read requests only. That covers which page shell is drawn
+ * and nothing else, because this app holds no data of its own: every private
+ * read is made at Parchment with the caller's own credential, and Parchment
+ * verifies that credential on each call.
+ *
+ * What it never covers: anything but GET and HEAD, and anything under `/auth`
+ * (sign-in, callbacks, CLI approval). Those are verified every time. A check
+ * that fails or finds no signed-in caller is never remembered, so signing in
+ * takes effect at once, and it also ends reuse for that credential.
+ */
+const IDENTITY_REUSE_MS = 10_000;
+const IDENTITY_REUSE_MAX_ENTRIES = 500;
+
+const recentIdentity = new Map<
+	string,
+	{ verifiedAt: number; canonical: Promise<CanonicalPrincipal> }
+>();
+
+/** Test-only: forget every recently verified identity. */
+export function resetIdentityReuse(): void {
+	recentIdentity.clear();
+}
+
+function identityKey(token: string): string {
+	// The credential itself is not kept as a key.
+	return createHash('sha256').update(token).digest('hex');
+}
+
+function mayReuseIdentity(event: RequestEvent): boolean {
+	const method = event.request.method.toUpperCase();
+	if (method !== 'GET' && method !== 'HEAD') return false;
+	const path = event.url.pathname;
+	return path !== '/auth' && !path.startsWith('/auth/');
+}
+
+function rememberIdentity(key: string, canonical: Promise<CanonicalPrincipal>): void {
+	const now = Date.now();
+	if (recentIdentity.size >= IDENTITY_REUSE_MAX_ENTRIES) {
+		for (const [entryKey, entry] of recentIdentity) {
+			if (now - entry.verifiedAt >= IDENTITY_REUSE_MS) recentIdentity.delete(entryKey);
+		}
+		// Still full of live entries: drop the oldest. A Map keeps insertion order.
+		for (const entryKey of recentIdentity.keys()) {
+			if (recentIdentity.size < IDENTITY_REUSE_MAX_ENTRIES) break;
+			recentIdentity.delete(entryKey);
+		}
+	}
+	const entry = { verifiedAt: now, canonical };
+	recentIdentity.set(key, entry);
+	const forget = () => {
+		if (recentIdentity.get(key) === entry) recentIdentity.delete(key);
+	};
+	canonical.then((result) => {
+		if (!result.authenticated || !result.userId) forget();
+	}, forget);
+}
+
+async function resolveRequestIdentity(
+	event: RequestEvent,
+	token: string
+): Promise<CanonicalPrincipal> {
+	const key = identityKey(token);
+	if (mayReuseIdentity(event)) {
+		const recent = recentIdentity.get(key);
+		if (recent && Date.now() - recent.verifiedAt < IDENTITY_REUSE_MS) return recent.canonical;
+	}
+	// Verified now. Requests arriving while this is in flight share it, and a
+	// result that is not a signed-in caller removes itself.
+	const canonical = resolveCanonicalPrincipal(event, token);
+	recentIdentity.delete(key);
+	rememberIdentity(key, canonical);
+	return canonical;
+}
+
 export async function resolvePrincipal(event: RequestEvent): Promise<RequestPrincipal> {
 	if (event.locals.principal) {
 		return event.locals.principal;
@@ -292,7 +378,7 @@ export async function resolvePrincipal(event: RequestEvent): Promise<RequestPrin
 			return event.locals.principal;
 		}
 
-		const canonical = await resolveCanonicalPrincipal(event, token);
+		const canonical = await resolveRequestIdentity(event, token);
 		if (!canonical.authenticated || !canonical.userId) {
 			event.locals.principal = createAnonymousPrincipal();
 			return event.locals.principal;
@@ -328,13 +414,15 @@ export async function resolvePrincipal(event: RequestEvent): Promise<RequestPrin
 	}
 
 	// getSession supplies a credential, never trusted identity or entitlements.
-	// Parchment verifies that credential live and owns the canonical identity.
+	// Parchment verifies that credential and owns the canonical identity; see
+	// resolveRequestIdentity for when a verification from the last few seconds
+	// is reused.
 	const {
 		data: { session },
 		error
 	} = await event.locals.supabase.auth.getSession();
 	if (session && !error) {
-		const canonical = await resolveCanonicalPrincipal(event, session.access_token);
+		const canonical = await resolveRequestIdentity(event, session.access_token);
 		if (!canonical.authenticated || canonical.authKind !== 'session' || !canonical.userId) {
 			event.locals.principal = createAnonymousPrincipal();
 			return event.locals.principal;
