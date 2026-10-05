@@ -38,7 +38,8 @@ describe('/api/roast-profiles Parchment read boundary', () => {
 
 		expect(routeSource).toContain('createParchmentRoasts');
 		expect(routeSource).toContain('updateParchmentRoast');
-		expect(routeSource).toContain('deleteParchmentRoastBatch');
+		expect(routeSource).toContain('deleteParchmentRoast');
+		expect(routeSource).not.toContain('deleteBatch');
 		expect(routeSource).not.toContain('supabase');
 		for (const source of [routeSource, artisanSource, clearSource]) {
 			expect(source).toContain('isCookieSessionPrincipal');

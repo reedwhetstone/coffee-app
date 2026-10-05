@@ -49,6 +49,8 @@ vi.mock('$lib/server/principal', () => ({
 import { ParchmentSalesError } from '$lib/server/parchmentSales';
 import { DELETE, GET, POST, PUT } from './+server';
 
+const WEDNESDAY = 'aaaaaaaa-0000-4000-8000-000000000001';
+
 function makeEvent(
 	method: 'GET' | 'POST' | 'PUT' | 'DELETE',
 	options: {
@@ -214,8 +216,148 @@ describe('/api/profit sales mutations', () => {
 		);
 	});
 
+	it('rejects a sale update from an account without Mallard Studio', async () => {
+		const response = await PUT(
+			makeEvent('PUT', { role: 'viewer', id: '31', body: { price: 30 } }) as never
+		);
+
+		expect(response.status).toBe(403);
+		expect(await response.json()).toEqual({
+			error: 'Mallard Studio membership is required to record sales'
+		});
+		expect(parchmentMocks.createParchmentServerClient).not.toHaveBeenCalled();
+		expect(parchmentMocks.updateParchmentSale).not.toHaveBeenCalled();
+	});
+
+	it('records a sale against a batch and a roast by ID, and sends no batch name beside them', async () => {
+		parchmentMocks.createParchmentSale.mockResolvedValue({ id: 32 });
+
+		const response = await POST(
+			makeEvent('POST', {
+				role: 'member',
+				idempotencyKey: 'sale-create-2',
+				body: {
+					green_coffee_inv_id: 101,
+					oz_sold: 12,
+					price: 24,
+					buyer: 'Cafe',
+					batch_id: WEDNESDAY,
+					roast_id: 4531,
+					batch_name: 'Wednesday roast',
+					sell_date: '2026-10-05'
+				}
+			}) as never
+		);
+
+		expect(response.status).toBe(200);
+		expect(parchmentMocks.createParchmentSale).toHaveBeenCalledWith(
+			{ sales: {} },
+			{
+				greenCoffeeInvId: 101,
+				ozSold: 12,
+				price: 24,
+				buyer: 'Cafe',
+				batchId: WEDNESDAY,
+				roastId: 4531,
+				sellDate: '2026-10-05'
+			},
+			'sale-create-2'
+		);
+	});
+
+	it('records a sale against a batch alone when no roast is named', async () => {
+		parchmentMocks.createParchmentSale.mockResolvedValue({ id: 33 });
+
+		await POST(
+			makeEvent('POST', {
+				role: 'member',
+				body: {
+					green_coffee_inv_id: 101,
+					oz_sold: 12,
+					price: 24,
+					batch_id: WEDNESDAY,
+					roast_id: null,
+					batch_name: null
+				}
+			}) as never
+		);
+
+		expect(parchmentMocks.createParchmentSale).toHaveBeenCalledWith(
+			{ sales: {} },
+			{ greenCoffeeInvId: 101, ozSold: 12, price: 24, batchId: WEDNESDAY },
+			undefined
+		);
+	});
+
+	it.each([
+		[{ batch_id: 'Wednesday roast' }, 'Invalid roast batch'],
+		[{ batch_id: 4531 }, 'Invalid roast batch'],
+		[{ roast_id: '4531' }, 'Invalid roast'],
+		[{ roast_id: 0 }, 'Invalid roast'],
+		[{ roast_id: 1.5 }, 'Invalid roast']
+	])('refuses %j on a new sale and on an update before Parchment', async (link, error) => {
+		const body = { green_coffee_inv_id: 101, oz_sold: 12, price: 24, ...link };
+
+		const created = await POST(makeEvent('POST', { role: 'member', body }) as never);
+		const updated = await PUT(makeEvent('PUT', { role: 'member', id: '31', body }) as never);
+
+		for (const response of [created, updated]) {
+			expect(response.status).toBe(400);
+			expect(await response.json()).toEqual({ error });
+		}
+		expect(parchmentMocks.createParchmentServerClient).not.toHaveBeenCalled();
+	});
+
+	it('links an existing sale to a batch by ID, and leaves the name out', async () => {
+		parchmentMocks.updateParchmentSale.mockResolvedValue({ id: 31 });
+
+		await PUT(
+			makeEvent('PUT', {
+				role: 'member',
+				id: '31',
+				body: { price: 30, batch_id: WEDNESDAY, batch_name: 'Wednesday roast' }
+			}) as never
+		);
+
+		expect(parchmentMocks.updateParchmentSale).toHaveBeenCalledWith({ sales: {} }, 31, {
+			price: 30,
+			batchId: WEDNESDAY
+		});
+	});
+
+	it('removes the batch or the roast from a sale when sent null', async () => {
+		parchmentMocks.updateParchmentSale.mockResolvedValue({ id: 31 });
+
+		await PUT(
+			makeEvent('PUT', {
+				role: 'member',
+				id: '31',
+				body: { batch_id: null, roast_id: null }
+			}) as never
+		);
+
+		expect(parchmentMocks.updateParchmentSale).toHaveBeenCalledWith({ sales: {} }, 31, {
+			batchId: null,
+			roastId: null
+		});
+	});
+
+	it('leaves the batch of a sale alone when an update names neither a batch nor a roast', async () => {
+		parchmentMocks.updateParchmentSale.mockResolvedValue({ id: 31 });
+
+		await PUT(
+			makeEvent('PUT', { role: 'member', id: '31', body: { price: 30, oz_sold: 16 } }) as never
+		);
+
+		expect(parchmentMocks.updateParchmentSale).toHaveBeenCalledWith({ sales: {} }, 31, {
+			price: 30,
+			ozSold: 16
+		});
+	});
+
 	it('updates only supported sale fields through Parchment', async () => {
 		const event = makeEvent('PUT', {
+			role: 'member',
 			id: '31',
 			body: {
 				oz_sold: 16,

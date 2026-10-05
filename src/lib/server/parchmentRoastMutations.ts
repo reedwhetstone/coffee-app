@@ -301,23 +301,3 @@ export async function deleteParchmentRoast(client: ParchmentClient, id: number):
 		'Parchment returned an invalid roast delete response'
 	);
 }
-
-/** Delete one exact owner batch through Parchment's session-only command. */
-export async function deleteParchmentRoastBatch(
-	client: ParchmentClient,
-	batchName: string
-): Promise<void> {
-	unwrapMutation(
-		(await client.roasts.deleteBatch(batchName)) as ParchmentMutationResult<{
-			batchName: string;
-			ids: number[];
-			deleted: true;
-		}>,
-		(data) =>
-			data.batchName === batchName &&
-			data.deleted === true &&
-			Array.isArray(data.ids) &&
-			data.ids.every((id) => Number.isInteger(id) && id > 0),
-		'Parchment returned an invalid roast batch delete response'
-	);
-}
