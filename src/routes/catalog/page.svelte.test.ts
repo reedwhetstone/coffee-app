@@ -17,6 +17,11 @@ const { goto, replaceState, pageState } = vi.hoisted(() => ({
 
 vi.mock('$app/navigation', () => ({ goto, replaceState }));
 vi.mock('$app/state', () => ({ page: pageState }));
+vi.mock('$lib/components/catalog/CatalogMapCanvas.svelte', async () => ({
+	default: (
+		await import('$lib/components/catalog/__test-fixtures__/CatalogMapCanvasHarness.svelte')
+	).default
+}));
 
 function createData(
 	overrides: Partial<PageData> & {
@@ -1211,5 +1216,25 @@ describe('/catalog map navigation', () => {
 		const [nextUrl] = replaceState.mock.calls[0] as [URL, unknown];
 		expect(nextUrl.searchParams.get('country')).toBe('Ethiopia');
 		expect(nextUrl.searchParams.get('view')).toBe('map');
+	});
+
+	it('asks the map for out-of-stock coffees too once "In stock only" is turned off', async () => {
+		const mapStockScopes: (string | null)[] = [];
+		const respond = vi.mocked(fetch).getMockImplementation()!;
+		vi.mocked(fetch).mockImplementation((input, init) => {
+			const url = String(input);
+			if (!url.startsWith('/api/catalog/map?')) return respond(input, init);
+			mapStockScopes.push(new URLSearchParams(url.slice(url.indexOf('?'))).get('stocked'));
+			// The request is what matters here; the map never gets an answer.
+			return new Promise<Response>(() => {});
+		});
+
+		renderCatalog(createData());
+		await fireEvent.click(screen.getByRole('tab', { name: 'Map' }));
+		await waitFor(() => expect(mapStockScopes).toEqual(['true']));
+
+		await fireEvent.click(screen.getByLabelText('In stock only'));
+
+		await waitFor(() => expect(mapStockScopes.at(-1)).toBe('all'));
 	});
 });

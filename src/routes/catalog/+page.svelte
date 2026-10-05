@@ -242,6 +242,7 @@
 			sortDirection: $filterStore.sortDirection,
 			showWholesale: $filterStore.showWholesale,
 			wholesaleOnly: $filterStore.wholesaleOnly,
+			...($filterStore.includeUnstocked ? { includeUnstocked: true } : {}),
 			pagination: {
 				page: $filterStore.pagination.page,
 				limit: $filterStore.pagination.limit
