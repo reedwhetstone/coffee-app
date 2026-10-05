@@ -22,6 +22,7 @@
 	} from '$lib/roast/create-operation';
 
 	import RoastProfileTabs from './RoastProfileTabs.svelte';
+	import LiveRoastGuard from './LiveRoastGuard.svelte';
 	import { filteredData, filterStore } from '$lib/stores/filterStore';
 	import { pageChatContext } from '$lib/stores/pageContextStore.svelte';
 	import { buildRoastPageContext } from '$lib/services/roastPageContext';
@@ -69,6 +70,16 @@
 	const timer = createRoastTimer();
 	let isRoasting = $derived(!timer.isIdle);
 	let isPaused = $derived(timer.isPaused);
+
+	// A roast in progress (timer running or paused) keeps its readings only on
+	// this page until "Save roast" stores them. Anything that would reset the
+	// timer or clear the readings asks through the guard first.
+	let liveRoastGuard = $state<LiveRoastGuard>();
+	let liveRoastInProgress = $derived(isRoasting && currentRoastProfile !== null);
+
+	async function confirmLeaveLiveRoast(): Promise<boolean> {
+		return (await liveRoastGuard?.confirmLeave()) ?? true;
+	}
 	let fanValue = $state(8);
 	let heatValue = $state(1);
 	let selectedEvent = $state<string | null>(null);
@@ -194,7 +205,7 @@
 		// Reset the selection guard so selectProfile actually runs even if
 		// we're re-selecting the same profile (the whole point of a reload).
 		selectionState.lastSelectedId = null;
-		await selectProfile(profile);
+		await selectProfile(profile, true);
 		return profile;
 	}
 
@@ -396,6 +407,9 @@
 
 	// Form submission handler for new roast profiles
 	async function handleFormSubmit(profileData: RoastCreatePayload, exactPayload?: string) {
+		// A new roast opens as soon as it is created, which replaces the one recording.
+		if (!(await confirmLeaveLiveRoast())) return;
+
 		setOperation('Creating roast profile...');
 		clearProfileError();
 		const ownerId = data.auth?.user?.id ?? null;
@@ -513,6 +527,14 @@
 
 	// Profile management handlers
 	async function handleProfileUpdate(updatedProfile: RoastProfile) {
+		// Reloading resets the timer and clears the readings. When the details of
+		// the roast being recorded are edited, keep the saved fields (including
+		// last_updated, which "Save roast" sends as If-Match) and keep recording.
+		if (liveRoastInProgress && currentRoastProfile?.roast_id === updatedProfile.roast_id) {
+			Object.assign(currentRoastProfile, updatedProfile);
+			return;
+		}
+
 		setOperation('Updating profile...');
 		clearProfileError();
 
@@ -575,8 +597,9 @@
 		expandedBatches = new Set(expandedBatches);
 	}
 
-	// Function to select a profile
-	async function selectProfile(profile: RoastProfile) {
+	// Function to select a profile. `afterMutation` marks the reload that follows a
+	// save, create, or import: the live readings are already stored or replaced.
+	async function selectProfile(profile: RoastProfile, afterMutation = false) {
 		// Prevent concurrent calls and duplicate selections
 		if (selectionState.processing || selectionState.selectionInProgress) {
 			console.log('Profile selection already in progress, skipping');
@@ -594,6 +617,9 @@
 			console.error('Invalid profile provided to selectProfile:', profile);
 			return;
 		}
+
+		// Selecting a roast resets the timer and clears the readings below.
+		if (!afterMutation && !(await confirmLeaveLiveRoast())) return;
 
 		selectionState.selectionInProgress = true;
 		selectionState.processing = true;
@@ -857,8 +883,11 @@
 		await syncData();
 	}
 
-	// Function to clear the current profile (for Browse Profiles tab)
-	function handleClearProfile() {
+	// Function to clear the current profile (for Browse Profiles tab).
+	// Resolves false when a roast is recording and the member keeps roasting.
+	async function handleClearProfile(): Promise<boolean> {
+		if (!(await confirmLeaveLiveRoast())) return false;
+
 		currentRoastProfile = null;
 		selectedBean = { name: 'No Bean Selected' };
 		selectionState.lastSelectedId = null;
@@ -876,6 +905,7 @@
 		const currentUrl = new URL(window.location.href);
 		currentUrl.searchParams.delete('profileId');
 		goto(currentUrl.pathname, { replaceState: true, keepFocus: true, noScroll: true });
+		return true;
 	}
 </script>
 
@@ -890,6 +920,8 @@
 		onSubmit={handleFormSubmit}
 	/>
 </FormShell>
+
+<LiveRoastGuard bind:this={liveRoastGuard} active={liveRoastInProgress} />
 
 <!-- Profile Operation Status -->
 {#if operationInProgress}
