@@ -8,8 +8,12 @@ import { unwrapParchment } from '$lib/services/tools/parchment';
 const PAGE_LIMIT = 200;
 const BATCH_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export function isRoastBatchId(value: unknown): value is string {
-	return typeof value === 'string' && BATCH_ID.test(value);
+/**
+ * A batch ID in the form Parchment stores and returns it, or null when the value is not one.
+ * A UUID reads the same in either letter case, so an ID sent in capitals is the same batch.
+ */
+export function parseRoastBatchId(value: unknown): string | null {
+	return typeof value === 'string' && BATCH_ID.test(value) ? value.toLowerCase() : null;
 }
 
 /**

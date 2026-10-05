@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { requireMemberRole } from '$lib/server/auth';
 import { createParchmentServerClient } from '$lib/server/parchmentClient';
-import { isRoastBatchId, roastBatchRouteFailure } from '$lib/server/parchmentRoastBatches';
+import { parseRoastBatchId, roastBatchRouteFailure } from '$lib/server/parchmentRoastBatches';
 import { upstreamFailure } from '$lib/server/referenceGeneration';
 
 /**
@@ -12,8 +12,8 @@ import { upstreamFailure } from '$lib/server/referenceGeneration';
 export const DELETE: RequestHandler = async (event) => {
 	try {
 		await requireMemberRole(event);
-		const batchId = event.params.id;
-		if (!isRoastBatchId(batchId)) {
+		const batchId = parseRoastBatchId(event.params.id);
+		if (batchId === null) {
 			return json({ error: 'Invalid roast batch' }, { status: 400 });
 		}
 		const client = await createParchmentServerClient(event, {
@@ -25,13 +25,19 @@ export const DELETE: RequestHandler = async (event) => {
 			return upstreamFailure(result.error, result.response?.status, 'Unable to delete this batch');
 		}
 		const deleted = result.data.data;
-		if (deleted.id !== batchId || deleted.deleted !== true || !Array.isArray(deleted.ids)) {
+		// The batch is already deleted by now. Letter case alone must not turn that into a
+		// failure, which a retry would then report as "not found".
+		if (
+			parseRoastBatchId(deleted.id) !== batchId ||
+			deleted.deleted !== true ||
+			!Array.isArray(deleted.ids)
+		) {
 			return json(
 				{ error: 'Parchment returned an invalid batch delete response' },
 				{ status: 502 }
 			);
 		}
-		return json({ success: true, id: deleted.id, roastIds: deleted.ids });
+		return json({ success: true, id: batchId, roastIds: deleted.ids });
 	} catch (error) {
 		return roastBatchRouteFailure(error, 'Unable to delete this batch');
 	}

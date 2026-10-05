@@ -15,6 +15,7 @@
 		onSubmit,
 		availableCoffees = [],
 		availableRoasts = [],
+		roastsLoaded = true,
 		prefill: prefillProp = null
 	} = $props<{
 		sale?: Record<string, unknown>; // Using unknown instead of any
@@ -23,6 +24,8 @@
 		availableCoffees?: AvailableCoffee[];
 		/** The member's roasts. The batch choices are worked out from them, by batch ID. */
 		availableRoasts?: BatchedRoast[];
+		/** False while `availableRoasts` is still being fetched, or could not be. */
+		roastsLoaded?: boolean;
 		/** What a "Log sale" link filled in: the coffee, the batch, and the roast. */
 		prefill?: SalePrefill | null;
 	}>();
@@ -121,6 +124,13 @@
 	// The roast a link named decides the coffee and the batch when the link left them out. A
 	// roast that is not of the chosen coffee in the chosen batch is not named on the sale.
 	$effect(() => {
+		// A link can outlive the batch or the roast it names. Once the member's roasts have
+		// arrived, what the link named and they do not hold is dropped: the form has no way to
+		// show it, so it must not be saved with the sale. An existing sale keeps what it names.
+		if (!isUpdate && roastsLoaded) {
+			if (formData.batch_id && !selectedBatch) formData.batch_id = '';
+			if (formData.roast_id != null && !offeredRoast) formData.roast_id = null;
+		}
 		if (formData.roast_id == null || !offeredRoast) return;
 		if (!formData.green_coffee_inv_id && offeredRoast.coffee_id != null) {
 			formData.green_coffee_inv_id = offeredRoast.coffee_id;

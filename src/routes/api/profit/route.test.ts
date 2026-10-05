@@ -289,6 +289,29 @@ describe('/api/profit sales mutations', () => {
 		);
 	});
 
+	it('sends Parchment a batch ID in the form it stores, whatever letter case the request used', async () => {
+		parchmentMocks.createParchmentSale.mockResolvedValue({ id: 34 });
+		parchmentMocks.updateParchmentSale.mockResolvedValue({ id: 34 });
+		const capitals = WEDNESDAY.toUpperCase();
+
+		await POST(
+			makeEvent('POST', {
+				role: 'member',
+				body: { green_coffee_inv_id: 101, oz_sold: 12, price: 24, batch_id: capitals }
+			}) as never
+		);
+		await PUT(
+			makeEvent('PUT', { role: 'member', id: '34', body: { batch_id: capitals } }) as never
+		);
+
+		expect(parchmentMocks.createParchmentSale.mock.calls[0][1]).toMatchObject({
+			batchId: WEDNESDAY
+		});
+		expect(parchmentMocks.updateParchmentSale).toHaveBeenCalledWith({ sales: {} }, 34, {
+			batchId: WEDNESDAY
+		});
+	});
+
 	it.each([
 		[{ batch_id: 'Wednesday roast' }, 'Invalid roast batch'],
 		[{ batch_id: 4531 }, 'Invalid roast batch'],

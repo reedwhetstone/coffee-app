@@ -144,9 +144,11 @@ test.describe.serial('Critical business workflow', () => {
 		// renders instead of waiting for an initial browser API request.
 		await page.goto('/roast', { waitUntil: 'domcontentloaded' });
 		await expect(page).toHaveURL(/roast/);
-		await expect(page.getByText(testRoastName, { exact: true }).first()).toBeVisible({
-			timeout: 20000
-		});
+		// A batch header leads with the date ("Oct 5 · <name>"), so the name is no longer a
+		// text of its own. The header's control still names the batch.
+		await expect(
+			page.getByRole('button', { name: `Toggle ${testRoastName} batch` }).first()
+		).toBeVisible({ timeout: 20000 });
 	});
 
 	// -------------------------------------------------------------------------

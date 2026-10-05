@@ -332,6 +332,8 @@ describe('SaleForm create idempotency', () => {
 const OCT_1 = 'aaaaaaaa-0000-4000-8000-000000000001';
 const SEP_24 = 'aaaaaaaa-0000-4000-8000-000000000002';
 const GUJI = 'aaaaaaaa-0000-4000-8000-000000000003';
+// A batch a link still names after it was deleted: none of the member's roasts are in it.
+const GONE = 'aaaaaaaa-0000-4000-8000-00000000dead';
 
 const coffees = [
 	{ id: 101, name: 'Ethiopia Wush Wush', stocked: true, purchase_date: '2026-08-01' },
@@ -553,6 +555,100 @@ describe('SaleForm batches and roasts', () => {
 		expect(body).not.toHaveProperty('roast_id');
 	});
 
+	it('drops a roast the link names once the roasts have loaded without it', async () => {
+		const { container } = renderForm({
+			prefill: { coffeeId: 101, batchId: OCT_1, roastId: 9999 }
+		});
+
+		expect(chosen(batchSelect())).toBe('Oct 1 · Wednesday roast');
+		expect(roastCheckbox()).toBeNull();
+
+		await fillSale();
+		const { body } = await submitted(container);
+
+		expect(body).toMatchObject({ green_coffee_inv_id: 101, batch_id: OCT_1 });
+		expect(body).not.toHaveProperty('roast_id');
+	});
+
+	it('drops a batch the link names once the roasts have loaded without it', async () => {
+		const { container } = renderForm({
+			prefill: { coffeeId: 101, batchId: GONE, roastId: null }
+		});
+
+		expect(chosen(batchSelect())).toBe('Select a batch (optional)...');
+
+		await fillSale();
+		const { body } = await submitted(container);
+
+		expect(body.green_coffee_inv_id).toBe(101);
+		expect(body).not.toHaveProperty('batch_id');
+		expect(body).not.toHaveProperty('roast_id');
+	});
+
+	it('takes the batch from the roast when the batch the link names is gone', async () => {
+		const { container } = renderForm({
+			prefill: { coffeeId: 102, batchId: GONE, roastId: 4530 }
+		});
+
+		await waitFor(() => expect(chosen(batchSelect())).toBe('Oct 1 · Wednesday roast'));
+		expect(roastCheckbox()).toBeChecked();
+
+		await fillSale();
+		const { body } = await submitted(container);
+
+		expect(body).toMatchObject({ green_coffee_inv_id: 102, batch_id: OCT_1, roast_id: 4530 });
+	});
+
+	it('keeps what the link names while the roasts are still loading, then shows it', async () => {
+		const prefill = { coffeeId: 101, batchId: OCT_1, roastId: 4531 };
+		const { container, rerender } = renderForm({
+			availableRoasts: [],
+			roastsLoaded: false,
+			prefill
+		});
+
+		expect(roastCheckbox()).toBeNull();
+
+		await rerender({ availableRoasts: batchRoasts, roastsLoaded: true });
+
+		await waitFor(() => expect(roastCheckbox()).toBeChecked());
+		expect(chosen(batchSelect())).toBe('Oct 1 · Wednesday roast');
+
+		await fillSale();
+		const { body } = await submitted(container);
+
+		expect(body).toMatchObject({ batch_id: OCT_1, roast_id: 4531 });
+	});
+
+	it('drops what the link names when the roasts arrive without it', async () => {
+		const { container, rerender } = renderForm({
+			availableRoasts: [],
+			roastsLoaded: false,
+			prefill: { coffeeId: 101, batchId: GONE, roastId: 9999 }
+		});
+
+		await rerender({ availableRoasts: batchRoasts, roastsLoaded: true });
+		await fillSale();
+		const { body } = await submitted(container);
+
+		expect(body.green_coffee_inv_id).toBe(101);
+		expect(body).not.toHaveProperty('batch_id');
+		expect(body).not.toHaveProperty('roast_id');
+	});
+
+	it('sends what the link names when the roasts could not be loaded', async () => {
+		const { container } = renderForm({
+			availableRoasts: [],
+			roastsLoaded: false,
+			prefill: { coffeeId: 101, batchId: OCT_1, roastId: 4531 }
+		});
+
+		await fillSale();
+		const { body } = await submitted(container);
+
+		expect(body).toMatchObject({ green_coffee_inv_id: 101, batch_id: OCT_1, roast_id: 4531 });
+	});
+
 	it('still offers a roasted coffee that is no longer in stock', () => {
 		renderForm({
 			availableCoffees: coffees.filter((coffee) => coffee.id !== 101),
@@ -741,6 +837,19 @@ describe('SaleForm batches and roasts', () => {
 			});
 
 			expect(chosen(batchSelect())).toBe('Wednesday roast');
+		});
+
+		it('leaves the batch and roast of a sale alone when neither is among the roasts any more', async () => {
+			const { container } = renderForm({
+				sale: { ...linkedSale, batch_id: GONE, roast_id: 9999 }
+			});
+
+			await fireEvent.input(screen.getByLabelText('Buyer'), { target: { value: 'New buyer' } });
+			const { body } = await submitted(container);
+
+			expect(body.buyer).toBe('New buyer');
+			expect(body).not.toHaveProperty('batch_id');
+			expect(body).not.toHaveProperty('roast_id');
 		});
 	});
 });

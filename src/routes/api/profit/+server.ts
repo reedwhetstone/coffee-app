@@ -11,7 +11,7 @@ import {
 	type ParchmentSaleCreateRequest,
 	type ParchmentSaleUpdateRequest
 } from '$lib/server/parchmentSales';
-import { isRoastBatchId } from '$lib/server/parchmentRoastBatches';
+import { parseRoastBatchId } from '$lib/server/parchmentRoastBatches';
 import { isSessionPrincipal, isTrustedMutationRequest } from '$lib/server/principal';
 import { principalHasRole } from '$lib/server/principal';
 
@@ -44,10 +44,11 @@ function readSaleLink(raw: Record<string, unknown>): {
 } {
 	const link: { batchId?: string | null; roastId?: number | null } = {};
 	if ('batch_id' in raw && raw.batch_id !== undefined) {
-		if (raw.batch_id !== null && !isRoastBatchId(raw.batch_id)) {
+		const batchId = raw.batch_id === null ? null : parseRoastBatchId(raw.batch_id);
+		if (raw.batch_id !== null && batchId === null) {
 			throw new SaleRequestError('Invalid roast batch');
 		}
-		link.batchId = raw.batch_id;
+		link.batchId = batchId;
 	}
 	if ('roast_id' in raw && raw.roast_id !== undefined) {
 		const roastId = raw.roast_id;

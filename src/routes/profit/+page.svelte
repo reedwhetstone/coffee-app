@@ -72,6 +72,9 @@
 	// Form data state
 	let availableCoffees = $state<AvailableCoffee[]>([]);
 	let availableRoasts = $state<BatchedRoast[]>([]);
+	// True once the roasts above are the member's current list, so the sale form can tell a
+	// batch or roast that no longer exists from one that has not arrived yet.
+	let availableRoastsLoaded = $state(false);
 
 	// Convert reactive statements to use $derived
 	// Removed unused derived values (totalRevenue, totalCost, totalProfit)
@@ -170,11 +173,13 @@
 
 	// Function to fetch the roasts the sale form works its batch choices out from
 	async function fetchAvailableRoasts() {
+		availableRoastsLoaded = false;
 		try {
 			const response = await fetch('/api/roast-profiles');
 			if (response.ok) {
 				const result = await response.json();
 				availableRoasts = result.data || [];
+				availableRoastsLoaded = true;
 			} else {
 				console.error('Failed to fetch available batches');
 				availableRoasts = [];
@@ -288,6 +293,7 @@
 		sale={selectedSale as unknown as Record<string, unknown> | undefined}
 		{availableCoffees}
 		{availableRoasts}
+		roastsLoaded={availableRoastsLoaded}
 		prefill={salePrefill}
 		onClose={() => {
 			hideForm();

@@ -178,6 +178,50 @@ describe('DELETE /api/roast-batches/[id]', () => {
 		});
 	});
 
+	it('treats a batch ID sent in capitals as the same batch, and does not fail a delete that went through', async () => {
+		const remove = vi.fn().mockResolvedValue({
+			data: {
+				data: { id: WEDNESDAY, batchName: 'Wednesday roast', ids: [4531, 4530], deleted: true }
+			},
+			response: { status: 200 }
+		});
+		parchmentMocks.createParchmentServerClient.mockResolvedValue({
+			roastBatches: { delete: remove }
+		});
+		const capitals = WEDNESDAY.toUpperCase();
+
+		const response = await DELETE(
+			event('DELETE', `/api/roast-batches/${capitals}`, { id: capitals }) as never
+		);
+
+		expect(response.status).toBe(200);
+		expect(remove).toHaveBeenCalledWith(WEDNESDAY);
+		expect(await response.json()).toEqual({
+			success: true,
+			id: WEDNESDAY,
+			roastIds: [4531, 4530]
+		});
+	});
+
+	it('accepts an acknowledgement that names the batch in capitals', async () => {
+		const remove = vi.fn().mockResolvedValue({
+			data: {
+				data: { id: WEDNESDAY.toUpperCase(), batchName: 'Wednesday roast', ids: [], deleted: true }
+			},
+			response: { status: 200 }
+		});
+		parchmentMocks.createParchmentServerClient.mockResolvedValue({
+			roastBatches: { delete: remove }
+		});
+
+		const response = await DELETE(
+			event('DELETE', `/api/roast-batches/${WEDNESDAY}`, { id: WEDNESDAY }) as never
+		);
+
+		expect(response.status).toBe(200);
+		expect(await response.json()).toEqual({ success: true, id: WEDNESDAY, roastIds: [] });
+	});
+
 	it("passes on Parchment's status and message when the batch is not there", async () => {
 		const remove = vi.fn().mockResolvedValue({
 			error: { error: { code: 'not_found', message: 'Roast batch not found' } },
