@@ -7,6 +7,7 @@ import {
 	type CatalogUrlState
 } from '$lib/catalog/urlState';
 import { preserveCatalogExperienceParams } from '$lib/catalog/mapState';
+import { catalogSortAfterFilterChange } from '$lib/catalog/filterModel';
 import type {
 	CatalogFacetCount,
 	CatalogFilterOptions,
@@ -193,6 +194,15 @@ const initialState: FilterState = {
 	changeCounter: 0
 };
 
+/**
+ * Replaces the filters. Every filter change goes through here, so a sort that
+ * depends on a filter ends with it whichever control made the change.
+ */
+function applyFilters(state: FilterState, filters: Record<string, FilterValue>): void {
+	Object.assign(state, catalogSortAfterFilterChange(state, state.filters, filters));
+	state.filters = filters;
+}
+
 // Create the store
 function createFilterStore() {
 	const { subscribe, update } = writable<FilterState>(initialState);
@@ -333,11 +343,14 @@ function createFilterStore() {
 								) as Record<string, FilterValue>)
 							: s.filters;
 
+					const sort = sortWasStripped
+						? { sortField: null, sortDirection: null }
+						: catalogSortAfterFilterChange(s, s.filters, filters);
+
 					return {
 						...s,
 						filters,
-						sortField: sortWasStripped ? null : s.sortField,
-						sortDirection: sortWasStripped ? null : s.sortDirection,
+						...sort,
 						serverData: result.data || [],
 						pagination: result.pagination || s.pagination,
 						filteredData: result.data || [], // Keep filteredData in sync for backward compatibility
@@ -608,7 +621,7 @@ function createFilterStore() {
 	 */
 	function setFilter(key: string, value: FilterValue) {
 		update((state) => {
-			state.filters = sanitizeFilters({ ...state.filters, [key]: value });
+			applyFilters(state, sanitizeFilters({ ...state.filters, [key]: value }));
 			// Reset to first page for server-side routes
 			if (isCatalogRoute(state.routeId)) {
 				state.pagination.page = 1;
@@ -632,7 +645,7 @@ function createFilterStore() {
 	 */
 	function setFilters(changes: Record<string, FilterValue>) {
 		update((state) => {
-			state.filters = sanitizeFilters({ ...state.filters, ...changes });
+			applyFilters(state, sanitizeFilters({ ...state.filters, ...changes }));
 			if (isCatalogRoute(state.routeId)) {
 				state.pagination.page = 1;
 			}
@@ -655,9 +668,12 @@ function createFilterStore() {
 	function clearFiltersByKeys(keys: string[]) {
 		const keySet = new Set(keys);
 		update((state) => {
-			state.filters = Object.fromEntries(
-				Object.entries(state.filters).filter(([key]) => !keySet.has(key))
-			) as Record<string, FilterValue>;
+			applyFilters(
+				state,
+				Object.fromEntries(
+					Object.entries(state.filters).filter(([key]) => !keySet.has(key))
+				) as Record<string, FilterValue>
+			);
 			if (isCatalogRoute(state.routeId)) {
 				state.pagination.page = 1;
 			}
@@ -796,7 +812,7 @@ function createFilterStore() {
 	// Clear active filters while preserving the current sort contract.
 	function clearFilters() {
 		update((state) => {
-			state.filters = {};
+			applyFilters(state, {});
 			state.showWholesale = true;
 			state.wholesaleOnly = false;
 			state.includeUnstocked = false;

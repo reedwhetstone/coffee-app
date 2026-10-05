@@ -778,6 +778,35 @@ describe('/catalog page load', () => {
 		);
 	});
 
+	it('ends a cup score order from a link when its protocol was stripped', async () => {
+		type Loaded = {
+			initialCatalogState: { sortField: string | null; sortDirection: string | null };
+		};
+		const sorted = 'https://app.test/catalog?sortField=score_value&sortDirection=desc';
+		const session = { access_token: 'cookie-token' } as Session | null;
+
+		const viewer = (await load(
+			makeLoadInput('viewer', session, `${sorted}&score_protocol=sca_2004`)
+		)) as Loaded;
+		expect(viewer.initialCatalogState.sortField).toBeNull();
+		expect(viewer.initialCatalogState.sortDirection).toBeNull();
+		expect(mockCatalogList).toHaveBeenLastCalledWith(
+			expect.not.objectContaining({ sort: expect.anything() })
+		);
+
+		const member = (await load(
+			makeLoadInput('member', session, `${sorted}&score_protocol=sca_2004`)
+		)) as Loaded;
+		expect(member.initialCatalogState.sortField).toBe('score_value');
+		expect(mockCatalogList).toHaveBeenLastCalledWith(
+			expect.objectContaining({ sort: 'score_value', scoreProtocol: 'sca_2004' })
+		);
+
+		// An older link that never named a protocol keeps the order it asked for.
+		const older = (await load(makeLoadInput('viewer', session, sorted))) as Loaded;
+		expect(older.initialCatalogState.sortField).toBe('score_value');
+	});
+
 	it('strips premium discovery filters and sorts from viewer SSR state', async () => {
 		const result = (await load(
 			makeLoadInput(

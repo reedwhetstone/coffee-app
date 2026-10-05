@@ -402,5 +402,9 @@ describe('catalog URL state helpers', () => {
 		expect(filters('screen_min=18&screen_max=15')).toEqual({});
 		expect(filters('include_unknown_screen=true')).toEqual({});
 		expect(filters('moisture_max=0&moisture_max=abc')).toEqual({});
+		// Moisture is a percentage above 0, up to 20.
+		expect(filters('moisture_max=25')).toEqual({});
+		expect(filters('moisture_max=-1')).toEqual({});
+		expect(filters('moisture_max=20')).toEqual({ moisture_max: 20 });
 	});
 });

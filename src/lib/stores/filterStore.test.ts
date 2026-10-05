@@ -769,6 +769,111 @@ describe('filterStore stale-while-revalidate catalog interactions', () => {
 	});
 });
 
+describe('filterStore cup score order', () => {
+	beforeEach(() => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date('2026-10-05T00:00:00.000Z'));
+		vi.restoreAllMocks();
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+		vi.unstubAllGlobals();
+	});
+
+	async function sortedByCupScore(
+		filters: Record<string, string | string[]>,
+		notices: unknown[] = []
+	) {
+		const fetchSpy = vi.fn(async (input: RequestInfo | URL) => {
+			const url = input.toString();
+			if (url.startsWith('/api/catalog/filters?')) return emptyFiltersResponse();
+			if (url.startsWith('/api/catalog?')) return catalogDataResponse([1], { notices });
+			throw new Error(`Unexpected fetch: ${url}`);
+		});
+		vi.stubGlobal('fetch', fetchSpy);
+
+		const { filterStore } = await loadFilterStore();
+		filterStore.initializeForRoute('/catalog', [{ id: 1, wholesale: false }], {
+			catalogUrlState: {
+				filters,
+				sortField: 'score_value',
+				sortDirection: 'desc',
+				showWholesale: true,
+				wholesaleOnly: false,
+				pagination: { page: 1, limit: 15 }
+			},
+			serverData: [{ id: 1, wholesale: false }]
+		});
+		await vi.runOnlyPendingTimersAsync();
+		fetchSpy.mockClear();
+		return { filterStore, fetchSpy };
+	}
+
+	const underProtocol = { country: ['Kenya'], score_protocol: 'sca_2004' };
+
+	it.each([
+		[
+			'its chip is removed',
+			(store: FilterStoreModule['filterStore']) => store.setFilter('score_protocol', '')
+		],
+		['every filter is cleared', (store: FilterStoreModule['filterStore']) => store.clearFilters()],
+		[
+			'it changes to a protocol that is not stated',
+			(store: FilterStoreModule['filterStore']) =>
+				store.setFilters({ score_protocol: 'supplier_unspecified' })
+		],
+		[
+			'it is cleared with other filters',
+			(store: FilterStoreModule['filterStore']) =>
+				store.clearFiltersByKeys(['score_protocol', 'country'])
+		]
+	])('returns to the default order when the protocol is left because %s', async (_, leave) => {
+		const { filterStore, fetchSpy } = await sortedByCupScore(underProtocol);
+
+		leave(filterStore);
+		await vi.runOnlyPendingTimersAsync();
+
+		const state = get(filterStore);
+		expect(state.sortField).toBeNull();
+		expect(state.sortDirection).toBeNull();
+		const requests = requestedUrls(fetchSpy, '/api/catalog?');
+		expect(requests).toHaveLength(1);
+		expect(requests[0]).not.toContain('sortField');
+	});
+
+	it('returns to the default order when the API reports the protocol filter stripped', async () => {
+		const { filterStore } = await sortedByCupScore(underProtocol, [
+			{
+				code: 'entitlement_required',
+				deniedParams: ['scoreProtocol'],
+				message: 'Grade, elevation, and other detail filters require a member account.'
+			}
+		]);
+
+		filterStore.setFilter('country', ['Kenya', 'Ethiopia']);
+		await vi.runOnlyPendingTimersAsync();
+
+		const state = get(filterStore);
+		expect(state.filters).toEqual({ country: ['Kenya', 'Ethiopia'] });
+		expect(state.sortField).toBeNull();
+		expect(state.sortDirection).toBeNull();
+	});
+
+	it('keeps the order while a stated protocol stays selected', async () => {
+		const { filterStore, fetchSpy } = await sortedByCupScore(underProtocol);
+
+		filterStore.setFilter('country', []);
+		filterStore.setFilter('score_protocol', 'coe');
+		await vi.runOnlyPendingTimersAsync();
+
+		expect(get(filterStore).sortField).toBe('score_value');
+		expect(requestedUrls(fetchSpy, '/api/catalog?').at(-1)).toContain(
+			'sortField=score_value&sortDirection=desc'
+		);
+	});
+});
+
 describe('filterStore catalog filter options', () => {
 	beforeEach(() => {
 		vi.useFakeTimers();

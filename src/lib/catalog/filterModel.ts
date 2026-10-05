@@ -211,6 +211,30 @@ export function isStatedScoreProtocol(protocol: string | null | undefined): bool
 	);
 }
 
+type CatalogSort = { sortField: string | null; sortDirection: 'asc' | 'desc' | null };
+
+/**
+ * The sort to keep after the filters change. A cup score order belongs to the
+ * stated protocol it was chosen under, so it ends when a change leaves that
+ * protocol, whichever control made the change and also when the protocol
+ * filter was not applied. A cup score order from an older link, which never
+ * had a protocol, is left as it arrived.
+ */
+export function catalogSortAfterFilterChange(
+	sort: CatalogSort,
+	before: Record<string, CatalogFilterValue>,
+	after: Record<string, CatalogFilterValue>
+): CatalogSort {
+	const protocol = after.score_protocol;
+	const leavesProtocol =
+		sort.sortField === CUP_SCORE_SORT.field &&
+		before.score_protocol !== protocol &&
+		!isStatedScoreProtocol(typeof protocol === 'string' ? protocol : null);
+	return leavesProtocol
+		? { sortField: null, sortDirection: null }
+		: { sortField: sort.sortField, sortDirection: sort.sortDirection };
+}
+
 // ── Grades ───────────────────────────────────────────────────────────────────
 
 /** The kinds of grade, in the order the panel lists them. */

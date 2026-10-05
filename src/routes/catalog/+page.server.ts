@@ -4,6 +4,7 @@ import { toCatalogResourceItem } from '$lib/catalog/catalogResourceItem';
 import { CatalogSchemaUnavailableError } from '$lib/data/catalog';
 import { resolveCatalogVisibility } from '$lib/server/catalogVisibility';
 import { PREMIUM_DISCOVERY_FILTER_KEYS } from '$lib/catalog/accessPolicy';
+import { catalogSortAfterFilterChange } from '$lib/catalog/filterModel';
 import {
 	PROCESS_FACET_FILTER_KEYS,
 	createCatalogAccessDeniedNotice,
@@ -498,9 +499,18 @@ export const load: PageServerLoad = async (event) => {
 	const rangeAuthorizedCatalogState = catalogAccess.canUsePriceRanges
 		? scoreAuthorizedCatalogState
 		: stripPriceRangeFilter(scoreAuthorizedCatalogState);
-	const authorizedCatalogState = catalogAccess.canUseAdvancedSorts
+	const sortAuthorizedCatalogState = catalogAccess.canUseAdvancedSorts
 		? rangeAuthorizedCatalogState
 		: stripAdvancedSort(rangeAuthorizedCatalogState);
+	// A cup score order from a link ends with its protocol when that filter was stripped.
+	const authorizedCatalogState: CatalogUrlState = {
+		...sortAuthorizedCatalogState,
+		...catalogSortAfterFilterChange(
+			sortAuthorizedCatalogState,
+			requestedCatalogState.filters,
+			sortAuthorizedCatalogState.filters
+		)
+	};
 	const visibility = resolveCatalogVisibility({
 		principal: locals.principal,
 		showWholesaleRequested: authorizedCatalogState.showWholesale,

@@ -215,6 +215,8 @@ async function countScoreProtocols(
 		}
 		return counts;
 	} catch {
+		// Left out, which the controls read as "counts unknown". An empty list
+		// would claim that no coffee states a protocol.
 		return undefined;
 	}
 }

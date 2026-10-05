@@ -24,6 +24,12 @@
 		formatProcessDisplayValue,
 		isPublicProcessFacetOption
 	} from '$lib/catalog/processDisplay';
+	import {
+		MOISTURE_MAX_LIMIT,
+		SCREEN_SIZE_MAX,
+		SCREEN_SIZE_MIN,
+		isMoistureMax
+	} from '$lib/catalog/urlState';
 	import { formatSourceName } from '$lib/utils/formatters';
 	import FilterChips from './FilterChips.svelte';
 	import SearchableChecklist from './SearchableChecklist.svelte';
@@ -209,18 +215,29 @@
 	let scoreProtocol = $derived(
 		typeof filters.score_protocol === 'string' ? filters.score_protocol : ''
 	);
-	let scoreProtocols = $derived(counts.score_protocols ?? []);
+	// Absent while the counts are being read, and when they could not be read:
+	// only counts that arrived can say that no coffee states a protocol.
+	let scoreProtocolCounts = $derived(counts.score_protocols);
+	let scoreProtocols = $derived(scoreProtocolCounts ?? []);
 	// A choice is only worth offering when some coffee states its protocol.
 	let offerScoreProtocol = $derived(
 		scoreProtocol !== '' || scoreProtocols.some((entry) => isStatedScoreProtocol(entry.value))
 	);
 
-	function setScoreProtocol(next: string) {
-		// Scores are ranked only within one stated protocol; leaving it ends that order.
-		if ($filterStore.sortField === 'score_value' && !isStatedScoreProtocol(next)) {
-			filterStore.setSort(null, null);
+	// A moisture limit the catalog would not apply, held with the applied limit
+	// it was typed against, so the error goes when that limit changes.
+	let moistureApplied = $derived(String(filters.moisture_max ?? ''));
+	let moistureRejected = $state.raw<{ applied: string } | null>(null);
+	let moistureError = $derived(moistureRejected?.applied === moistureApplied);
+
+	function setMoistureMax(typed: string) {
+		const next = Number(typed);
+		if (typed !== '' && !isMoistureMax(next)) {
+			moistureRejected = { applied: moistureApplied };
+			return;
 		}
-		filterStore.setFilter('score_protocol', next);
+		moistureRejected = null;
+		filterStore.setFilter('moisture_max', typed === '' ? '' : next);
 	}
 
 	let sections = $state(
@@ -456,12 +473,13 @@
 							idPrefix="catalog-panel-screen"
 							unit="screen size"
 							step={1}
-							lowest={8}
-							highest={20}
+							lowest={SCREEN_SIZE_MIN}
+							highest={SCREEN_SIZE_MAX}
 							min={screen.min}
 							max={screen.max}
 							includeUnknown={screen.includeUnknown === true}
 							includeUnknownLabel="Include coffees with no stated screen size"
+							outOfRangeText={`Screen size is a whole number from ${SCREEN_SIZE_MIN} to ${SCREEN_SIZE_MAX}.`}
 							onChange={(range) =>
 								filterStore.setFilter('screen_size', {
 									min: range.min,
@@ -487,19 +505,18 @@
 							type="number"
 							inputmode="decimal"
 							min="0"
-							max="20"
+							max={MOISTURE_MAX_LIMIT}
 							step="0.1"
 							placeholder="For example 11"
 							value={filters.moisture_max ?? ''}
-							onchange={(event) => {
-								const next = Number(event.currentTarget.value);
-								filterStore.setFilter(
-									'moisture_max',
-									event.currentTarget.value !== '' && Number.isFinite(next) && next > 0 ? next : ''
-								);
-							}}
+							onchange={(event) => setMoistureMax(event.currentTarget.value)}
 							class="mt-1.5 w-full rounded-md border border-line bg-surface-canvas px-2 py-1.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-accent"
 						/>
+						{#if moistureError}
+							<p class="mt-1.5 text-xs text-danger" role="alert">
+								Moisture is a percentage above 0, up to {MOISTURE_MAX_LIMIT}.
+							</p>
+						{/if}
 						<p class="mt-2 text-xs text-muted">
 							Only coffees with a stated moisture reading match.
 						</p>
@@ -575,7 +592,8 @@
 							<select
 								id="catalog-panel-score-protocol"
 								value={scoreProtocol}
-								onchange={(event) => setScoreProtocol(event.currentTarget.value)}
+								onchange={(event) =>
+									filterStore.setFilter('score_protocol', event.currentTarget.value)}
 								class="mt-1.5 w-full rounded-md border border-line bg-surface-canvas px-2 py-1.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-accent"
 							>
 								<option value="">Any protocol</option>
@@ -592,6 +610,12 @@
 								{isStatedScoreProtocol(scoreProtocol)
 									? 'These scores share one scale, so you can also sort by cup score.'
 									: 'Scores are only ranked against each other within one stated protocol.'}
+							</p>
+						{:else if scoreProtocolCounts === undefined}
+							<p class="mt-2 text-xs text-muted" data-score-protocol-unknown>
+								{optionsStatus === 'loading'
+									? 'Loading scoring protocols'
+									: 'Scoring protocols are unavailable right now.'}
 							</p>
 						{:else}
 							<p class="mt-2 text-xs text-muted" data-score-protocol-note>

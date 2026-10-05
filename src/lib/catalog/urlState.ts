@@ -113,8 +113,20 @@ export const SCORE_PROTOCOLS = [
 	'coe',
 	'supplier_unspecified'
 ] as const;
-const SCREEN_SIZE_MIN = 8;
-const SCREEN_SIZE_MAX = 20;
+export const SCREEN_SIZE_MIN = 8;
+export const SCREEN_SIZE_MAX = 20;
+/** Moisture is a percentage, and no green coffee reading is above 20 (ADR-016). */
+export const MOISTURE_MAX_LIMIT = 20;
+
+/** A screen size: a whole number of 64ths of an inch, 8 to 20. Parchment ignores any other. */
+function isScreenSize(value: number): boolean {
+	return Number.isInteger(value) && value >= SCREEN_SIZE_MIN && value <= SCREEN_SIZE_MAX;
+}
+
+/** A moisture limit the catalog applies: above 0, up to 20 percent. */
+export function isMoistureMax(value: number): boolean {
+	return Number.isFinite(value) && value > 0 && value <= MOISTURE_MAX_LIMIT;
+}
 const MULTI_VALUE_FILTER_KEYS = new Set([
 	'country',
 	'source',
@@ -306,12 +318,7 @@ export function parseCatalogUrlState(url: URL, routeId = '/catalog'): CatalogUrl
 	}
 	const screenSize = (param: string) => {
 		const value = parseOptionalNumber(url.searchParams.get(param));
-		return value !== undefined &&
-			Number.isInteger(value) &&
-			value >= SCREEN_SIZE_MIN &&
-			value <= SCREEN_SIZE_MAX
-			? value
-			: undefined;
+		return value !== undefined && isScreenSize(value) ? value : undefined;
 	};
 	const screenMin = screenSize('screen_min');
 	const screenMax = screenSize('screen_max');
@@ -327,7 +334,7 @@ export function parseCatalogUrlState(url: URL, routeId = '/catalog'): CatalogUrl
 		};
 	}
 	const moistureMax = parseOptionalNumber(url.searchParams.get('moisture_max'));
-	if (moistureMax !== undefined && moistureMax > 0) {
+	if (moistureMax !== undefined && isMoistureMax(moistureMax)) {
 		filters.moisture_max = moistureMax;
 	}
 	const scoreProtocol = url.searchParams.get('score_protocol')?.toLowerCase();

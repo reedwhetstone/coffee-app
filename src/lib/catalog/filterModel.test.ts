@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	activePricePresetId,
 	catalogFilterLock,
+	catalogSortAfterFilterChange,
 	catalogSortOptions,
 	describeActiveCatalogFilters,
 	isStatedScoreProtocol,
@@ -346,5 +347,40 @@ describe('grade and quality chips', () => {
 			href: '/subscription'
 		});
 		expect(catalogFilterLock(member, 'grading')).toBeNull();
+	});
+});
+
+describe('catalogSortAfterFilterChange', () => {
+	const cupScore = { sortField: 'score_value', sortDirection: 'desc' } as const;
+	const defaultSort = { sortField: null, sortDirection: null };
+
+	it('ends a cup score order when a change leaves its stated protocol', () => {
+		const before = { country: ['Kenya'], score_protocol: 'sca_2004' };
+
+		expect(catalogSortAfterFilterChange(cupScore, before, { country: ['Kenya'] })).toEqual(
+			defaultSort
+		);
+		expect(catalogSortAfterFilterChange(cupScore, before, {})).toEqual(defaultSort);
+		expect(
+			catalogSortAfterFilterChange(cupScore, before, { score_protocol: 'supplier_unspecified' })
+		).toEqual(defaultSort);
+	});
+
+	it('keeps a cup score order while a stated protocol stays selected', () => {
+		const before = { score_protocol: 'sca_2004' };
+
+		expect(
+			catalogSortAfterFilterChange(cupScore, before, { ...before, country: ['Kenya'] })
+		).toEqual(cupScore);
+		expect(catalogSortAfterFilterChange(cupScore, before, { score_protocol: 'coe' })).toEqual(
+			cupScore
+		);
+	});
+
+	it('leaves other sorts, and a cup score order that never had a protocol, as they are', () => {
+		const price = { sortField: 'price_per_lb', sortDirection: 'asc' } as const;
+
+		expect(catalogSortAfterFilterChange(price, { score_protocol: 'sca_2004' }, {})).toEqual(price);
+		expect(catalogSortAfterFilterChange(cupScore, { country: ['Kenya'] }, {})).toEqual(cupScore);
 	});
 });
