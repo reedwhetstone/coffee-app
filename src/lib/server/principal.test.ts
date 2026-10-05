@@ -38,13 +38,16 @@ function successfulMe(data: typeof viewerProjection | Record<string, unknown>) {
 	});
 }
 
-function makeCookieSessionEvent(options: { method?: string; path?: string; token?: string } = {}) {
+function makeCookieSessionEvent(
+	options: { method?: string; path?: string; token?: string; cookies?: Record<string, string> } = {}
+) {
 	const url = `https://app.test${options.path ?? '/catalog'}`;
 	const token = options.token ?? 'cookie-token';
 	return {
 		fetch: vi.fn(),
 		request: new Request(url, { method: options.method ?? 'GET' }),
 		url: new URL(url),
+		cookies: { get: vi.fn((name: string) => options.cookies?.[name]), set: vi.fn() },
 		locals: {
 			principal: undefined,
 			supabase: {
@@ -69,7 +72,7 @@ function makeCookieSessionEvent(options: { method?: string; path?: string; token
 	} as unknown as Parameters<typeof resolvePrincipal>[0];
 }
 
-function makeAuthorizationEvent(token: string) {
+function makeAuthorizationEvent(token: string, options: { method?: string } = {}) {
 	const getUser = vi.fn().mockResolvedValue({
 		data: { user: { id: 'user-1' } },
 		error: null
@@ -78,9 +81,11 @@ function makeAuthorizationEvent(token: string) {
 	return {
 		fetch: vi.fn(),
 		request: new Request('https://app.test/catalog', {
+			method: options.method ?? 'GET',
 			headers: { Authorization: `Bearer ${token}` }
 		}),
 		url: new URL('https://app.test/catalog'),
+		cookies: { get: vi.fn(), set: vi.fn() },
 		locals: {
 			principal: undefined,
 			supabase: { auth: { getUser } },
@@ -466,6 +471,93 @@ describe('principal helpers', () => {
 			await resolvePrincipal(makeCookieSessionEvent({ method: 'POST', path: '/api/beans' }));
 
 			expect((await resolvePrincipal(makeCookieSessionEvent())).isAuthenticated).toBe(false);
+		});
+
+		describe('after a write', () => {
+			const member = {
+				...verified,
+				appRoles: ['member'],
+				primaryAppRole: 'member',
+				ppiAccess: true
+			};
+			const recheckCookie = 'purveyors_identity_recheck';
+
+			it('draws the next page from a new check, so a purchase shows at once', async () => {
+				successfulMe(verified);
+				await resolvePrincipal(makeCookieSessionEvent({ path: '/subscription/success' }));
+				// The checkout is settled by this request, after its own identity check.
+				await resolvePrincipal(
+					makeCookieSessionEvent({ method: 'POST', path: '/api/billing/checkout-sessions/a1' })
+				);
+
+				successfulMe(member);
+				const refreshed = await resolvePrincipal(
+					makeCookieSessionEvent({ path: '/subscription/success' })
+				);
+
+				expect(refreshed.primaryAppRole).toBe('member');
+				expect(refreshed.ppiAccess).toBe(true);
+				expect(mockMe).toHaveBeenCalledTimes(3);
+			});
+
+			it('does the same for a bearer session', async () => {
+				successfulMe(verified);
+				await resolvePrincipal(makeAuthorizationEvent('session-token', { method: 'POST' }));
+
+				successfulMe(member);
+				const next = await resolvePrincipal(makeAuthorizationEvent('session-token'));
+
+				expect(next.primaryAppRole).toBe('member');
+				expect(mockMe).toHaveBeenCalledTimes(2);
+			});
+
+			it('tells the browser to have its next reads verified, for longer than an answer is reused', async () => {
+				successfulMe(verified);
+				const write = makeCookieSessionEvent({ method: 'POST', path: '/api/beans' });
+				await resolvePrincipal(write);
+
+				expect(write.cookies.set).toHaveBeenCalledTimes(1);
+				const [name, value, options] = vi.mocked(write.cookies.set).mock.calls[0];
+				expect([name, value]).toEqual([recheckCookie, '1']);
+				expect(options).toMatchObject({ httpOnly: true, path: '/', sameSite: 'lax', secure: true });
+				expect(options.maxAge).toBeGreaterThan(10);
+			});
+
+			it('verifies a read from that browser even where an earlier answer is still remembered', async () => {
+				// Another server instance never saw the write and still remembers this.
+				successfulMe(verified);
+				await resolvePrincipal(makeCookieSessionEvent());
+
+				successfulMe(member);
+				const marked = { cookies: { [recheckCookie]: '1' } };
+				const first = await resolvePrincipal(makeCookieSessionEvent(marked));
+				const second = await resolvePrincipal(
+					makeCookieSessionEvent({ ...marked, path: '/api/roast-profiles' })
+				);
+
+				expect([first.primaryAppRole, second.primaryAppRole]).toEqual(['member', 'member']);
+				expect(mockMe).toHaveBeenCalledTimes(3);
+			});
+
+			it.each([
+				{ request: 'a read', event: () => makeCookieSessionEvent() },
+				{ request: 'a HEAD request', event: () => makeCookieSessionEvent({ method: 'HEAD' }) },
+				{
+					request: 'a write that is not signed in',
+					event: () => makeCookieSessionEvent({ method: 'POST' }),
+					me: revoked
+				},
+				{
+					request: 'a write made with an Authorization header',
+					event: () => makeAuthorizationEvent('session-token', { method: 'POST' })
+				}
+			])('does not mark the browser for $request', async ({ event, me }) => {
+				successfulMe(me ?? verified);
+				const request = event();
+				await resolvePrincipal(request);
+
+				expect(request.cookies.set).not.toHaveBeenCalled();
+			});
 		});
 
 		it('never remembers a caller who was not signed in, so signing in takes effect at once', async () => {

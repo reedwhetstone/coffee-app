@@ -306,9 +306,27 @@ async function resolveCanonicalPrincipal(
  * verified every time. An answer that does not sign the request in, or a
  * check that fails, is never remembered: signing in takes effect at once, and
  * a rejected answer ends reuse for that credential.
+ *
+ * A write also ends reuse, because it can change the answer: a purchase adds a
+ * role, a cancelled plan removes one. Its own check ran before it took effect,
+ * so that answer is not remembered and anything remembered is dropped. The
+ * pages that follow are then drawn from a new check, not from the access the
+ * caller had before the write.
  */
 const IDENTITY_REUSE_MS = 10_000;
 const IDENTITY_REUSE_MAX_ENTRIES = 500;
+
+/**
+ * Set on a browser session's write. Reads carrying it are verified every time.
+ *
+ * Dropping what this server instance remembers is not enough: another instance
+ * may still hold the answer from before the write, and the read that follows
+ * can land there. The cookie travels with the browser, so that read is verified
+ * wherever it lands. It must outlast the reuse window, so that every answer
+ * from before the write has expired by the time the cookie does.
+ */
+const IDENTITY_RECHECK_COOKIE = 'purveyors_identity_recheck';
+const IDENTITY_RECHECK_SECONDS = IDENTITY_REUSE_MS / 1000 + 5;
 
 interface RememberedIdentity {
 	verifiedAt: number;
@@ -333,12 +351,28 @@ function identityKey(token: string): string {
 	return createHash('sha256').update(token).digest('hex');
 }
 
-function mayReuseIdentity(event: RequestEvent): boolean {
+function isReadRequest(event: RequestEvent): boolean {
 	const method = event.request.method.toUpperCase();
-	if (method !== 'GET' && method !== 'HEAD') return false;
+	return method === 'GET' || method === 'HEAD';
+}
+
+function mayReuseIdentity(event: RequestEvent): boolean {
+	if (!isReadRequest(event)) return false;
+	if (event.cookies.get(IDENTITY_RECHECK_COOKIE)) return false;
 	// `/%61uth/cli` reaches the `/auth/cli` route, so compare the path as routed.
 	const path = decodeRoutePath(event.url.pathname);
 	return path !== null && path !== '/auth' && !path.startsWith('/auth/');
+}
+
+function requireRecheckAfterWrite(event: RequestEvent): void {
+	if (isReadRequest(event)) return;
+	event.cookies.set(IDENTITY_RECHECK_COOKIE, '1', {
+		httpOnly: true,
+		maxAge: IDENTITY_RECHECK_SECONDS,
+		path: '/',
+		sameSite: 'lax',
+		secure: event.url.protocol === 'https:'
+	});
 }
 
 function forgetIdentity(key: string, entry: RememberedIdentity): void {
@@ -373,8 +407,16 @@ async function resolveRequestIdentity(
 	token: string
 ): Promise<RequestIdentity> {
 	const key = identityKey(token);
-	const recent = mayReuseIdentity(event) ? recentIdentity.get(key) : undefined;
-	// Otherwise verified now. Requests arriving while that is in flight share it.
+	if (!mayReuseIdentity(event)) {
+		// Verified now, and not remembered: see IDENTITY_REUSE_MS on writes.
+		const forget = () => void recentIdentity.delete(key);
+		forget();
+		return { canonical: await resolveCanonicalPrincipal(event, token), forget };
+	}
+
+	const recent = recentIdentity.get(key);
+	// Reused while recent; otherwise verified now. Requests arriving while that
+	// is in flight share it.
 	const entry =
 		recent && Date.now() - recent.verifiedAt < IDENTITY_REUSE_MS
 			? recent
@@ -462,6 +504,7 @@ export async function resolvePrincipal(event: RequestEvent): Promise<RequestPrin
 		if (!user || user.id !== canonical.userId) {
 			return rejectIdentity(verified);
 		}
+		requireRecheckAfterWrite(event);
 		event.locals.principal = createSessionPrincipal({
 			source: 'cookie-session',
 			session,
