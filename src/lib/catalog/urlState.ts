@@ -12,6 +12,8 @@ export interface CatalogUrlState {
 	sortDirection: 'asc' | 'desc' | null;
 	showWholesale: boolean;
 	wholesaleOnly: boolean;
+	/** True when the view also lists coffees that are no longer in stock. */
+	includeUnstocked?: boolean;
 	pagination: {
 		page: number;
 		limit: number;
@@ -30,6 +32,9 @@ export interface CatalogSearchState {
 	hasAdditives?: boolean;
 	processingDisclosureLevel?: string;
 	processingConfidenceMin?: number;
+	dryingMethodCodes?: string[];
+	varietyCodes?: string[];
+	speciesCodes?: string[];
 	cultivarDetail?: string;
 	type?: string;
 	grade?: string;
@@ -65,7 +70,16 @@ const RANGE_FILTER_PARAM_NAMES: Readonly<Record<string, { min: string; max: stri
 	elevation_masl: { min: 'elevation_min_masl', max: 'elevation_max_masl' }
 };
 const RANGE_FILTER_KEYS = new Set(Object.keys(RANGE_FILTER_PARAM_NAMES));
-const MULTI_VALUE_FILTER_KEYS = new Set(['country', 'source']);
+/**
+ * Standardized variety, species and drying filters (ADR-018). Each holds
+ * vocabulary codes; a coffee matches when it carries any selected code.
+ */
+export const TAXONOMY_CODE_FILTER_KEYS = [
+	'variety_code',
+	'species_code',
+	'drying_method_code'
+] as const;
+const MULTI_VALUE_FILTER_KEYS = new Set(['country', 'source', ...TAXONOMY_CODE_FILTER_KEYS]);
 const STRING_FILTER_KEYS = [
 	'origin',
 	'continent',
@@ -95,6 +109,9 @@ const FILTER_SERIALIZATION_ORDER = [
 	'has_additives',
 	'processing_disclosure_level',
 	'processing_confidence_min',
+	'drying_method_code',
+	'variety_code',
+	'species_code',
 	'cultivar_detail',
 	'type',
 	'grade',
@@ -264,6 +281,7 @@ export function parseCatalogUrlState(url: URL, routeId = '/catalog'): CatalogUrl
 		sortDirection,
 		showWholesale: wholesaleOnly || url.searchParams.get('showWholesale') !== 'false',
 		wholesaleOnly,
+		...(url.searchParams.get('stocked') === 'all' ? { includeUnstocked: true } : {}),
 		pagination: {
 			page: parsePositiveInteger(url.searchParams.get('page'), DEFAULT_PAGE),
 			limit: parsePositiveInteger(url.searchParams.get('limit'), DEFAULT_LIMIT)
@@ -364,6 +382,9 @@ function buildCatalogQueryParams(
 	if (state.wholesaleOnly) {
 		params.append('showWholesale', 'true');
 		params.append('wholesaleOnly', 'true');
+	}
+	if (state.includeUnstocked) {
+		params.append('stocked', 'all');
 	}
 
 	for (const filterKey of FILTER_SERIALIZATION_ORDER) {
@@ -486,6 +507,9 @@ export function catalogUrlStateToSearchState(state: CatalogUrlState): CatalogSea
 		processingConfidenceMin: parseProcessingConfidenceMin(
 			state.filters.processing_confidence_min?.toString() ?? null
 		),
+		dryingMethodCodes: readArrayValue(state.filters.drying_method_code),
+		varietyCodes: readArrayValue(state.filters.variety_code),
+		speciesCodes: readArrayValue(state.filters.species_code),
 		cultivarDetail: readStringValue(state.filters.cultivar_detail),
 		type: readStringValue(state.filters.type),
 		grade: readStringValue(state.filters.grade),

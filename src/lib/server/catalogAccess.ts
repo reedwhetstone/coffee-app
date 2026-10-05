@@ -12,6 +12,12 @@ export interface CatalogAccessCapabilities {
 	canUseBasicFilters: boolean;
 	canUseAdvancedFilters: boolean;
 	canUseProcessFacets: boolean;
+	/**
+	 * Price-per-pound range. ADR-005 (amended 2026-10-04) makes this the free
+	 * Viewer level's broad filter: every signed-in session and API key.
+	 */
+	canUsePriceRanges: boolean;
+	/** Score range: member sessions and API keys. */
 	canUsePriceScoreRanges: boolean;
 	canUseAdvancedSorts: boolean;
 	canViewPremiumFilterMetadata: boolean;
@@ -43,7 +49,11 @@ export const PROCESS_FACET_FILTER_KEYS = [
 	'process_additive',
 	'has_additives',
 	'processing_disclosure_level',
-	'processing_confidence_min'
+	'processing_confidence_min',
+	// ADR-018 standardized variety, species and drying filters share this gate.
+	'drying_method_code',
+	'variety_code',
+	'species_code'
 ] as const;
 
 export { PREMIUM_DISCOVERY_FILTER_KEYS };
@@ -94,6 +104,7 @@ export function resolveCatalogAccessCapabilities(
 		canUseBasicFilters: true,
 		canUseAdvancedFilters: canUsePublicSearchLeverage,
 		canUseProcessFacets: canUsePublicSearchLeverage,
+		canUsePriceRanges: subject.isAuthenticated,
 		canUsePriceScoreRanges: canUsePublicSearchLeverage,
 		canUseAdvancedSorts: canUsePublicSearchLeverage,
 		canViewPremiumFilterMetadata: canUsePublicSearchLeverage,

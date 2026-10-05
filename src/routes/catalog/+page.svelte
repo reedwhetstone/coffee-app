@@ -26,8 +26,16 @@
 	import { formatSourceName } from '$lib/utils/formatters';
 
 	import PageHeaderSection from '$lib/components/catalog/sections/PageHeaderSection.svelte';
-	import FilterBarSection from '$lib/components/catalog/sections/FilterBarSection.svelte';
-	import ProcessFilterSection from '$lib/components/catalog/sections/ProcessFilterSection.svelte';
+	import CatalogPrimaryRow from '$lib/components/catalog/filters/CatalogPrimaryRow.svelte';
+	import CatalogFilterPanel from '$lib/components/catalog/filters/CatalogFilterPanel.svelte';
+	import ActiveFilterChips from '$lib/components/catalog/filters/ActiveFilterChips.svelte';
+	import MobileOverlayShell from '$lib/components/layout/MobileOverlayShell.svelte';
+	import { catalogFilterPanel } from '$lib/stores/catalogFilterPanel.svelte';
+	import {
+		describeActiveCatalogFilters,
+		type ActiveCatalogFilter,
+		type CatalogFilterAccess
+	} from '$lib/catalog/filterModel';
 	import UpsellBannerSection from '$lib/components/catalog/sections/UpsellBannerSection.svelte';
 	import WatchlistBannerSection from '$lib/components/catalog/sections/WatchlistBannerSection.svelte';
 	import BriefMatchSection from '$lib/components/catalog/sections/BriefMatchSection.svelte';
@@ -311,28 +319,50 @@
 		return withDeepLinkCoffee(($filteredData as unknown as CoffeeCatalog[]).slice(0, displayLimit));
 	});
 
-	const PROCESS_TRANSPARENCY_FILTER_KEYS = [
-		'processing_base_method',
-		'fermentation_type',
-		'process_additive',
-		'has_additives',
-		'processing_disclosure_level',
-		'processing_confidence_min'
-	] as const;
-
 	function isActiveFilterValue(value: unknown): boolean {
 		if (value === undefined || value === null || value === '') return false;
 		if (Array.isArray(value)) return value.length > 0;
 		return true;
 	}
 
-	function clearProcessTransparencyFilters() {
-		filterStore.clearFiltersByKeys([...PROCESS_TRANSPARENCY_FILTER_KEYS]);
+	// What this viewer may filter on. Parchment enforces it; this only decides
+	// which controls are shown locked.
+	let filterAccess = $derived<CatalogFilterAccess>({
+		canUseProcessFacets: data.catalogAccess?.canUseProcessFacets === true,
+		canUseAdvancedFilters: data.catalogAccess?.canUseAdvancedFilters === true,
+		canUsePriceRanges: data.catalogAccess?.canUsePriceRanges === true,
+		canUsePriceScoreRanges: data.catalogAccess?.canUsePriceScoreRanges === true,
+		canUseAdvancedSorts: data.catalogAccess?.canUseAdvancedSorts === true,
+		canUseWholesaleOnly: hasRequiredRole('member')
+	});
+
+	let activeFilters = $derived(
+		describeActiveCatalogFilters(
+			{
+				filters: $filterStore.filters,
+				showWholesale: $filterStore.showWholesale,
+				wholesaleOnly: $filterStore.wholesaleOnly,
+				includeUnstocked: $filterStore.includeUnstocked
+			},
+			$filterStore.vocabulary
+		)
+	);
+	let panelFilterCount = $derived(activeFilters.filter((filter) => filter.inPanel).length);
+
+	function removeActiveFilter(filter: ActiveCatalogFilter) {
+		if (filter.remove.kind === 'filter') {
+			filterStore.setFilter(filter.remove.key, filter.remove.value);
+		} else if (filter.remove.kind === 'supplierScope') {
+			filterStore.setSupplierScope('all');
+		} else {
+			filterStore.setIncludeUnstocked(false);
+		}
 	}
 
-	let hasAdvancedProcessFilters = $derived(
-		PROCESS_TRANSPARENCY_FILTER_KEYS.some((key) => isActiveFilterValue($filterStore.filters[key]))
-	);
+	// The panel is page state: leaving the catalog closes it.
+	$effect(() => () => {
+		catalogFilterPanel.open = false;
+	});
 
 	// Publish what this view shows so chat can ground answers in it.
 	$effect(() => {
@@ -361,13 +391,6 @@
 		});
 		return () => pageChatContext.clear();
 	});
-
-	let hasInlineFilters = $derived(
-		(Array.isArray($filterStore.filters.country) && $filterStore.filters.country.length > 0) ||
-			Boolean($filterStore.filters.processing) ||
-			Boolean($filterStore.filters.name) ||
-			hasAdvancedProcessFilters
-	);
 
 	let canUseBeanMatching = $derived(data.catalogAccess?.canUseBeanMatching === true);
 	let canViewPriceHistory = $derived(data.catalogAccess?.canViewPriceHistory === true);
@@ -698,8 +721,19 @@
 			onCopyFilteredCatalogLink={copyFilteredCatalogLink}
 		/>
 
-		{#if !isSignedIn}
-			<FilterBarSection {hasInlineFilters} />
+		{#if !trackedOnlyView}
+			<CatalogPrimaryRow
+				access={filterAccess}
+				{panelFilterCount}
+				onOpenPanel={() => (catalogFilterPanel.open = true)}
+			/>
+			<ActiveFilterChips
+				filters={activeFilters}
+				resultCount={catalogResultCount}
+				{isRefetching}
+				onRemove={removeActiveFilter}
+				onClearAll={() => filterStore.clearFilters()}
+			/>
 		{/if}
 
 		{#if data.catalogSchemaUnavailable}
@@ -722,12 +756,16 @@
 			</div>
 		{/if}
 
-		{#if !trackedOnlyView}
-			<ProcessFilterSection
-				canUseProcessFacets={data.catalogAccess?.canUseProcessFacets ?? false}
-				{hasAdvancedProcessFilters}
-				onClearProcessTransparencyFilters={clearProcessTransparencyFilters}
-			/>
+		{#if data.unrecognizedCodeFilters}
+			<div
+				class="rounded-lg border border-warning/30 bg-warning-subtle px-4 py-3 text-warning-strong"
+			>
+				<h2 class="text-sm font-semibold">A filter in this link was not applied</h2>
+				<p class="mt-1 text-sm">
+					It names a variety, species or drying method the catalog does not recognize. Choose one
+					from the filters to narrow these results.
+				</p>
+			</div>
 		{/if}
 
 		{#if isSignedIn && !hasRequiredRole('member') && !canUseParchmentIntelligence}
@@ -823,6 +861,23 @@
 			{@render catalogResults('grid')}
 		{/if}
 	</div>
+{/if}
+
+{#if !trackedOnlyView}
+	<MobileOverlayShell
+		open={catalogFilterPanel.open}
+		variant="drawer"
+		hideOnDesktop={false}
+		onClose={() => (catalogFilterPanel.open = false)}
+		labelledBy="catalog-filters-title"
+	>
+		<CatalogFilterPanel
+			access={filterAccess}
+			resultCount={catalogResultCount}
+			activeFilterCount={activeFilters.length}
+			onClose={() => (catalogFilterPanel.open = false)}
+		/>
+	</MobileOverlayShell>
 {/if}
 
 <CompareTray

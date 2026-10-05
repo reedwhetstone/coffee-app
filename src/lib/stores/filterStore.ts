@@ -7,6 +7,11 @@ import {
 	type CatalogUrlState
 } from '$lib/catalog/urlState';
 import { preserveCatalogExperienceParams } from '$lib/catalog/mapState';
+import type {
+	CatalogFacetCount,
+	CatalogFilterOptions,
+	CatalogFilterVocabulary
+} from '$lib/catalog/filterOptions';
 import {
 	isCatalogRoute,
 	getDefaultSortSettings,
@@ -47,7 +52,10 @@ const UPSTREAM_NOTICE_TO_APP_FILTER_KEY: Readonly<Record<string, string>> = {
 	stockedDate: 'stocked_date',
 	stockedDays: 'stocked_days',
 	arrivalDate: 'arrival_date',
-	variety: 'cultivar_detail'
+	variety: 'cultivar_detail',
+	varietyCode: 'variety_code',
+	speciesCode: 'species_code',
+	dryingMethodCode: 'drying_method_code'
 };
 
 /**
@@ -92,8 +100,18 @@ type FilterState = {
 	sortDirection: 'asc' | 'desc' | null;
 	showWholesale: boolean;
 	wholesaleOnly: boolean;
+	/** Catalog only: also list coffees that are no longer in stock. */
+	includeUnstocked: boolean;
 	filters: Record<string, FilterValue>;
 	uniqueValues: Record<string, unknown[]>;
+	/** Catalog only: how many coffees each option matches under the other active filters. */
+	facetCounts: Record<string, CatalogFacetCount[]>;
+	/** Catalog only: variety, species and drying labels, for callers who may filter on them. */
+	vocabulary: CatalogFilterVocabulary | null;
+	/** Catalog only: coffees with no standardized variety under the other active filters. */
+	unstandardizedVarietyCount: number | null;
+	/** Catalog only: whether the option lists are being read, are current, or could not be read. */
+	optionsStatus: 'loading' | 'ready' | 'unavailable';
 	originalData: DataItem[]; // Keep for backward compatibility
 	filteredData: DataItem[];
 	serverData: DataItem[]; // Server-side filtered/sorted data
@@ -139,8 +157,13 @@ const initialState: FilterState = {
 	sortDirection: null,
 	showWholesale: true,
 	wholesaleOnly: false,
+	includeUnstocked: false,
 	filters: {},
 	uniqueValues: {},
+	facetCounts: {},
+	vocabulary: null,
+	unstandardizedVarietyCount: null,
+	optionsStatus: 'loading',
 	originalData: [],
 	filteredData: [],
 	serverData: [],
@@ -172,6 +195,7 @@ function createFilterStore() {
 			sortDirection: state.sortDirection,
 			showWholesale: state.showWholesale,
 			wholesaleOnly: state.wholesaleOnly,
+			...(state.includeUnstocked ? { includeUnstocked: true } : {}),
 			pagination: {
 				page: state.pagination.page,
 				limit: state.pagination.limit
@@ -315,9 +339,11 @@ function createFilterStore() {
 					};
 				});
 
-				// Keep the shareable URL honest about the effective filter state.
+				// Keep the shareable URL and the option counts honest about the
+				// effective filter state.
 				if (strippedKeys.length > 0) {
 					syncCatalogUrl(get({ subscribe }));
+					fetchUniqueValues();
 				}
 			} catch (error) {
 				// An aborted request is expected when a newer fetch supersedes it;
@@ -343,17 +369,34 @@ function createFilterStore() {
 		}, 150); // Debounce server requests by 150ms
 	}
 
+	// Option lists and counts follow the active filters, so they are refetched
+	// with them: debounced like the rows, and guarded so a slower earlier
+	// response cannot replace a newer one.
+	let optionsRequestSequence = 0;
+	let optionsFetchTimeout: NodeJS.Timeout | null = null;
+
+	function fetchUniqueValues() {
+		if (optionsFetchTimeout) clearTimeout(optionsFetchTimeout);
+		const requestId = ++optionsRequestSequence;
+		update((s) => (s.optionsStatus === 'loading' ? s : { ...s, optionsStatus: 'loading' }));
+		optionsFetchTimeout = setTimeout(() => {
+			optionsFetchTimeout = null;
+			void loadFilterOptions(requestId);
+		}, 150);
+	}
+
 	/**
-	 * Fetches unique filter values from the server
+	 * Fetches the catalog filter options: the values each control offers, how
+	 * many coffees each one matches under the other active filters and, for
+	 * callers who may use them, the variety, species and drying vocabulary.
 	 */
-	async function fetchUniqueValues() {
+	async function loadFilterOptions(requestId: number) {
 		try {
-			const state = get({ subscribe });
-			const params = new URLSearchParams();
-			params.set('showWholesale', state.showWholesale ? 'true' : 'false');
-			if (state.wholesaleOnly) {
-				params.append('wholesaleOnly', 'true');
+			const params = buildQueryParams(get({ subscribe }));
+			for (const key of ['page', 'limit', 'sortField', 'sortDirection', 'projection']) {
+				params.delete(key);
 			}
+			params.set('counts', '1');
 
 			const response = await fetch(`/api/catalog/filters?${params.toString()}`);
 
@@ -361,14 +404,23 @@ function createFilterStore() {
 				throw new Error(`HTTP ${response.status}: ${response.statusText}`);
 			}
 
-			const uniqueValues = await response.json();
+			const options = (await response.json()) as Partial<CatalogFilterOptions>;
+			if (requestId !== optionsRequestSequence) return;
 
 			update((s) => ({
 				...s,
-				uniqueValues
+				uniqueValues: options.values ?? {},
+				facetCounts: options.facets ?? {},
+				vocabulary: options.vocabulary ?? null,
+				unstandardizedVarietyCount: options.unstandardizedVarietyCount ?? null,
+				optionsStatus: 'ready'
 			}));
 		} catch (error) {
 			console.error('Error fetching unique values:', error);
+			// Keep the last options on screen; only the status changes.
+			if (requestId === optionsRequestSequence) {
+				update((s) => ({ ...s, optionsStatus: 'unavailable' }));
+			}
 		}
 	}
 
@@ -406,6 +458,7 @@ function createFilterStore() {
 			state.filters = isServerSideRoute ? { ...catalogUrlState.filters } : {};
 			state.showWholesale = isServerSideRoute ? catalogUrlState.showWholesale : false;
 			state.wholesaleOnly = isServerSideRoute ? catalogUrlState.wholesaleOnly : false;
+			state.includeUnstocked = isServerSideRoute && catalogUrlState.includeUnstocked === true;
 			state.sortField = isServerSideRoute ? catalogUrlState.sortField : field;
 			state.sortDirection = isServerSideRoute ? catalogUrlState.sortDirection : direction;
 
@@ -555,6 +608,30 @@ function createFilterStore() {
 		if (isCatalogRoute(currentState.routeId)) {
 			syncCatalogUrl(currentState);
 			fetchServerData();
+			fetchUniqueValues();
+		} else {
+			processAndUpdateFilteredData();
+		}
+	}
+
+	/**
+	 * Sets several filters in one catalog request, for controls that change more
+	 * than one at a time. An empty value clears that filter.
+	 */
+	function setFilters(changes: Record<string, FilterValue>) {
+		update((state) => {
+			state.filters = sanitizeFilters({ ...state.filters, ...changes });
+			if (isCatalogRoute(state.routeId)) {
+				state.pagination.page = 1;
+			}
+			return state;
+		});
+
+		const currentState = get({ subscribe });
+		if (isCatalogRoute(currentState.routeId)) {
+			syncCatalogUrl(currentState);
+			fetchServerData();
+			fetchUniqueValues();
 		} else {
 			processAndUpdateFilteredData();
 		}
@@ -579,6 +656,7 @@ function createFilterStore() {
 		if (isCatalogRoute(currentState.routeId)) {
 			syncCatalogUrl(currentState);
 			fetchServerData();
+			fetchUniqueValues();
 		} else {
 			processAndUpdateFilteredData();
 		}
@@ -606,6 +684,65 @@ function createFilterStore() {
 			syncCatalogUrl(currentState);
 			fetchServerData();
 			fetchUniqueValues();
+		} else {
+			processAndUpdateFilteredData();
+		}
+	}
+
+	/**
+	 * Which suppliers the catalog lists (ADR-014): every publishable coffee,
+	 * hobbyist-friendly suppliers only, or wholesale suppliers only. Parchment
+	 * decides who may use the wholesale-only scope.
+	 */
+	function setSupplierScope(scope: 'all' | 'hobbyist' | 'wholesale') {
+		update((state) => {
+			state.showWholesale = scope !== 'hobbyist';
+			state.wholesaleOnly = scope === 'wholesale';
+			if (isCatalogRoute(state.routeId)) {
+				state.pagination.page = 1;
+			}
+			return state;
+		});
+
+		const currentState = get({ subscribe });
+		if (isCatalogRoute(currentState.routeId)) {
+			syncCatalogUrl(currentState);
+			fetchServerData();
+			fetchUniqueValues();
+		}
+	}
+
+	/** Catalog only: list coffees that are no longer in stock too. */
+	function setIncludeUnstocked(includeUnstocked: boolean) {
+		update((state) => {
+			state.includeUnstocked = includeUnstocked;
+			state.pagination.page = 1;
+			return state;
+		});
+
+		const currentState = get({ subscribe });
+		if (isCatalogRoute(currentState.routeId)) {
+			syncCatalogUrl(currentState);
+			fetchServerData();
+			fetchUniqueValues();
+		}
+	}
+
+	/** Sets the sort field and direction in one catalog request. */
+	function setSort(field: string | null, direction: 'asc' | 'desc' | null) {
+		update((state) => {
+			state.sortField = field;
+			state.sortDirection = field ? direction : null;
+			if (isCatalogRoute(state.routeId)) {
+				state.pagination.page = 1;
+			}
+			return state;
+		});
+
+		const currentState = get({ subscribe });
+		if (isCatalogRoute(currentState.routeId)) {
+			syncCatalogUrl(currentState);
+			fetchServerData();
 		} else {
 			processAndUpdateFilteredData();
 		}
@@ -650,6 +787,7 @@ function createFilterStore() {
 			state.filters = {};
 			state.showWholesale = true;
 			state.wholesaleOnly = false;
+			state.includeUnstocked = false;
 			// Reset to first page for server-side routes
 			if (isCatalogRoute(state.routeId)) {
 				state.pagination.page = 1;
@@ -903,8 +1041,12 @@ function createFilterStore() {
 		setSortField,
 		setSortDirection,
 		setFilter,
+		setFilters,
 		clearFiltersByKeys,
 		setShowWholesale,
+		setSupplierScope,
+		setIncludeUnstocked,
+		setSort,
 		toggleSort,
 		clearFilters,
 		getFilterableColumns,

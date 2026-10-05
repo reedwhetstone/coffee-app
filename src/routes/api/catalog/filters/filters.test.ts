@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockFacets = vi.fn();
+const mockTaxonomies = vi.fn();
+const mockList = vi.fn();
 const mockCreateParchmentServerClient = vi.fn(async () => ({
-	catalog: { facets: mockFacets }
+	catalog: { facets: mockFacets, taxonomies: mockTaxonomies, list: mockList }
 }));
 const mockResolveCatalogCredentialMode = vi.fn();
 const mockResolvePrincipal = vi.fn();
@@ -140,5 +142,105 @@ describe('/api/catalog/filters', () => {
 		const response = await GET(makeEvent('https://app.test/api/catalog/filters'));
 
 		expect(await response.json()).toEqual({});
+	});
+
+	describe('with counts=1', () => {
+		const countsUrl =
+			'https://app.test/api/catalog/filters?counts=1&country=Kenya&price_per_lb_max=8&variety_code=bourbon';
+
+		beforeEach(() => {
+			mockFacets.mockResolvedValue({
+				data: {
+					values: { countries: ['Kenya'] },
+					facets: { countries: [{ value: 'Kenya', count: 85 }] }
+				},
+				error: null
+			});
+			mockTaxonomies.mockResolvedValue({
+				data: {
+					data: {
+						varieties: [{ code: 'bourbon', label: 'Bourbon', parent_code: null }],
+						species: [],
+						drying_methods: []
+					}
+				},
+				error: null
+			});
+			mockList.mockResolvedValue({ data: { data: [], pagination: { total: 10 } }, error: null });
+		});
+
+		it('returns options and counts under the request filters, leaving entitlement to Parchment', async () => {
+			const response = await GET(makeEvent(countsUrl));
+
+			expect(response.status).toBe(200);
+			const body = await response.json();
+			expect(body.facets.countries).toEqual([{ value: 'Kenya', count: 85 }]);
+			expect(body.values.countries).toEqual(['Kenya']);
+			expect(body).not.toHaveProperty('vocabulary');
+			// The request's filters are forwarded as sent; lenient handling lets
+			// Parchment drop the ones this caller may not use, as it does for the rows.
+			expect(mockCreateParchmentServerClient).toHaveBeenCalledWith(expect.anything(), {
+				mode: 'public-demo',
+				preferHandling: 'lenient'
+			});
+			expect(mockFacets).toHaveBeenCalledWith({
+				stocked: 'true',
+				showWholesale: 'true',
+				country: 'Kenya',
+				pricePerLbMax: '8',
+				varietyCode: 'bourbon'
+			});
+			expect(mockTaxonomies).not.toHaveBeenCalled();
+		});
+
+		it('adds the vocabulary and standardized counts for a member session', async () => {
+			mockResolveCatalogCredentialMode.mockReturnValue('session');
+			mockResolvePrincipal.mockResolvedValue({
+				isAuthenticated: true,
+				authKind: 'session',
+				primaryAppRole: 'member',
+				apiPlan: 'viewer'
+			});
+
+			const response = await GET(makeEvent(countsUrl));
+
+			const body = await response.json();
+			expect(body.vocabulary.varieties).toEqual([
+				{ code: 'bourbon', label: 'Bourbon', parent_code: null }
+			]);
+			expect(body.unstandardizedVarietyCount).toBe(0);
+			expect(mockFacets).toHaveBeenCalledWith(
+				expect.objectContaining({ include: 'taxonomy', varietyCode: 'bourbon' })
+			);
+			expect(response.headers.get('cache-control')).toContain('no-store');
+		});
+
+		it('does not ask for the standardized counts for a signed-in free account', async () => {
+			mockResolvePrincipal.mockResolvedValue({
+				isAuthenticated: true,
+				authKind: 'session',
+				primaryAppRole: 'viewer',
+				apiPlan: 'viewer'
+			});
+
+			const response = await GET(makeEvent(countsUrl));
+
+			expect(await response.json()).not.toHaveProperty('vocabulary');
+			expect(mockFacets).toHaveBeenCalledWith(expect.not.objectContaining({ include: 'taxonomy' }));
+			expect(mockTaxonomies).not.toHaveBeenCalled();
+		});
+
+		it('returns 500 when the counts cannot be read', async () => {
+			mockFacets.mockResolvedValue({
+				data: undefined,
+				error: { error: { code: 'invalid_query' } }
+			});
+			const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+			const response = await GET(makeEvent(countsUrl));
+
+			expect(response.status).toBe(500);
+			consoleError.mockRestore();
+		});
 	});
 });

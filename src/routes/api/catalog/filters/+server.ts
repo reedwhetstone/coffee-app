@@ -7,6 +7,8 @@ import {
 import { resolvePrincipal } from '$lib/server/principal';
 import { normalizeCatalogWholesaleScope } from '$lib/server/catalogProxy';
 import { applyBffCatalogCacheHeaders, applyBffCatalogNoStore } from '$lib/server/cacheHeaders';
+import { resolveCatalogAccessCapabilities } from '$lib/server/catalogAccess';
+import { loadCatalogFilterOptions } from '$lib/server/catalogFilterOptions';
 import type { RequestHandler } from './$types';
 
 type CatalogFacetsQuery = NonNullable<Parameters<ParchmentClient['catalog']['facets']>[0]>;
@@ -22,6 +24,10 @@ type CatalogFacetsQuery = NonNullable<Parameters<ParchmentClient['catalog']['fac
  * process metadata for member/paid callers only) is enforced server-side by
  * Parchment, replacing the local capability/visibility logic that used to live
  * here.
+ *
+ * With `counts=1` the response becomes `{ values, facets, vocabulary?,
+ * unstandardizedVarietyCount? }`, counted under the request's catalog filters;
+ * see `$lib/server/catalogFilterOptions`.
  */
 export const GET: RequestHandler = async (event) => {
 	const { url } = event;
@@ -38,6 +44,16 @@ export const GET: RequestHandler = async (event) => {
 			mode: resolveCatalogCredentialMode(event.locals),
 			preferHandling: 'lenient'
 		});
+
+		// The catalog page asks for counts under its active filters. Other callers
+		// keep the original response: option lists for the stocked catalog.
+		if (url.searchParams.get('counts') === '1') {
+			const access = resolveCatalogAccessCapabilities({ principal });
+			const options = await loadCatalogFilterOptions(client, url, access);
+			return json(options, {
+				headers: applyBffCatalogCacheHeaders(new Headers(), principal.isAuthenticated)
+			});
+		}
 
 		const query: CatalogFacetsQuery = { stocked: 'true' };
 		query.showWholesale = url.searchParams.get('showWholesale') === 'false' ? 'false' : 'true';

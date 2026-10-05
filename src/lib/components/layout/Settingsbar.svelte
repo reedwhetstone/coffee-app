@@ -8,19 +8,10 @@
 	import { page } from '$app/state';
 	import { filterStore } from '$lib/stores/filterStore';
 	import { afterNavigate } from '$app/navigation';
-	import { checkRole, type PageAuthView } from '$lib/types/auth.types';
-	import { PREMIUM_DISCOVERY_FILTER_KEYS } from '$lib/catalog/accessPolicy';
 	import { formatSourceName } from '$lib/utils/formatters';
 
-	const premiumDiscoveryFilterColumns = new Set<string>(PREMIUM_DISCOVERY_FILTER_KEYS);
-
 	// Component props interface
-	let {
-		data,
-		onClose = () => {},
-		variant = 'default'
-	} = $props<{
-		data: Record<string, unknown>;
+	let { onClose = () => {}, variant = 'default' } = $props<{
 		isOpen?: boolean;
 		onClose?: () => void;
 		variant?: 'default' | 'rail';
@@ -28,29 +19,11 @@
 
 	// Track current route for dynamic filter options
 	let routeId = $state(page.url.pathname);
-	let pageAuth = $derived((data as { auth: PageAuthView }).auth);
-	let canUseMemberCatalogControls = $derived(checkRole(pageAuth.role, 'member'));
-	let canUsePremiumCatalogControls = $derived(
-		canUseMemberCatalogControls || pageAuth.ppiAccess === true
-	);
+	// The catalog has its own filter panel; this sidebar serves the portfolio
+	// and roast lists.
 	let filterableColumns = $derived(filterStore.getFilterableColumns(routeId));
-	let visibleSortColumns = $derived(
-		((routeId === '/' || routeId === '/catalog') && !canUsePremiumCatalogControls
-			? filterableColumns.filter((column) => !premiumDiscoveryFilterColumns.has(column))
-			: filterableColumns
-		).filter((column) => column !== 'elevation_masl')
-	);
-	let visibleFilterColumns = $derived(
-		(routeId === '/' || routeId === '/catalog') && !canUsePremiumCatalogControls
-			? filterableColumns.filter(
-					(column) =>
-						column !== 'score_value' &&
-						column !== 'cost_lb' &&
-						column !== 'stocked_date' &&
-						!premiumDiscoveryFilterColumns.has(column)
-				)
-			: filterableColumns
-	);
+	let visibleSortColumns = $derived(filterableColumns);
+	let visibleFilterColumns = $derived(filterableColumns);
 
 	// Update route tracking and close sidebar on navigation
 	afterNavigate(() => {
@@ -68,7 +41,6 @@
 		// Custom field labels
 		const customLabels: Record<string, string> = {
 			grade: 'Grade',
-			elevation_masl: 'Elevation (MASL)',
 			appearance: 'Appearance',
 			type: 'Importer',
 			roast_id: 'Roast ID'
@@ -80,71 +52,6 @@
 		}
 
 		return column.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-	}
-
-	type ElevationRangeFilter = {
-		min: string | number;
-		max: string | number;
-		includeUnknown?: boolean;
-	};
-
-	function elevationRange(): ElevationRangeFilter {
-		const value = $filterStore.filters.elevation_masl;
-		return value && typeof value === 'object' && !Array.isArray(value)
-			? (value as ElevationRangeFilter)
-			: { min: '', max: '' };
-	}
-
-	let elevationDraft = $state<{
-		min: string | number | null;
-		max: string | number | null;
-	}>({ min: null, max: null });
-	let elevationRangeError = $state<string | null>(null);
-
-	function displayedElevationRange(): ElevationRangeFilter {
-		const current = elevationRange();
-		return {
-			min: elevationDraft.min ?? current.min,
-			max: elevationDraft.max ?? current.max,
-			...(current.includeUnknown === true ? { includeUnknown: true } : {})
-		};
-	}
-
-	function hasInvertedElevationBounds(min: string | number, max: string | number): boolean {
-		if (min === '' || max === '') return false;
-		const numericMin = Number(min);
-		const numericMax = Number(max);
-		return Number.isFinite(numericMin) && Number.isFinite(numericMax) && numericMin > numericMax;
-	}
-
-	function setElevationRange(min: string | number, max: string | number) {
-		elevationDraft = { min, max };
-		if (hasInvertedElevationBounds(min, max)) {
-			elevationRangeError = 'Minimum elevation cannot exceed maximum elevation.';
-			return;
-		}
-		elevationRangeError = null;
-		const active = min !== '' || max !== '';
-		filterStore.setFilter('elevation_masl', {
-			min,
-			max,
-			...(active && elevationRange().includeUnknown ? { includeUnknown: true } : {})
-		});
-		elevationDraft = { min: null, max: null };
-	}
-
-	function setIncludeUnknownElevation(includeUnknown: boolean) {
-		const current = displayedElevationRange();
-		if (hasInvertedElevationBounds(current.min, current.max)) {
-			elevationRangeError = 'Minimum elevation cannot exceed maximum elevation.';
-			return;
-		}
-		elevationRangeError = null;
-		filterStore.setFilter('elevation_masl', {
-			min: current.min,
-			max: current.max,
-			...(includeUnknown ? { includeUnknown: true } : {})
-		});
 	}
 </script>
 
@@ -230,51 +137,6 @@
 					Filters
 				</h4>
 				<div class={variant === 'rail' ? 'space-y-5' : 'space-y-3'}>
-					{#if routeId === '/' || routeId === '/catalog'}
-						<div
-							class={variant === 'rail'
-								? 'py-1'
-								: 'rounded-md border border-line bg-surface-canvas p-3'}
-						>
-							<label class="flex items-center justify-between gap-3">
-								<div>
-									<div class="text-xs font-medium text-ink">Home Roaster Suppliers Only</div>
-									<p class="text-[11px] text-muted">Filter out wholesale quantities</p>
-								</div>
-								<input
-									type="checkbox"
-									checked={!$filterStore.showWholesale}
-									onchange={(e) => filterStore.setShowWholesale(!e.currentTarget.checked)}
-									class="h-4 w-4 rounded border border-line bg-surface-canvas text-accent focus:ring-2 focus:ring-accent"
-								/>
-							</label>
-						</div>
-
-						{#if canUseMemberCatalogControls}
-							<div class="space-y-1">
-								<label for="stocked_days" class="block text-xs font-medium text-ink">
-									Stocked window
-								</label>
-								<select
-									id="stocked_days"
-									value={$filterStore.filters.stocked_days || ''}
-									onchange={(e) => filterStore.setFilter('stocked_days', e.currentTarget.value)}
-									class="mt-1 w-full rounded-md border border-line bg-surface-canvas p-2 text-sm text-ink shadow-sm focus:outline-none focus:ring-2 focus:ring-accent"
-								>
-									<option value="">Any time</option>
-									<option value="7">Last 7 days</option>
-									<option value="14">Last 14 days</option>
-									<option value="30">Last 30 days</option>
-									<option value="60">Last 60 days</option>
-									<option value="90">Last 90 days</option>
-								</select>
-								<p class="text-[11px] text-muted">
-									Relative filter for coffees stocked within the last N days.
-								</p>
-							</div>
-						{/if}
-					{/if}
-
 					{#each visibleFilterColumns as column}
 						<div class="space-y-1">
 							<label for={column} class="block text-xs font-medium text-ink">
@@ -455,108 +317,6 @@
 										step="0.1"
 									/>
 								</div>
-							{:else if column === 'elevation_masl'}
-								<div class="space-y-2">
-									<div class="flex gap-2">
-										<input
-											id={column}
-											type="number"
-											value={displayedElevationRange().min}
-											oninput={(e) => {
-												const min = e.currentTarget.value;
-												setElevationRange(min, displayedElevationRange().max);
-											}}
-											class="w-full rounded-md border border-line bg-surface-canvas p-2 text-sm text-ink shadow-sm focus:outline-none focus:ring-2 focus:ring-accent"
-											placeholder="Min"
-											min="0"
-											step="50"
-										/>
-										<input
-											aria-label="Maximum Elevation (MASL)"
-											type="number"
-											value={displayedElevationRange().max}
-											oninput={(e) => {
-												const max = e.currentTarget.value;
-												setElevationRange(displayedElevationRange().min, max);
-											}}
-											class="w-full rounded-md border border-line bg-surface-canvas p-2 text-sm text-ink shadow-sm focus:outline-none focus:ring-2 focus:ring-accent"
-											placeholder="Max"
-											min="0"
-											step="50"
-										/>
-									</div>
-									<p class="text-[11px] text-muted">
-										Match coffees whose reported elevation range overlaps these bounds.
-									</p>
-									{#if elevationRangeError}
-										<p class="text-[11px] text-danger" role="alert">{elevationRangeError}</p>
-									{/if}
-									<label class="flex items-start gap-2 pt-1 text-xs text-ink">
-										<input
-											type="checkbox"
-											checked={elevationRange().includeUnknown === true}
-											disabled={displayedElevationRange().min === '' &&
-												displayedElevationRange().max === ''}
-											onchange={(e) => setIncludeUnknownElevation(e.currentTarget.checked)}
-											class="mt-0.5 h-4 w-4 rounded border border-line bg-surface-canvas text-accent focus:ring-2 focus:ring-accent disabled:opacity-40"
-										/>
-										<span>
-											Include coffees with unknown elevation
-											<span class="mt-0.5 block text-[11px] text-muted"
-												>Off by default when an elevation range is active.</span
-											>
-										</span>
-									</label>
-								</div>
-							{:else if column === 'cost_lb'}
-								<div class="flex gap-2">
-									<input
-										id={column}
-										type="number"
-										value={(
-											$filterStore.filters.cost_lb as
-												| { min: string | number; max: string | number }
-												| undefined
-										)?.min || ''}
-										oninput={(e) => {
-											const min = e.currentTarget.value;
-											const max =
-												(
-													$filterStore.filters.cost_lb as
-														| { min: string | number; max: string | number }
-														| undefined
-												)?.max || '';
-											filterStore.setFilter('cost_lb', { min, max });
-										}}
-										class="w-full rounded-md border border-line bg-surface-canvas p-2 text-sm text-ink shadow-sm focus:outline-none focus:ring-2 focus:ring-accent"
-										placeholder="Min $"
-										min="0"
-										step="0.01"
-									/>
-									<input
-										aria-label="Maximum Cost Lb"
-										type="number"
-										value={(
-											$filterStore.filters.cost_lb as
-												| { min: string | number; max: string | number }
-												| undefined
-										)?.max || ''}
-										oninput={(e) => {
-											const max = e.currentTarget.value;
-											const min =
-												(
-													$filterStore.filters.cost_lb as
-														| { min: string | number; max: string | number }
-														| undefined
-												)?.min || '';
-											filterStore.setFilter('cost_lb', { min, max });
-										}}
-										class="w-full rounded-md border border-line bg-surface-canvas p-2 text-sm text-ink shadow-sm focus:outline-none focus:ring-2 focus:ring-accent"
-										placeholder="Max $"
-										min="0"
-										step="0.01"
-									/>
-								</div>
 							{:else if column === 'arrival_date' && $filterStore.uniqueValues?.arrivalDates?.length}
 								<select
 									id={column}
@@ -593,17 +353,6 @@
 										<option value={date}>{date}</option>
 									{/each}
 								</select>
-							{:else if column === 'stocked_date'}
-								<div class="space-y-2">
-									<input
-										id="stocked_date"
-										type="date"
-										value={$filterStore.filters.stocked_date || ''}
-										onchange={(e) => filterStore.setFilter('stocked_date', e.currentTarget.value)}
-										class="mt-1 w-full rounded-md border border-line bg-surface-canvas p-2 text-sm text-ink shadow-sm focus:outline-none focus:ring-2 focus:ring-accent"
-									/>
-									<p class="text-[11px] text-muted">Show coffees stocked on or after this date.</p>
-								</div>
 							{:else if column === 'batch_name' && $filterStore.uniqueValues?.batchNames?.length}
 								<select
 									id={column}

@@ -44,6 +44,32 @@ describe('resolveCatalogAccessCapabilities', () => {
 		}
 	});
 
+	it('opens the price range to every signed-in session and API key, and the score range to members', () => {
+		const access = (principal: RequestPrincipal) => {
+			const { canUsePriceRanges, canUsePriceScoreRanges } = resolveCatalogAccessCapabilities({
+				principal
+			});
+			return { canUsePriceRanges, canUsePriceScoreRanges };
+		};
+
+		expect(access(anonymousPrincipal)).toEqual({
+			canUsePriceRanges: false,
+			canUsePriceScoreRanges: false
+		});
+		expect(access(sessionPrincipal('viewer'))).toEqual({
+			canUsePriceRanges: true,
+			canUsePriceScoreRanges: false
+		});
+		expect(access(sessionPrincipal('member'))).toEqual({
+			canUsePriceRanges: true,
+			canUsePriceScoreRanges: true
+		});
+		expect(access(apiPrincipal('viewer'))).toEqual({
+			canUsePriceRanges: true,
+			canUsePriceScoreRanges: true
+		});
+	});
+
 	it('grants member and admin sessions advanced catalog leverage', () => {
 		for (const role of ['member', 'admin'] as const) {
 			const capabilities = resolveCatalogAccessCapabilities({ principal: sessionPrincipal(role) });

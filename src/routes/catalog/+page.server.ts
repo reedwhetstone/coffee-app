@@ -15,6 +15,7 @@ import {
 import { buildPublicMeta, resolvePublicPageSocialImage } from '$lib/seo/meta';
 import { createSchemaService } from '$lib/services/schemaService';
 import {
+	TAXONOMY_CODE_FILTER_KEYS,
 	catalogUrlStateToSearchState,
 	parseCatalogUrlState,
 	type CatalogUrlState
@@ -57,6 +58,9 @@ type ParchmentCatalogListQuery = CatalogListQuery & {
 	has_additives?: 'true' | 'false';
 	processing_disclosure_level?: string;
 	processing_confidence_min?: number;
+	drying_method_code?: string[];
+	variety_code?: string[];
+	species_code?: string[];
 	cultivar_detail?: string;
 	type?: string;
 	grade?: string;
@@ -178,6 +182,9 @@ function buildParchmentCatalogQuery(
 	}
 	appendStringParam(query, 'processing_disclosure_level', searchState.processingDisclosureLevel);
 	appendNumberParam(query, 'processing_confidence_min', searchState.processingConfidenceMin);
+	appendStringArrayParam(query, 'drying_method_code', searchState.dryingMethodCodes);
+	appendStringArrayParam(query, 'variety_code', searchState.varietyCodes);
+	appendStringArrayParam(query, 'species_code', searchState.speciesCodes);
 	appendStringParam(query, 'cultivar_detail', searchState.cultivarDetail);
 	appendStringParam(query, 'type', searchState.type);
 	appendStringParam(query, 'grade', searchState.grade);
@@ -293,9 +300,31 @@ function stripPremiumDiscoveryFilters(state: CatalogUrlState): CatalogUrlState {
 	return { ...state, filters };
 }
 
-function stripPriceScoreRangeFilters(state: CatalogUrlState): CatalogUrlState {
-	const { score_value: _scoreValue, cost_lb: _costLb, ...filters } = state.filters;
+function stripScoreRangeFilter(state: CatalogUrlState): CatalogUrlState {
+	const { score_value: _scoreValue, ...filters } = state.filters;
 	return { ...state, filters };
+}
+
+function stripPriceRangeFilter(state: CatalogUrlState): CatalogUrlState {
+	const { cost_lb: _costLb, ...filters } = state.filters;
+	return { ...state, filters };
+}
+
+function stripTaxonomyCodeFilters(state: CatalogUrlState): CatalogUrlState {
+	const filters = { ...state.filters };
+	for (const key of TAXONOMY_CODE_FILTER_KEYS) delete filters[key];
+	return { ...state, filters };
+}
+
+// Parchment rejects a variety, species or drying code that is not in its
+// vocabulary (400 invalid_query) instead of returning an empty result. Codes in
+// the UI come from that vocabulary, so this only happens for a hand-edited or
+// outdated link.
+function isUnknownTaxonomyCodeError(error: unknown): boolean {
+	return (
+		error instanceof Error &&
+		/^Unknown (varietyCode|speciesCode|dryingMethodCode) /.test(error.message)
+	);
 }
 
 function stripFreshnessFilters(state: CatalogUrlState): CatalogUrlState {
@@ -409,9 +438,13 @@ export const load: PageServerLoad = async (event) => {
 	const freshnessAuthorizedCatalogState = catalogAccess.canUseAdvancedFilters
 		? discoveryAuthorizedCatalogState
 		: stripFreshnessFilters(discoveryAuthorizedCatalogState);
-	const rangeAuthorizedCatalogState = catalogAccess.canUsePriceScoreRanges
+	const scoreAuthorizedCatalogState = catalogAccess.canUsePriceScoreRanges
 		? freshnessAuthorizedCatalogState
-		: stripPriceScoreRangeFilters(freshnessAuthorizedCatalogState);
+		: stripScoreRangeFilter(freshnessAuthorizedCatalogState);
+	// Price is the one range every signed-in account may use (ADR-005).
+	const rangeAuthorizedCatalogState = catalogAccess.canUsePriceRanges
+		? scoreAuthorizedCatalogState
+		: stripPriceRangeFilter(scoreAuthorizedCatalogState);
 	const authorizedCatalogState = catalogAccess.canUseAdvancedSorts
 		? rangeAuthorizedCatalogState
 		: stripAdvancedSort(rangeAuthorizedCatalogState);
@@ -466,7 +499,7 @@ export const load: PageServerLoad = async (event) => {
 	// Reused for the critical catalog list plus the deferred origin-stats and
 	// deep-link reads so every Parchment call presents the same principal and
 	// shares one client per load.
-	const effectiveCatalogState: CatalogUrlState = trackedOnly
+	let effectiveCatalogState: CatalogUrlState = trackedOnly
 		? {
 				...initialCatalogState,
 				filters: {},
@@ -478,6 +511,7 @@ export const load: PageServerLoad = async (event) => {
 			}
 		: initialCatalogState;
 
+	let unrecognizedCodeFilters = false;
 	try {
 		if (!trackedOnly || (trackedLotIdsForQuery !== null && trackedLotIdsForQuery.length > 0)) {
 			const client =
@@ -487,14 +521,29 @@ export const load: PageServerLoad = async (event) => {
 				}));
 			catalogClient = client;
 			const trackedQueryIds = trackedLotIdsForQuery ?? [];
-			const catalogResult = (await client.catalog.list(
-				buildParchmentCatalogQuery(effectiveCatalogState, {
-					stocked: trackedOnly ? 'all' : 'true',
-					projection: 'summary',
-					...(trackedOnly ? { coffeeIds: trackedQueryIds, limit: TRACKED_VIEW_LIMIT, page: 1 } : {})
-				}) as CatalogListQuery
-			)) as CatalogListResult;
-			const catalogBody = extractParchmentCatalogBody(catalogResult);
+			const listCatalog = async (state: CatalogUrlState) =>
+				extractParchmentCatalogBody(
+					(await client.catalog.list(
+						buildParchmentCatalogQuery(state, {
+							stocked: trackedOnly || state.includeUnstocked ? 'all' : 'true',
+							projection: 'summary',
+							...(trackedOnly
+								? { coffeeIds: trackedQueryIds, limit: TRACKED_VIEW_LIMIT, page: 1 }
+								: {})
+						}) as CatalogListQuery
+					)) as CatalogListResult
+				);
+			let catalogBody: CatalogListBody;
+			try {
+				catalogBody = await listCatalog(effectiveCatalogState);
+			} catch (error) {
+				if (!isUnknownTaxonomyCodeError(error)) throw error;
+				// Show the catalog without the unrecognized filter and say so,
+				// instead of failing the page.
+				effectiveCatalogState = stripTaxonomyCodeFilters(effectiveCatalogState);
+				unrecognizedCodeFilters = true;
+				catalogBody = await listCatalog(effectiveCatalogState);
+			}
 			catalogData = extractParchmentCatalogRows(catalogBody);
 			count = getParchmentCatalogTotal(catalogBody, catalogData);
 		}
@@ -577,10 +626,9 @@ export const load: PageServerLoad = async (event) => {
 		deepLinkCoffee,
 		catalogAccess,
 		catalogAccessNotice,
+		unrecognizedCodeFilters,
 		catalogSchemaUnavailable,
-		pagination: trackedOnly
-			? buildPagination(effectiveCatalogState, count ?? catalogResources.length)
-			: buildPagination(initialCatalogState, count ?? catalogResources.length),
+		pagination: buildPagination(effectiveCatalogState, count ?? catalogResources.length),
 		meta: buildPublicMeta({
 			baseUrl,
 			path: '/catalog',

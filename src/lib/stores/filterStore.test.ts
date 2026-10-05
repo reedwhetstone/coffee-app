@@ -8,6 +8,11 @@ async function loadFilterStore(): Promise<FilterStoreModule> {
 	return import('./filterStore');
 }
 
+/** The URLs a fetch spy was asked for, limited to one endpoint. */
+function requestedUrls(fetchSpy: { mock: { calls: unknown[][] } }, prefix: string): string[] {
+	return fetchSpy.mock.calls.map((call) => String(call[0])).filter((url) => url.startsWith(prefix));
+}
+
 function createCatalogResponse(meta: Record<string, unknown> = {}) {
 	return new Response(
 		JSON.stringify({
@@ -104,12 +109,13 @@ describe('filterStore catalog URL and filter clearing behavior', () => {
 		expect(state.sortField).toBe('score_value');
 		expect(state.sortDirection).toBe('asc');
 		expect(state.pagination.page).toBe(1);
-		expect(fetchSpy).toHaveBeenNthCalledWith(1, '/api/catalog/filters?showWholesale=true');
-		expect(fetchSpy).toHaveBeenNthCalledWith(
-			2,
+		expect(fetchSpy).toHaveBeenCalledWith(
 			'/api/catalog?page=1&limit=15&sortField=score_value&sortDirection=asc&projection=summary',
 			expect.objectContaining({ signal: expect.any(AbortSignal) })
 		);
+		expect(requestedUrls(fetchSpy, '/api/catalog/filters?')).toEqual([
+			'/api/catalog/filters?counts=1'
+		]);
 	});
 
 	it('fetches catalog refreshes through the first-party BFF and stores upstream notices', async () => {
@@ -144,8 +150,7 @@ describe('filterStore catalog URL and filter clearing behavior', () => {
 		await vi.runOnlyPendingTimersAsync();
 
 		const state = get(filterStore);
-		expect(fetchSpy).toHaveBeenCalledTimes(1);
-		expect(fetchSpy.mock.calls[0][0].toString()).toContain('/api/catalog?');
+		expect(requestedUrls(fetchSpy, '/api/catalog?')).toHaveLength(1);
 		expect(state.catalogResponseMeta).toEqual({ notices });
 		expect(state.catalogNotices).toEqual(notices);
 	});
@@ -186,9 +191,9 @@ describe('filterStore catalog URL and filter clearing behavior', () => {
 
 		await vi.runOnlyPendingTimersAsync();
 
-		expect(fetchSpy).toHaveBeenCalledTimes(1);
-		const requestUrl = fetchSpy.mock.calls[0][0].toString();
-		expect(requestUrl).toContain('/api/catalog?');
+		const rowRequests = requestedUrls(fetchSpy, '/api/catalog?');
+		expect(rowRequests).toHaveLength(1);
+		const requestUrl = rowRequests[0];
 		expect(requestUrl).toContain('processing_base_method=natural');
 		expect(requestUrl).toContain('fermentation_type=anaerobic');
 		expect(requestUrl).toContain('process_additive=fruit');
@@ -312,8 +317,10 @@ describe('filterStore catalog URL and filter clearing behavior', () => {
 			}
 		);
 
-		await vi.runOnlyPendingTimersAsync();
-		expect(fetchSpy).toHaveBeenCalledWith('/api/catalog/filters?showWholesale=false');
+		await vi.runAllTimersAsync();
+		expect(requestedUrls(fetchSpy, '/api/catalog/filters?')).toEqual([
+			'/api/catalog/filters?showWholesale=false&country=Ethiopia&processing_base_method=natural&fermentation_type=anaerobic&has_additives=true&processing_confidence_min=0.8&counts=1'
+		]);
 		fetchSpy.mockClear();
 
 		filterStore.clearFiltersByKeys([
@@ -327,8 +334,7 @@ describe('filterStore catalog URL and filter clearing behavior', () => {
 		const state = get(filterStore);
 		expect(state.filters).toEqual({ country: ['Ethiopia'] });
 		expect(state.pagination.page).toBe(1);
-		expect(fetchSpy).toHaveBeenNthCalledWith(
-			1,
+		expect(fetchSpy).toHaveBeenCalledWith(
 			'/api/catalog?page=1&limit=15&showWholesale=false&country=Ethiopia&projection=summary',
 			expect.objectContaining({ signal: expect.any(AbortSignal) })
 		);
@@ -366,9 +372,9 @@ describe('filterStore catalog URL and filter clearing behavior', () => {
 
 		await vi.runOnlyPendingTimersAsync();
 
-		expect(fetchSpy).toHaveBeenCalledTimes(1);
-		const requestUrl = fetchSpy.mock.calls[0][0].toString();
-		expect(requestUrl).toContain('/api/catalog?');
+		const rowRequests = requestedUrls(fetchSpy, '/api/catalog?');
+		expect(rowRequests).toHaveLength(1);
+		const requestUrl = rowRequests[0];
 		expect(requestUrl).toContain('stocked_date=2026-03-01');
 		expect(requestUrl).toContain('stocked_days=30');
 	});
@@ -760,5 +766,158 @@ describe('filterStore stale-while-revalidate catalog interactions', () => {
 		const state = get(filterStore);
 		expect(state.sortField).toBeNull();
 		expect(state.sortDirection).toBeNull();
+	});
+});
+
+describe('filterStore catalog filter options', () => {
+	beforeEach(() => {
+		vi.useFakeTimers();
+		window.history.replaceState({}, '', '/catalog');
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+		vi.unstubAllGlobals();
+	});
+
+	function json(body: unknown) {
+		return new Response(JSON.stringify(body), {
+			status: 200,
+			headers: { 'Content-Type': 'application/json' }
+		});
+	}
+
+	async function initCatalog(optionsResponse: (url: string) => Promise<Response> | Response) {
+		const fetchSpy = vi.fn(async (input: RequestInfo | URL) => {
+			const url = input.toString();
+			if (url.startsWith('/api/catalog?')) return createCatalogResponse();
+			if (url.startsWith('/api/catalog/filters?')) return optionsResponse(url);
+			throw new Error(`Unexpected fetch: ${url}`);
+		});
+		vi.stubGlobal('fetch', fetchSpy);
+		const { filterStore } = await loadFilterStore();
+		filterStore.initializeForRoute('/catalog', [], { serverData: [] });
+		await vi.runAllTimersAsync();
+		return { filterStore, fetchSpy };
+	}
+
+	it('asks for counts under the active filters, without paging or sort', async () => {
+		const { filterStore, fetchSpy } = await initCatalog(() => json({ values: {}, facets: {} }));
+		fetchSpy.mockClear();
+
+		filterStore.setSort('price_per_lb', 'asc');
+		filterStore.setFilters({
+			country: ['Kenya', 'Ethiopia'],
+			variety_code: ['bourbon'],
+			cost_lb: { min: '8', max: '12' }
+		});
+		await vi.runOnlyPendingTimersAsync();
+
+		expect(requestedUrls(fetchSpy, '/api/catalog/filters?')).toEqual([
+			'/api/catalog/filters?country=Kenya&country=Ethiopia&variety_code=bourbon&price_per_lb_min=8&price_per_lb_max=12&counts=1'
+		]);
+	});
+
+	it('stores the options, counts and vocabulary and reports them ready', async () => {
+		const vocabulary = {
+			varieties: [{ code: 'bourbon', label: 'Bourbon', parent_code: null }],
+			species: [],
+			drying_methods: []
+		};
+		const { filterStore } = await initCatalog(() =>
+			json({
+				values: { countries: ['Kenya'] },
+				facets: { countries: [{ value: 'Kenya', count: 85 }] },
+				vocabulary,
+				unstandardizedVarietyCount: 12
+			})
+		);
+
+		const state = get(filterStore);
+		expect(state.optionsStatus).toBe('ready');
+		expect(state.uniqueValues).toEqual({ countries: ['Kenya'] });
+		expect(state.facetCounts).toEqual({ countries: [{ value: 'Kenya', count: 85 }] });
+		expect(state.vocabulary).toEqual(vocabulary);
+		expect(state.unstandardizedVarietyCount).toBe(12);
+	});
+
+	it('keeps the last options and reports them unavailable when the read fails', async () => {
+		let fail = false;
+		const { filterStore } = await initCatalog(() =>
+			fail
+				? new Response('{}', { status: 500 })
+				: json({ values: {}, facets: { countries: [{ value: 'Kenya', count: 85 }] } })
+		);
+		const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+		fail = true;
+		filterStore.setFilter('name', 'gesha');
+		expect(get(filterStore).optionsStatus).toBe('loading');
+		await vi.runOnlyPendingTimersAsync();
+
+		const state = get(filterStore);
+		expect(state.optionsStatus).toBe('unavailable');
+		expect(state.facetCounts.countries).toEqual([{ value: 'Kenya', count: 85 }]);
+		consoleError.mockRestore();
+	});
+
+	it('ignores a slower earlier options response', async () => {
+		const pending: Array<(response: Response) => void> = [];
+		const { filterStore } = await initCatalog((url) =>
+			url.includes('name=')
+				? new Promise<Response>((resolve) => pending.push(resolve))
+				: json({ values: {}, facets: {} })
+		);
+
+		filterStore.setFilter('name', 'first');
+		await vi.runOnlyPendingTimersAsync();
+		filterStore.setFilter('name', 'second');
+		await vi.runOnlyPendingTimersAsync();
+		expect(pending).toHaveLength(2);
+
+		pending[1](json({ values: {}, facets: { countries: [{ value: 'Second', count: 2 }] } }));
+		await vi.runOnlyPendingTimersAsync();
+		pending[0](json({ values: {}, facets: { countries: [{ value: 'First', count: 1 }] } }));
+		await vi.runOnlyPendingTimersAsync();
+
+		expect(get(filterStore).facetCounts.countries).toEqual([{ value: 'Second', count: 2 }]);
+	});
+
+	it('maps the supplier scope onto the wholesale parameters', async () => {
+		const { filterStore, fetchSpy } = await initCatalog(() => json({ values: {}, facets: {} }));
+
+		fetchSpy.mockClear();
+		filterStore.setSupplierScope('hobbyist');
+		await vi.runOnlyPendingTimersAsync();
+		expect(requestedUrls(fetchSpy, '/api/catalog?')[0]).toContain('showWholesale=false');
+		expect(window.location.search).toBe('?showWholesale=false');
+
+		fetchSpy.mockClear();
+		filterStore.setSupplierScope('wholesale');
+		await vi.runOnlyPendingTimersAsync();
+		expect(requestedUrls(fetchSpy, '/api/catalog?')[0]).toContain(
+			'showWholesale=true&wholesaleOnly=true'
+		);
+
+		filterStore.setSupplierScope('all');
+		await vi.runOnlyPendingTimersAsync();
+		expect(window.location.search).toBe('');
+	});
+
+	it('lists out-of-stock coffees too when asked, and says so in the link', async () => {
+		const { filterStore, fetchSpy } = await initCatalog(() => json({ values: {}, facets: {} }));
+		fetchSpy.mockClear();
+
+		filterStore.setIncludeUnstocked(true);
+		await vi.runOnlyPendingTimersAsync();
+
+		expect(requestedUrls(fetchSpy, '/api/catalog?')[0]).toContain('stocked=all');
+		expect(requestedUrls(fetchSpy, '/api/catalog/filters?')[0]).toContain('stocked=all');
+		expect(window.location.search).toBe('?stocked=all');
+
+		filterStore.clearFilters();
+		await vi.runOnlyPendingTimersAsync();
+		expect(get(filterStore).includeUnstocked).toBe(false);
+		expect(window.location.search).toBe('');
 	});
 });

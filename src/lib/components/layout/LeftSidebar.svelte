@@ -13,6 +13,7 @@
 	import DesktopShellIcon from '$lib/components/layout/DesktopShellIcon.svelte';
 	import PurveyorsCircleMark from '$lib/components/layout/PurveyorsCircleMark.svelte';
 	import { countActiveCatalogFilters } from '$lib/components/layout/desktopShellState';
+	import { catalogFilterPanel } from '$lib/stores/catalogFilterPanel.svelte';
 
 	type MenuId = 'auth' | 'nav' | 'settings' | 'actions' | 'admin';
 
@@ -79,6 +80,18 @@
 		}
 	}
 
+	// The catalog owns its filter panel; the other routes use the shell's.
+	let filtersOpenCatalogPanel = $derived(currentRoute === '/catalog');
+
+	function handleFiltersClick(trigger: HTMLElement) {
+		if (filtersOpenCatalogPanel) {
+			void closeAllMenus(false);
+			catalogFilterPanel.open = true;
+			return;
+		}
+		toggleMenu('settings', trigger);
+	}
+
 	function handleChatClick() {
 		void closeAllMenus(false);
 		void goto('/chat');
@@ -131,7 +144,7 @@
 		</aside>
 	{:else if menu === 'settings'}
 		<aside class="h-full bg-surface-canvas text-ink" aria-label="Filters menu">
-			<Settingsbar {data} isOpen={true} onClose={closeAllMenus} variant="rail" />
+			<Settingsbar isOpen={true} onClose={closeAllMenus} variant="rail" />
 		</aside>
 	{:else}
 		<aside class="h-full bg-surface-canvas text-ink" aria-label="Admin menu">
@@ -193,13 +206,16 @@
 		{#if showSettings}
 			<button
 				type="button"
-				onclick={(event) => toggleMenu('settings', event.currentTarget)}
+				onclick={(event) => handleFiltersClick(event.currentTarget)}
 				class="group relative mt-2 flex h-10 w-10 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-panel hover:text-ink"
 				class:bg-surface-panel={activeMenu === 'settings'}
 				class:text-ink={activeMenu === 'settings'}
 				aria-label={activeMenu === 'settings' ? 'Close filters' : 'Open filters'}
-				aria-controls="desktop-shell-panel"
-				aria-expanded={activeMenu === 'settings'}
+				aria-controls={filtersOpenCatalogPanel ? undefined : 'desktop-shell-panel'}
+				aria-haspopup={filtersOpenCatalogPanel ? 'dialog' : undefined}
+				aria-expanded={filtersOpenCatalogPanel
+					? catalogFilterPanel.open
+					: activeMenu === 'settings'}
 			>
 				<DesktopShellIcon name="filters" />
 				<span class="rail-tooltip">Filters</span>

@@ -124,6 +124,14 @@ These controls leave the filter UI. Their URL params do not: a shared or bookmar
 
 Each slice ships as its own PR with tests for the filter-to-param mapping, locked states per access level, URL round trips including legacy params, and BFF facet forwarding.
 
+### Slice 1 as built (2026-10-04)
+
+Slice 1 follows the description above, with three points worth knowing before slice 2:
+
+- **Two public filters stay open to free accounts.** The old sidebar gave free accounts a variety text filter (`cultivar_detail`) and the supplier arrival month. Locking them with their sections would have taken away something free accounts already had, which this plan does not do. So the Variety section offers a "Variety name" text search to viewers who cannot use the standardized variety filter, and Supplier arrival stays open while the stocked-window presets are locked.
+- **Counts are slower than the results.** Parchment's `/v1/catalog/facets` is not cached and its cost grows with the number of coffees it counts: for the whole stocked catalog it took 2 to 7 seconds in production on 2026-10-04 (longest with `include=taxonomy`), against about 1 second for the listing; a well-filtered read takes under a second. A control's "own filter removed" read is a whole-catalog read whenever it is the only filter set. So the results update first and the counts follow, typically 1 to 5 seconds later, and the panel says "Updating counts" while they do. The BFF keeps the wait to the slowest single read (the vocabulary, the two listing totals and the per-control reads run alongside it) and returns only the facets the controls read: 7 to 25 KB instead of about 230 KB. Making the facets read faster, or letting a caller ask for only the facets it needs, is Parchment work and is the main thing that would improve this panel.
+- **An unknown code does not break the page.** Parchment rejects a variety, species or drying code that is not in its vocabulary. A link carrying one loads the catalog without that filter and says so.
+
 ## Decisions
 
 The six open questions this plan was reviewed with, as answered.
