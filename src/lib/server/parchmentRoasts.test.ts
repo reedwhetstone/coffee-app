@@ -3,7 +3,8 @@ import {
 	fetchParchmentRoastList,
 	fetchParchmentRoastPage,
 	fetchParchmentRoasts,
-	ParchmentRoastListError
+	ParchmentRoastListError,
+	type ParchmentRoastTotals
 } from './parchmentRoasts';
 
 const roast = {
@@ -48,7 +49,7 @@ const roast = {
 };
 
 const totals = { roasts: 201, batches: 120, average_loss_percent: 15.63 };
-const page = (data: unknown[], pageTotals = totals) => ({
+const page = (data: unknown[], pageTotals: ParchmentRoastTotals = totals) => ({
 	data: { data, meta: { totals: pageTotals } }
 });
 const failure = (status: number, code: string, message: string) => ({

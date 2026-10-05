@@ -51,7 +51,14 @@ describe('the roast list’s filters in its address', () => {
 		['wholesale', { market: 'wholesale' }],
 		[
 			'every filter at once',
-			{ coffee: 101, batch: BATCH, from: '2026-09-01', to: '2026-09-30', q: 'guji', market: 'retail' }
+			{
+				coffee: 101,
+				batch: BATCH,
+				from: '2026-09-01',
+				to: '2026-09-30',
+				q: 'guji',
+				market: 'retail'
+			}
 		]
 	])('writes %s to the address and reads the same filters back', (_name, overrides) => {
 		const written = filters(overrides);
@@ -122,7 +129,9 @@ describe('the roast list’s filters in its address', () => {
 	it('clears every filter and nothing else', () => {
 		const next = writeRoastListFilters(
 			NO_ROAST_LIST_FILTERS,
-			new URLSearchParams(`coffee=101&batch=${BATCH}&range=7d&from=2026-09-01&to=2026-09-30&q=x&market=retail&roast=4531`)
+			new URLSearchParams(
+				`coffee=101&batch=${BATCH}&range=7d&from=2026-09-01&to=2026-09-30&q=x&market=retail&roast=4531`
+			)
 		);
 
 		expect(next.toString()).toBe('roast=4531');
@@ -255,7 +264,10 @@ describe('what is said under "No roasts match."', () => {
 		],
 		[{ range: '30d' }, 'Nothing was roasted in the last 30 days.'],
 		[{ range: 'ytd' }, 'Nothing was roasted this year.'],
-		[{ from: '2026-09-01', to: '2026-09-30' }, 'Nothing was roasted from Sep 1, 2026 to Sep 30, 2026.'],
+		[
+			{ from: '2026-09-01', to: '2026-09-30' },
+			'Nothing was roasted from Sep 1, 2026 to Sep 30, 2026.'
+		],
 		[{ from: '2026-09-01', to: '2026-09-01' }, 'Nothing was roasted on Sep 1, 2026.'],
 		[{ from: '2026-09-01' }, 'Nothing was roasted since Sep 1, 2026.'],
 		[{ to: '2026-09-30' }, 'Nothing was roasted up to Sep 30, 2026.'],

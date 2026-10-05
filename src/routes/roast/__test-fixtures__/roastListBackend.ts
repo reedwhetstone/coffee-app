@@ -57,9 +57,7 @@ export function roastListResponse(roasts: readonly RoastProfile[], address: stri
 }
 
 /** The roast list requests a fetch stand-in received, as their query parameters. */
-export function roastListRequests(fetchMock: {
-	mock: { calls: unknown[][] };
-}): URLSearchParams[] {
+export function roastListRequests(fetchMock: { mock: { calls: unknown[][] } }): URLSearchParams[] {
 	return fetchMock.mock.calls
 		.map(([input]) => String(input))
 		.filter((address) => address.startsWith('/api/roast-profiles?'))

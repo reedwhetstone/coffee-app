@@ -290,7 +290,10 @@ describe('/api/roast-profiles thin Parchment adapter', () => {
 		'answers 401 to a roast list read from %s, before any filter is read',
 		async (principal) => {
 			const response = await GET(
-				makeEvent({ url: 'https://app.test/api/roast-profiles?limit=50&q=guji', principal }) as never
+				makeEvent({
+					url: 'https://app.test/api/roast-profiles?limit=50&q=guji',
+					principal
+				}) as never
 			);
 
 			expect(response.status).toBe(401);

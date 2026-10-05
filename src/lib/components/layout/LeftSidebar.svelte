@@ -36,7 +36,9 @@
 	let userEmail = $derived(auth.user?.email ?? 'Purveyors member');
 	let userInitial = $derived(userEmail.charAt(0).toUpperCase() || 'P');
 	// The roast list carries its own filters on the page, so it has no filter panel.
-	let showSettings = $derived(['/catalog', '/beans'].includes(currentRoute) && !trackedCatalogRoute);
+	let showSettings = $derived(
+		['/catalog', '/beans'].includes(currentRoute) && !trackedCatalogRoute
+	);
 	let activeFilterCount = $derived(
 		$filterStore.routeId === currentRoute
 			? countActiveCatalogFilters({ ...$filterStore, routeId: currentRoute })

@@ -8,7 +8,10 @@ const coffeeOptions = [
 	{ id: 101, name: 'Ethiopia Yirgacheffe Wush Wush' }
 ];
 
-function renderControls(filters: Partial<RoastListFilters> = {}, extra: Record<string, unknown> = {}) {
+function renderControls(
+	filters: Partial<RoastListFilters> = {},
+	extra: Record<string, unknown> = {}
+) {
 	const onChange = vi.fn();
 	const view = render(RoastListControls, {
 		filters: { ...NO_ROAST_LIST_FILTERS, ...filters },
@@ -47,7 +50,11 @@ describe('the roast list’s controls', () => {
 		await vi.advanceTimersByTimeAsync(300);
 
 		expect(onChange).toHaveBeenCalledOnce();
-		expect(onChange).toHaveBeenCalledWith({ ...NO_ROAST_LIST_FILTERS, market: 'retail', q: 'guji' });
+		expect(onChange).toHaveBeenCalledWith({
+			...NO_ROAST_LIST_FILTERS,
+			market: 'retail',
+			q: 'guji'
+		});
 	});
 
 	it('applies a search at once on Enter, and only once', async () => {
@@ -95,14 +102,20 @@ describe('the roast list’s controls', () => {
 		expect(onChange).toHaveBeenLastCalledWith({ ...NO_ROAST_LIST_FILTERS, q: 'guji', coffee: 101 });
 
 		await choose('Coffee', '');
-		expect(onChange).toHaveBeenLastCalledWith({ ...NO_ROAST_LIST_FILTERS, q: 'guji', coffee: null });
+		expect(onChange).toHaveBeenLastCalledWith({
+			...NO_ROAST_LIST_FILTERS,
+			q: 'guji',
+			coffee: null
+		});
 	});
 
 	it('still names a coffee that is not among the portfolio’s choices', () => {
 		renderControls({ coffee: 999 }, { coffeeName: 'Kenya Nyeri' });
 
 		expect(select('Coffee')).toHaveValue('999');
-		expect(within(select('Coffee')).getByRole('option', { name: 'Kenya Nyeri' })).toBeInTheDocument();
+		expect(
+			within(select('Coffee')).getByRole('option', { name: 'Kenya Nyeri' })
+		).toBeInTheDocument();
 	});
 
 	it.each([

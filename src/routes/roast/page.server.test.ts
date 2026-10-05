@@ -25,7 +25,10 @@ const signedOut = {
 	ppiAccess: false
 } as unknown as RequestPrincipal;
 
-const page = { data: [{ roast_id: 4531 }], totals: { roasts: 1, batches: 1, average_loss_percent: null } };
+const page = {
+	data: [{ roast_id: 4531 }],
+	totals: { roasts: 1, batches: 1, average_loss_percent: null }
+};
 
 function run(principal: RequestPrincipal, query = '') {
 	const fetch = vi.fn(async () => Response.json(page));

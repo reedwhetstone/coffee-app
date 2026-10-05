@@ -230,9 +230,9 @@ describe('the roast list’s ?batch= filter', () => {
 	});
 
 	it('carries every filter the list was narrowed by, and escapes a search', () => {
-		expect(
-			roastListHref({ coffee: 101, range: '30d', q: 'guji', market: 'wholesale' })
-		).toBe('/roast?coffee=101&range=30d&q=guji&market=wholesale');
+		expect(roastListHref({ coffee: 101, range: '30d', q: 'guji', market: 'wholesale' })).toBe(
+			'/roast?coffee=101&range=30d&q=guji&market=wholesale'
+		);
 		expect(roastListHref({ from: '2026-09-01', to: '2026-09-30', q: 'drop & rest #2' })).toBe(
 			'/roast?from=2026-09-01&to=2026-09-30&q=drop%20%26%20rest%20%232'
 		);

@@ -226,7 +226,9 @@
 		const batchId = parseBatchId(rows.at(-1)?.batch_id);
 		if (!batchId || forFilters.batch !== null) return rows;
 		try {
-			const rest = await requestRoasts(roastListQuery({ ...forFilters, batch: batchId }, null, day));
+			const rest = await requestRoasts(
+				roastListQuery({ ...forFilters, batch: batchId }, null, day)
+			);
 			return mergeRoasts(rows, rest.data);
 		} catch {
 			return rows;
@@ -246,11 +248,11 @@
 			const preloaded = initial ? await initial : null;
 			const result =
 				preloaded?.data ??
-				(await requestRoasts(roastListQuery(forFilters, { limit: ROAST_PAGE_SIZE, offset: 0 }, day)));
+				(await requestRoasts(
+					roastListQuery(forFilters, { limit: ROAST_PAGE_SIZE, offset: 0 }, day)
+				));
 			const lastPage = isLastRoastPage(0, result.data.length, result.totals.roasts);
-			const rows = lastPage
-				? result.data
-				: await withWholeLastBatch(result.data, forFilters, day);
+			const rows = lastPage ? result.data : await withWholeLastBatch(result.data, forFilters, day);
 			if (request !== listRequest) return;
 
 			listRoasts = rows;

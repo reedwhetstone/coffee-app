@@ -167,8 +167,7 @@
 		<div class="rounded-lg bg-surface-panel p-8 text-center ring-1 ring-line">
 			<h3 class="text-lg font-semibold text-ink">That search cannot be used.</h3>
 			<p class="mt-2 text-muted">
-				Search for a coffee, a batch, or a roast number, in {MAX_ROAST_SEARCH_LENGTH} characters or
-				fewer.
+				Search for a coffee, a batch, or a roast number, in {MAX_ROAST_SEARCH_LENGTH} characters or fewer.
 			</p>
 			{#if onClearSearch}
 				<button

@@ -348,7 +348,13 @@ describe('finding roasts in the list', () => {
 		render(
 			RoastProfileTabs,
 			listed({
-				filters: { ...NO_ROAST_LIST_FILTERS, coffee: 101, range: '30d', q: 'guji', market: 'wholesale' },
+				filters: {
+					...NO_ROAST_LIST_FILTERS,
+					coffee: 101,
+					range: '30d',
+					q: 'guji',
+					market: 'wholesale'
+				},
 				coffeeOptions: [{ id: 101, name: 'Ethiopia Yirgacheffe Wush Wush' }]
 			})
 		);
@@ -356,7 +362,10 @@ describe('finding roasts in the list', () => {
 		expect(screen.getByRole('searchbox', { name: 'Search roasts' })).toHaveValue('guji');
 		expect(screen.getByRole('combobox', { name: 'Coffee' })).toHaveValue('101');
 		expect(screen.getByRole('combobox', { name: 'Roast date' })).toHaveValue('30d');
-		expect(screen.getByRole('button', { name: 'Wholesale' })).toHaveAttribute('aria-pressed', 'true');
+		expect(screen.getByRole('button', { name: 'Wholesale' })).toHaveAttribute(
+			'aria-pressed',
+			'true'
+		);
 		expect(screen.getByRole('button', { name: 'All' })).toHaveAttribute('aria-pressed', 'false');
 	});
 
@@ -365,7 +374,13 @@ describe('finding roasts in the list', () => {
 			RoastProfileTabs,
 			props({
 				currentRoastProfile: wushWush,
-				filters: { ...NO_ROAST_LIST_FILTERS, coffee: 101, range: '30d', q: 'guji', market: 'wholesale' }
+				filters: {
+					...NO_ROAST_LIST_FILTERS,
+					coffee: 101,
+					range: '30d',
+					q: 'guji',
+					market: 'wholesale'
+				}
 			})
 		);
 
@@ -411,14 +426,18 @@ describe('finding roasts in the list', () => {
 
 		expect(onLoadMore).toHaveBeenCalledOnce();
 		// The roasts already loaded stay on screen.
-		expect(screen.getByRole('button', { name: /Toggle Wednesday roast batch/ })).toBeInTheDocument();
+		expect(
+			screen.getByRole('button', { name: /Toggle Wednesday roast batch/ })
+		).toBeInTheDocument();
 	});
 
 	it('keeps the roasts on screen, marked busy, while a change of filters loads', () => {
 		const { container } = render(RoastProfileTabs, listed({ isRefreshing: true }));
 
 		expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
-		expect(screen.getByRole('button', { name: /Toggle Wednesday roast batch/ })).toBeInTheDocument();
+		expect(
+			screen.getByRole('button', { name: /Toggle Wednesday roast batch/ })
+		).toBeInTheDocument();
 	});
 
 	it('explains a search that cannot be used instead of reporting a failure', async () => {
@@ -429,7 +448,9 @@ describe('finding roasts in the list', () => {
 			listed({ batches: [], countLine: '', searchInvalid: true, filters, onFiltersChange })
 		);
 
-		expect(screen.getByRole('heading', { name: 'That search cannot be used.' })).toBeInTheDocument();
+		expect(
+			screen.getByRole('heading', { name: 'That search cannot be used.' })
+		).toBeInTheDocument();
 		expect(
 			screen.getByText(
 				'Search for a coffee, a batch, or a roast number, in 100 characters or fewer.'

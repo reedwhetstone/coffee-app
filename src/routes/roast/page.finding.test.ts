@@ -318,7 +318,9 @@ describe('filters on the roast list', () => {
 		renderPage();
 		await waitFor(() => expect(roastRows()).toHaveLength(50));
 		await waitFor(() =>
-			expect(within(screen.getByRole('combobox', { name: 'Coffee' })).getAllByRole('option')).toHaveLength(4)
+			expect(
+				within(screen.getByRole('combobox', { name: 'Coffee' })).getAllByRole('option')
+			).toHaveLength(4)
 		);
 
 		await choose('Coffee', '103');
@@ -366,7 +368,10 @@ describe('filters on the roast list', () => {
 		await screen.findByRole('link', { name: '← Roasts' });
 		// The roast opens over the filtered list, and "← Roasts" returns to it.
 		expect(goto).toHaveBeenLastCalledWith('/roast?range=7d&roast=5108', expect.anything());
-		expect(screen.getByRole('link', { name: '← Roasts' })).toHaveAttribute('href', '/roast?range=7d');
+		expect(screen.getByRole('link', { name: '← Roasts' })).toHaveAttribute(
+			'href',
+			'/roast?range=7d'
+		);
 	});
 
 	it('sends a first and last day from a link as they are', async () => {
@@ -440,7 +445,10 @@ describe('filters on the roast list', () => {
 
 		await waitFor(() => expect(roastRows()).toHaveLength(12));
 		expect(search()).toHaveValue('');
-		expect(screen.getByRole('button', { name: 'Wholesale' })).toHaveAttribute('aria-pressed', 'true');
+		expect(screen.getByRole('button', { name: 'Wholesale' })).toHaveAttribute(
+			'aria-pressed',
+			'true'
+		);
 	});
 
 	it('keeps "Load more" on the filters in force', async () => {
@@ -470,7 +478,10 @@ describe('filters on the roast list', () => {
 
 		await fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
 
-		expect(goto).toHaveBeenLastCalledWith('/roast', expect.objectContaining({ replaceState: true }));
+		expect(goto).toHaveBeenLastCalledWith(
+			'/roast',
+			expect.objectContaining({ replaceState: true })
+		);
 		await waitFor(() => expect(roastRows()).toHaveLength(50));
 	});
 
@@ -492,7 +503,9 @@ describe('filters on the roast list', () => {
 			await screen.findByRole('heading', { name: 'That search cannot be used.' })
 		).toBeInTheDocument();
 		expect(
-			screen.getByText('Search for a coffee, a batch, or a roast number, in 100 characters or fewer.')
+			screen.getByText(
+				'Search for a coffee, a batch, or a roast number, in 100 characters or fewer.'
+			)
 		).toBeInTheDocument();
 		expect(screen.queryByRole('alert')).toBeNull();
 		expect(screen.queryByText('Roasts could not be loaded.')).toBeNull();
@@ -592,7 +605,10 @@ describe('what an open roast needs, asked for on its own', () => {
 		// The new Ethiopia roast is not a match for "kenya", and it opens all the same.
 		await screen.findByRole('heading', { level: 1, name: 'Ethiopia Yirgacheffe Wush Wush' });
 		expect(listRequests().some((query) => query.get('roast_id') === '7001')).toBe(true);
-		expect(screen.getByRole('link', { name: '← Roasts' })).toHaveAttribute('href', '/roast?q=kenya');
+		expect(screen.getByRole('link', { name: '← Roasts' })).toHaveAttribute(
+			'href',
+			'/roast?q=kenya'
+		);
 	});
 });
 

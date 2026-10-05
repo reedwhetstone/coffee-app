@@ -35,7 +35,9 @@ describe('requestRoasts', () => {
 	it('tells a search that cannot be used apart from a failure', async () => {
 		const invalid = await requestRoasts(
 			'q=x',
-			fetcher(Response.json({ error: 'Invalid search term', code: 'invalid_search' }, { status: 400 }))
+			fetcher(
+				Response.json({ error: 'Invalid search term', code: 'invalid_search' }, { status: 400 })
+			)
 		).catch((error: unknown) => error);
 
 		expect(invalid).toBeInstanceOf(RoastListRequestError);
