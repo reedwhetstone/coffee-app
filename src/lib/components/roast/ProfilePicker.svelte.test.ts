@@ -140,4 +140,21 @@ describe('ProfilePicker', () => {
 		expect(screen.getByText('No saved references yet.')).toBeInTheDocument();
 		expect(screen.getByText('No recorded roasts yet.')).toBeInTheDocument();
 	});
+
+	it('links to the saved library from the open list, where references are managed', async () => {
+		render(ProfilePicker, { label: 'First profile (A)', groups });
+		expect(screen.queryByRole('link', { name: 'Manage saved references' })).toBeNull();
+
+		const input = screen.getByRole('combobox', { name: 'First profile (A)' });
+		await fireEvent.focus(input);
+
+		const manage = screen.getByRole('link', { name: 'Manage saved references' });
+		expect(manage).toHaveAttribute('href', '/roast/saved');
+		// It sits under the choices, not among them.
+		expect(within(screen.getByRole('listbox')).queryByRole('link')).toBeNull();
+
+		// Moving to the link with the keyboard keeps the list open, so the link can be followed.
+		await fireEvent.focusOut(input, { relatedTarget: manage });
+		expect(screen.getByRole('link', { name: 'Manage saved references' })).toBeInTheDocument();
+	});
 });
