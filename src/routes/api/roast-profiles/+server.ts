@@ -1,5 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestEvent, RequestHandler } from './$types';
+import { roastStudioFailure } from '$lib/server/roastAccess';
 import { createParchmentServerClient, ParchmentConfigError } from '$lib/server/parchmentClient';
 import {
 	createParchmentRoasts,
@@ -18,7 +19,7 @@ function mutationAuthFailure(event: RequestEvent) {
 	if (!isTrustedMutationRequest(event, event.locals.principal)) {
 		return json({ error: 'Cross-site session mutation blocked' }, { status: 403 });
 	}
-	return null;
+	return roastStudioFailure(event.locals.principal);
 }
 
 function parsePositiveInteger(value: string | null): number | null {
@@ -63,6 +64,8 @@ export const GET: RequestHandler = async (event) => {
 		if (!isCookieSessionPrincipal(event.locals.principal)) {
 			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
+		const studioFailure = roastStudioFailure(event.locals.principal);
+		if (studioFailure) return studioFailure;
 
 		// `?coffee_id=<inventory id>` narrows the list to one portfolio coffee's roasts.
 		const coffeeParam = event.url.searchParams.get('coffee_id');

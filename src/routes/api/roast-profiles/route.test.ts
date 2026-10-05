@@ -97,7 +97,7 @@ function makeEvent(
 					? apiKeyPrincipal()
 					: options.principal === 'anonymous'
 						? anonymousPrincipal()
-						: cookieSessionPrincipal('viewer')
+						: cookieSessionPrincipal('member')
 		}
 	};
 }

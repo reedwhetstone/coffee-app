@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createParchmentServerClient, ParchmentConfigError } from '$lib/server/parchmentClient';
 import { isCookieSessionPrincipal, isTrustedMutationRequest } from '$lib/server/principal';
+import { roastStudioFailure } from '$lib/server/roastAccess';
 
 /**
  * Clear import-derived roast telemetry through the canonical Parchment API.
@@ -20,6 +21,8 @@ export const DELETE: RequestHandler = async (event) => {
 		if (!isTrustedMutationRequest(event, locals.principal)) {
 			return json({ error: 'Cross-site session mutation blocked' }, { status: 403 });
 		}
+		const studioFailure = roastStudioFailure(locals.principal);
+		if (studioFailure) return studioFailure;
 
 		const roastId = url.searchParams.get('roast_id');
 		if (!roastId) {

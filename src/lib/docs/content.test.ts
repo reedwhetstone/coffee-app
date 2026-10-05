@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { getDocsPage, getPublishedDocsPages } from '$lib/docs/content';
+import { getDocsPage, getDocsPagesForSection, getPublishedDocsPages } from '$lib/docs/content';
 
 describe('api docs contract', () => {
 	const page = getDocsPage('api', 'catalog');
@@ -193,6 +193,33 @@ describe('api docs contract', () => {
 				`${docsPage.section}/${docsPage.slug}`
 			).not.toMatch(/\bStudio\b/);
 		}
+	});
+
+	it('keeps Parchment’s ownership and write checks beside the Mallard Studio requirement', () => {
+		// The app's membership check is added in front of Parchment's authorization; it does not replace it.
+		const forwardedRoastWrites = ['/api/artisan-import', '/api/clear-roast'];
+		const authCells = getDocsPagesForSection('api').flatMap((docsPage) =>
+			docsPage.sections.flatMap((section) =>
+				(section.table?.rows ?? [])
+					.filter((row) => forwardedRoastWrites.includes(row[0]))
+					.map((row) => ({ where: `${docsPage.section}/${docsPage.slug} ${row[0]}`, auth: row[2] }))
+			)
+		);
+		expect(authCells).toHaveLength(5);
+		for (const { where, auth } of authCells) {
+			expect(auth, where).toBe('Session + Mallard Studio + ownership');
+		}
+
+		const serializedRoastProfiles = JSON.stringify(getDocsPage('api', 'roast-profiles'));
+		expect(serializedRoastProfiles).toContain(
+			'That requirement is in addition to Parchment’s own checks, not a replacement for them.'
+		);
+		expect(serializedRoastProfiles).toContain(
+			'the roast:write scope is what Parchment requires of an API key that calls it directly'
+		);
+		expect(serializedRoastProfiles).toContain(
+			'404 for a roast that is missing or belongs to another account'
+		);
 	});
 
 	it('states one consistent inventory session and share-token contract', () => {
