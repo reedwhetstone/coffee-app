@@ -204,7 +204,8 @@ export function parseCatalogUrlState(url: URL, routeId = '/catalog'): CatalogUrl
 	}
 
 	for (const key of MULTI_VALUE_FILTER_KEYS) {
-		const values = url.searchParams.getAll(key).filter(Boolean);
+		// A link may repeat a value; a selection holds each value once.
+		const values = [...new Set(url.searchParams.getAll(key).filter(Boolean))];
 		if (values.length > 0) {
 			filters[key] = values;
 		}

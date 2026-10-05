@@ -183,6 +183,16 @@ describe('describeActiveCatalogFilters', () => {
 		});
 	});
 
+	it('lists a repeated value once, so every chip has its own id', () => {
+		const chips = describeActiveCatalogFilters({
+			...none,
+			filters: { country: ['Kenya', 'Kenya', 'Ethiopia'] }
+		});
+
+		expect(chips.map((chip) => chip.id)).toEqual(['country:Kenya', 'country:Ethiopia']);
+		expect(chips[0].remove).toEqual({ kind: 'filter', key: 'country', value: ['Ethiopia'] });
+	});
+
 	it('still lists filters from an older link whose controls are retired', () => {
 		const chips = describeActiveCatalogFilters({
 			...none,

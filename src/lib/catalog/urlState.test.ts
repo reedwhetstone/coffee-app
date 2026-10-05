@@ -324,6 +324,23 @@ describe('catalog URL state helpers', () => {
 		).toBeUndefined();
 	});
 
+	it('reads a value a link repeats as one selection', () => {
+		const state = parseCatalogUrlState(
+			new URL(
+				'https://app.test/catalog?country=Kenya&country=Ethiopia&country=Kenya&source=sweet_marias&source=sweet_marias&variety_code=gesha&variety_code=gesha'
+			)
+		);
+
+		expect(state.filters).toEqual({
+			country: ['Kenya', 'Ethiopia'],
+			source: ['sweet_marias'],
+			variety_code: ['gesha']
+		});
+		expect(buildCatalogShareParams(state).toString()).toBe(
+			'country=Kenya&country=Ethiopia&source=sweet_marias&variety_code=gesha'
+		);
+	});
+
 	it('keeps every filter from an older link whose control is retired', () => {
 		const search =
 			'sortField=region&sortDirection=asc&processing=Natural&processing_confidence_min=0.8&cultivar_detail=Caturra&type=Importer&grade=SHB&appearance=EP';

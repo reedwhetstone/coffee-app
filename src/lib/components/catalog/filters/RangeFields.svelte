@@ -1,7 +1,9 @@
 <script lang="ts">
 	/**
 	 * A minimum and maximum pair. The range is applied when a field is committed
-	 * (blur or Enter), and never while the two bounds are inverted.
+	 * (blur or Enter), and never while the two bounds are inverted. Inverted
+	 * bounds stay on screen with an error until the viewer fixes them or the
+	 * applied range changes, as it does when the filters are cleared.
 	 */
 	interface Props {
 		legend: string;
@@ -33,11 +35,27 @@
 		onChange
 	}: Props = $props();
 
-	let draft = $state<{ min: string | null; max: string | null }>({ min: null, max: null });
-	let error = $state<string | null>(null);
+	// Inverted bounds, held with the applied range they were typed against. One
+	// of the two is always an applied bound, so clearing the filter drops them.
+	let draft = $state.raw<{
+		min: string;
+		max: string;
+		appliedMin: string;
+		appliedMax: string;
+	} | null>(null);
+	let appliedMin = $derived(String(min ?? ''));
+	let appliedMax = $derived(String(max ?? ''));
+	let pending = $derived(
+		draft && draft.appliedMin === appliedMin && draft.appliedMax === appliedMax ? draft : null
+	);
+	let error = $derived(pending ? `The lowest ${unit} cannot be above the highest.` : null);
+	// Forget bounds that no longer apply, so they cannot return with the range.
+	$effect(() => {
+		if (draft && !pending) draft = null;
+	});
 
-	let shownMin = $derived(draft.min ?? String(min ?? ''));
-	let shownMax = $derived(draft.max ?? String(max ?? ''));
+	let shownMin = $derived(pending?.min ?? appliedMin);
+	let shownMax = $derived(pending?.max ?? appliedMax);
 	let active = $derived(shownMin !== '' || shownMax !== '');
 
 	function inverted(low: string, high: string): boolean {
@@ -49,12 +67,10 @@
 
 	function commit(nextMin: string, nextMax: string, nextIncludeUnknown = includeUnknown) {
 		if (inverted(nextMin, nextMax)) {
-			draft = { min: nextMin, max: nextMax };
-			error = `The lowest ${unit} cannot be above the highest.`;
+			draft = { min: nextMin, max: nextMax, appliedMin, appliedMax };
 			return;
 		}
-		error = null;
-		draft = { min: null, max: null };
+		draft = null;
 		const stillActive = nextMin !== '' || nextMax !== '';
 		onChange({ min: nextMin, max: nextMax, includeUnknown: stillActive && nextIncludeUnknown });
 	}

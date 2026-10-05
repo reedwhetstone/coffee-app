@@ -300,7 +300,8 @@ export function describeActiveCatalogFilters(
 	for (const [key, label, inPanel, vocabularyKey] of LIST_FILTERS) {
 		const values = filters[key];
 		if (!Array.isArray(values)) continue;
-		for (const value of values) {
+		// One chip per value, so chip ids stay unique.
+		for (const value of new Set(values)) {
 			const text = vocabularyKey
 				? vocabularyLabel(vocabulary?.[vocabularyKey], value)
 				: key === 'source'

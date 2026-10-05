@@ -310,21 +310,58 @@ function stripPriceRangeFilter(state: CatalogUrlState): CatalogUrlState {
 	return { ...state, filters };
 }
 
-function stripTaxonomyCodeFilters(state: CatalogUrlState): CatalogUrlState {
-	const filters = { ...state.filters };
-	for (const key of TAXONOMY_CODE_FILTER_KEYS) delete filters[key];
-	return { ...state, filters };
-}
-
 // Parchment rejects a variety, species or drying code that is not in its
 // vocabulary (400 invalid_query) instead of returning an empty result. Codes in
 // the UI come from that vocabulary, so this only happens for a hand-edited or
-// outdated link.
-function isUnknownTaxonomyCodeError(error: unknown): boolean {
-	return (
-		error instanceof Error &&
-		/^Unknown (varietyCode|speciesCode|dryingMethodCode) /.test(error.message)
-	);
+// outdated link. The error names one parameter and the codes it rejected.
+const TAXONOMY_PARAM_FILTER_KEYS: Readonly<
+	Record<string, (typeof TAXONOMY_CODE_FILTER_KEYS)[number]>
+> = {
+	varietyCode: 'variety_code',
+	speciesCode: 'species_code',
+	dryingMethodCode: 'drying_method_code'
+};
+
+interface UnknownTaxonomyCodes {
+	filterKey: (typeof TAXONOMY_CODE_FILTER_KEYS)[number];
+	codes: Set<string>;
+}
+
+function readUnknownTaxonomyCodes(error: unknown): UnknownTaxonomyCodes | null {
+	if (!(error instanceof Error)) return null;
+	const match = /^Unknown (varietyCode|speciesCode|dryingMethodCode) ([^:]*)/.exec(error.message);
+	if (!match) return null;
+	return {
+		filterKey: TAXONOMY_PARAM_FILTER_KEYS[match[1]],
+		codes: new Set(
+			[...match[2].matchAll(/"([^"]+)"/g)].map(([, code]) => code.trim().toLowerCase())
+		)
+	};
+}
+
+/**
+ * Drops the codes Parchment rejected and keeps every other selection in the
+ * link. Parchment reads codes comma-separated and without regard to case.
+ */
+function stripUnknownTaxonomyCodes(
+	state: CatalogUrlState,
+	unknown: UnknownTaxonomyCodes
+): CatalogUrlState {
+	const filters = { ...state.filters };
+	const requested = filters[unknown.filterKey];
+	const codes = (Array.isArray(requested) ? requested : [])
+		.flatMap((value) => value.split(','))
+		.map((code) => code.trim())
+		.filter(Boolean);
+	const recognized = codes.filter((code) => !unknown.codes.has(code.toLowerCase()));
+	// When no rejected code can be found in the link, drop the whole filter so
+	// the next read cannot fail the same way.
+	if (recognized.length > 0 && recognized.length < codes.length) {
+		filters[unknown.filterKey] = recognized;
+	} else {
+		delete filters[unknown.filterKey];
+	}
+	return { ...state, filters };
 }
 
 function stripFreshnessFilters(state: CatalogUrlState): CatalogUrlState {
@@ -533,16 +570,20 @@ export const load: PageServerLoad = async (event) => {
 						}) as CatalogListQuery
 					)) as CatalogListResult
 				);
-			let catalogBody: CatalogListBody;
-			try {
-				catalogBody = await listCatalog(effectiveCatalogState);
-			} catch (error) {
-				if (!isUnknownTaxonomyCodeError(error)) throw error;
-				// Show the catalog without the unrecognized filter and say so,
-				// instead of failing the page.
-				effectiveCatalogState = stripTaxonomyCodeFilters(effectiveCatalogState);
-				unrecognizedCodeFilters = true;
-				catalogBody = await listCatalog(effectiveCatalogState);
+			let catalogBody: CatalogListBody | null = null;
+			// Parchment reports one taxonomy filter at a time, so a link can need
+			// one more read for each of them.
+			for (let retries = 0; catalogBody === null; retries += 1) {
+				try {
+					catalogBody = await listCatalog(effectiveCatalogState);
+				} catch (error) {
+					const unknown = readUnknownTaxonomyCodes(error);
+					if (!unknown || retries >= TAXONOMY_CODE_FILTER_KEYS.length) throw error;
+					// Show the catalog without the unrecognized codes and say so,
+					// instead of failing the page.
+					effectiveCatalogState = stripUnknownTaxonomyCodes(effectiveCatalogState, unknown);
+					unrecognizedCodeFilters = true;
+				}
 			}
 			catalogData = extractParchmentCatalogRows(catalogBody);
 			count = getParchmentCatalogTotal(catalogBody, catalogData);
