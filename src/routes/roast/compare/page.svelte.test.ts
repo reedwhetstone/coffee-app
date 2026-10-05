@@ -196,14 +196,48 @@ describe('/roast/compare', () => {
 		roastListFails = true;
 		visit('/roast/compare?a=roast:4531&b=roast:4507', { data: null, error: 'Failed (503)' });
 
-		expect(
-			await screen.findByRole('heading', { name: 'Roasts could not be loaded.' })
-		).toBeInTheDocument();
+		const alert = await screen.findByRole('alert');
+		expect(alert).toHaveTextContent('Roasts could not be loaded.');
+		// Neither roast is blamed, and nothing is compared until they load.
+		expect(screen.queryByText('That roast could not be found')).toBeNull();
 		expect(compareBodies()).toEqual([]);
 
 		roastListFails = false;
-		await fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+		await fireEvent.click(within(alert).getByRole('button', { name: 'Try again' }));
 
 		expect(await screen.findByText('First crack: B was 45 sec earlier')).toBeInTheDocument();
+		expect(screen.queryByRole('alert')).toBeNull();
+	});
+
+	it('still compares two saved references when the roasts could not be loaded', async () => {
+		roastListFails = true;
+		visit(`/roast/compare?a=ref:${KEEPER}&b=ref:${PLAN}`, { data: null, error: 'Failed (503)' });
+
+		expect(await screen.findByText('First crack: B was 45 sec earlier')).toBeInTheDocument();
+		expect(compareBodies()).toEqual([
+			{
+				left: { kind: 'reference_profile', id: KEEPER },
+				right: { kind: 'reference_profile', id: PLAN },
+				targetUnit: 'F'
+			}
+		]);
+		expect(screen.getByRole('alert')).toHaveTextContent('Roasts could not be loaded.');
+	});
+
+	it('keeps a drawn comparison on screen while the roasts are tried again', async () => {
+		roastListFails = true;
+		visit(`/roast/compare?a=ref:${KEEPER}&b=ref:${PLAN}`, { data: null, error: 'Failed (503)' });
+		expect(await screen.findByText('First crack: B was 45 sec earlier')).toBeInTheDocument();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+		await waitFor(() =>
+			expect(
+				fetchMock.mock.calls.filter(([url]) => String(url) === '/api/roast-profiles')
+			).toHaveLength(1)
+		);
+		expect(screen.getByText('First crack: B was 45 sec earlier')).toBeInTheDocument();
+		// The comparison was not run a second time.
+		expect(compareBodies()).toHaveLength(1);
 	});
 });

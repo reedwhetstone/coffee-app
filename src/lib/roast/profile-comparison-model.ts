@@ -3,6 +3,7 @@ import type { ChartEvent, ChartSeries, ProcessedChartData } from '$lib/component
 import {
 	MISSING_READING,
 	isAbsentReading,
+	milestoneKey,
 	milestoneLabel,
 	realReadings
 } from '$lib/components/roast/chart/chart-utils';
@@ -234,22 +235,30 @@ export interface MilestoneTiming {
 	missing?: (typeof COMPARISON_SIDES)[Side];
 }
 
-const milestoneKey = (name: string) => name.trim().toLowerCase();
-
 /** Charge is where both curves start, so it is never a difference. */
 function isCharge(milestone: ProfileComparison['milestones'][number]): boolean {
 	return milestone.leftMilliseconds === 0 && milestone.rightMilliseconds === 0;
 }
 
-/** Milestones that exactly one of the two profiles recorded, charge excepted. */
+/**
+ * Milestones that exactly one of the two profiles recorded, charge excepted. Milestones
+ * are matched by `milestoneKey`, so one recorded as `fc_start` on one side and
+ * `first_crack` on the other is the same milestone and is never reported as missing.
+ */
 function oneSidedTimings(
 	comparison: ProfileComparison,
 	sides: ComparisonSideMilestones
 ): Array<MilestoneTiming & { at: number }> {
 	if (!sides.left || !sides.right) return [];
 	const shared = new Set(comparison.milestones.map((milestone) => milestoneKey(milestone.name)));
-	const recorded = (entries: SideMilestone[]) =>
-		new Map(entries.map((entry) => [milestoneKey(entry.name), entry]));
+	const recorded = (entries: SideMilestone[]) => {
+		const byKey = new Map<string, SideMilestone>();
+		for (const entry of entries) {
+			const key = milestoneKey(entry.name);
+			if (!byKey.has(key)) byKey.set(key, entry);
+		}
+		return byKey;
+	};
 	const left = recorded(sides.left);
 	const right = recorded(sides.right);
 	const timings: Array<MilestoneTiming & { at: number }> = [];
@@ -262,7 +271,7 @@ function oneSidedTimings(
 			const label = milestoneLabel(entry.name);
 			const time = clock(entry.milliseconds);
 			timings.push({
-				name: key,
+				name: entry.name.trim().toLowerCase(),
 				label,
 				leftTime: missing === 'left' ? NOT_RECORDED : time,
 				rightTime: missing === 'right' ? NOT_RECORDED : time,

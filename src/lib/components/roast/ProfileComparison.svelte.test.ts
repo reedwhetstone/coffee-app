@@ -121,9 +121,14 @@ const roastSide = (id: number): CompareSide => ({ type: 'roast', id });
 const referenceSide = (id: string): CompareSide => ({ type: 'ref', id });
 
 /** Draws the comparison for a link, and follows the link as the page would when a side changes. */
-function open(a: CompareSide | null, b: CompareSide | null, listedRoasts = roasts) {
+function open(
+	a: CompareSide | null,
+	b: CompareSide | null,
+	listedRoasts = roasts,
+	roastList: { roastsError?: boolean; onRetryRoasts?: () => void } = {}
+) {
 	const onChange = vi.fn((next: CompareSides) => void view.rerender({ a: next.a, b: next.b }));
-	const view = render(ProfileComparison, { roasts: listedRoasts, a, b, onChange });
+	const view = render(ProfileComparison, { roasts: listedRoasts, a, b, onChange, ...roastList });
 	return { ...view, onChange };
 }
 
@@ -382,6 +387,52 @@ describe('comparison with both sides chosen', () => {
 			'One of these has no charge time recorded, so the two curves cannot be lined up. Choose one with a recorded curve.'
 		);
 		expect(screen.queryByRole('table')).toBeNull();
+	});
+});
+
+describe('when the roasts could not be loaded', () => {
+	it('still compares two saved references', async () => {
+		const fetchMock = stubFetch();
+		open(referenceSide(KEEPER), referenceSide(PLAN), [], { roastsError: true });
+
+		expect(await screen.findByRole('table')).toBeInTheDocument();
+		expect(compareRequests(fetchMock)).toEqual([
+			{
+				left: { kind: 'reference_profile', id: KEEPER },
+				right: { kind: 'reference_profile', id: PLAN },
+				targetUnit: 'F'
+			}
+		]);
+		expect(screen.getByRole('alert')).toHaveTextContent('Roasts could not be loaded.');
+	});
+
+	it('says so once, offers to try again, and blames no roast in the link', async () => {
+		stubFetch();
+		const onRetryRoasts = vi.fn();
+		open(roastSide(4531), referenceSide(KEEPER), [], { roastsError: true, onRetryRoasts });
+
+		// The saved reference is still chosen, and the saved references can still be picked.
+		await waitFor(() =>
+			expect(screen.getByRole('combobox', { name: 'Second (B)' })).not.toHaveValue('')
+		);
+		const alerts = screen.getAllByRole('alert');
+		expect(alerts).toHaveLength(1);
+		expect(alerts[0]).toHaveTextContent('Roasts could not be loaded.');
+		expect(screen.queryByText('That roast could not be found')).toBeNull();
+
+		await fireEvent.click(within(alerts[0]).getByRole('button', { name: 'Try again' }));
+		expect(onRetryRoasts).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not ask for a first roast when there are no saved references either', async () => {
+		stubFetch(undefined, []);
+		open(null, null, [], { roastsError: true });
+
+		expect(await screen.findByRole('alert')).toHaveTextContent('Roasts could not be loaded.');
+		expect(
+			screen.queryByText('Record or import a roast, and it will appear here to compare.')
+		).toBeNull();
+		expect(screen.getByRole('combobox', { name: 'First (A)' })).toBeInTheDocument();
 	});
 });
 

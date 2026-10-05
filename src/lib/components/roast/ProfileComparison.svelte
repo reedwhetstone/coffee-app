@@ -32,11 +32,16 @@
 
 	let {
 		roasts,
+		roastsError = false,
+		onRetryRoasts,
 		a,
 		b,
 		onChange
 	}: {
 		roasts: PickerRoast[];
+		/** The roast list could not be loaded. Saved references can still be compared. */
+		roastsError?: boolean;
+		onRetryRoasts?: () => void;
 		/** The two sides named in the link. */
 		a: CompareSide | null;
 		b: CompareSide | null;
@@ -66,7 +71,11 @@
 	const leftGroups = $derived(buildCompareOptionGroups(roasts, profiles, rightOption?.value));
 	const rightGroups = $derived(buildCompareOptionGroups(roasts, profiles, leftOption?.value));
 	const nothingToCompare = $derived(
-		!loading && !referencesError && executedRoasts.length === 0 && profiles.length === 0
+		!loading &&
+			!referencesError &&
+			!roastsError &&
+			executedRoasts.length === 0 &&
+			profiles.length === 0
 	);
 	const pair = $derived(
 		leftOption && rightOption && leftOption.value !== rightOption.value
@@ -119,6 +128,7 @@
 		if (side.type === 'ref') {
 			return loading || referencesError ? null : 'That saved reference could not be found';
 		}
+		if (roastsError) return null;
 		return roasts.some((roast) => roast.roast_id === side.id)
 			? 'That roast has no recorded curve to compare'
 			: 'That roast could not be found';
@@ -248,6 +258,19 @@
 				{problem}
 			</p>
 		{/each}
+		{#if roastsError}
+			<div
+				role="alert"
+				class="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-danger-subtle p-3 text-sm text-danger-strong"
+			>
+				<span>Roasts could not be loaded.</span>
+				<button
+					type="button"
+					class="rounded-md border border-danger px-3 py-1 font-medium text-danger hover:bg-danger hover:text-white"
+					onclick={() => onRetryRoasts?.()}>Try again</button
+				>
+			</div>
+		{/if}
 		{#if referencesError}
 			<div
 				role="alert"

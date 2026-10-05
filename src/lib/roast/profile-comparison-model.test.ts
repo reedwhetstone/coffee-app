@@ -429,6 +429,45 @@ describe('a milestone only one profile recorded', () => {
 		});
 	});
 
+	it('treats two names for the same milestone as one milestone', () => {
+		// Parchment paired first crack under the first profile's name for it.
+		const comparison = comparisonOf(
+			[],
+			[shared[0], shared[1], milestone('fc_start', 498_000, 453_000), shared[2]]
+		);
+		const timings = describeMilestoneTimings(comparison, {
+			left: recorded(['charge', 0], ['dry_end', 266_000], ['fc_start', 498_000], ['drop', 618_000]),
+			right: recorded(
+				['charge', 0],
+				['Dry End', 260_000],
+				['first_crack', 453_000],
+				['drop', 605_000]
+			)
+		});
+
+		expect(timings.map((timing) => [timing.label, timing.difference])).toEqual([
+			['Dry end', 'B was 6 sec earlier'],
+			['First crack', 'B was 45 sec earlier'],
+			['Drop', 'B was 13 sec earlier']
+		]);
+	});
+
+	it('claims nothing is missing when both recorded a milestone under different names', () => {
+		// Parchment pairs milestones by exact name, so it left first crack out here.
+		const timings = describeMilestoneTimings(comparisonOf([], shared), {
+			left: recorded(['charge', 0], ['dry_end', 266_000], ['fc_start', 498_000], ['drop', 618_000]),
+			right: recorded(
+				['charge', 0],
+				['dry_end', 260_000],
+				['First Crack', 453_000],
+				['drop', 605_000]
+			)
+		});
+
+		expect(timings.map((timing) => timing.label)).toEqual(['Dry end', 'Drop']);
+		expect(timings.some((timing) => timing.missing)).toBe(false);
+	});
+
 	it('leaves out a milestone neither profile recorded, and charge', () => {
 		const timings = describeMilestoneTimings(
 			comparisonOf([], [milestone('drop', 618_000, 605_000)]),

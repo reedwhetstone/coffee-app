@@ -11,15 +11,16 @@
 	let { data }: { data: PageData } = $props();
 
 	let roasts = $state<RoastProfile[]>([]);
+	// True until the first attempt to load the roasts has finished, either way.
 	let isLoading = $state(true);
 	let loadFailed = $state(false);
 
 	// The two sides live in the link, so a comparison can be shared and reopened.
 	const sides = $derived(readCompareSides(page.url.searchParams));
 
+	// A failure leaves the page usable: saved references need no roast, so they can still be
+	// chosen and compared while the roasts are tried again.
 	async function loadRoasts(initial?: PageData['initialRoasts']) {
-		isLoading = true;
-		loadFailed = false;
 		try {
 			let result: { data: RoastProfile[] };
 			if (initial) {
@@ -32,6 +33,7 @@
 				result = await response.json();
 			}
 			roasts = Array.isArray(result.data) ? result.data : [];
+			loadFailed = false;
 		} catch {
 			loadFailed = true;
 		} finally {
@@ -64,18 +66,14 @@
 				<Skeleton class="h-11 opacity-30" />
 			</div>
 		</div>
-	{:else if loadFailed}
-		<div class="rounded-lg bg-danger-subtle p-6 text-center ring-1 ring-danger/30">
-			<h2 class="mb-4 text-lg font-semibold text-danger-strong">Roasts could not be loaded.</h2>
-			<button
-				type="button"
-				onclick={() => loadRoasts()}
-				class="rounded-md bg-danger px-4 py-2 font-medium text-white transition-all duration-200 hover:bg-danger-strong focus:outline-none focus:ring-2 focus:ring-danger focus:ring-offset-2"
-			>
-				Try again
-			</button>
-		</div>
 	{:else}
-		<ProfileComparison {roasts} a={sides.a} b={sides.b} onChange={changeSides} />
+		<ProfileComparison
+			{roasts}
+			roastsError={loadFailed}
+			onRetryRoasts={() => loadRoasts()}
+			a={sides.a}
+			b={sides.b}
+			onChange={changeSides}
+		/>
 	{/if}
 </div>
