@@ -26,6 +26,8 @@ An audit of the scraper, Parchment, and coffee-app found:
 
 This ADR reuses ADR-016's shape, not its artifacts. Every table, trigger, loader, audit, and backfill it needs is built in its own sequence (steps 2 and 3), so it does not depend on ADR-016 being accepted. If ADR-016 changes before acceptance, the shared shape is reconciled when this ADR is accepted.
 
+> **Update (2026-10-04):** ADR-016 was accepted on 2026-10-04 without changes to the shared shape, so nothing here needed reconciling.
+
 ## Decision
 
 Add three governed taxonomies (variety, species, drying method) using the vocabulary-plus-alias shape that ADR-016 proposes, extended so the vocabulary can grow without code or schema changes.

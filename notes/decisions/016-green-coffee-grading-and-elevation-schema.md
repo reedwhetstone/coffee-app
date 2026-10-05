@@ -1,6 +1,6 @@
 # ADR-016: Green coffee grading and elevation schema
 
-**Status:** Proposed
+**Status:** Accepted (Reed, 2026-10-04, #purveyors)
 
 **Date:** 2026-10-01
 

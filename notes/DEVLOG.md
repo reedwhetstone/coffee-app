@@ -162,11 +162,9 @@
       first-class schema only after coverage is credible. Keep raw evidence private
       by default and avoid verification or compliance claims the data cannot support.
 
-- [ ] **Finish the green coffee grading rollout (ADR-016).** ADR-016 is still
-      Proposed, although its public contract has shipped (API response and
-      filters, `/v1/catalog/grades`, SDK, CLI). Accept it, or revise it and
-      bring the shipped contract in line, before the remaining work below and
-      before `grade` removal; until then that work is conditional on acceptance.
+- [ ] **Finish the green coffee grading rollout (ADR-016).** ADR-016 was
+      accepted on 2026-10-04; its public contract has shipped (API response and
+      filters, `/v1/catalog/grades`, SDK, CLI).
       Done so far: numeric elevation for every supplier (coffee-scraper
       #562/#563 plus a backfill), the grading schema (Parchment #332, migration
       `20261002020000`), the scraper grading extractor (coffee-scraper #564),
