@@ -2,7 +2,9 @@ import { describe, expect, it, vi } from 'vitest';
 import {
 	batchesToRemove,
 	createdBatchId,
+	deleteRoastsById,
 	removeEmptyBatches,
+	roastIdsForInventory,
 	storageStateEmail,
 	type CleanupRequest,
 	type CleanupResponse
@@ -165,6 +167,40 @@ describe('removing empty batches through the app', () => {
 		expect(log).toHaveBeenCalledWith(
 			`[teardown] Could not delete roast batch ${EMPTY_EARLIER} (503)`
 		);
+	});
+});
+
+describe('test-account roast cleanup through the app', () => {
+	it('takes only roasts belonging to the account inventory and rejects an uncertain response', () => {
+		expect(
+			roastIdsForInventory(
+				{
+					data: [
+						{ roast_id: 4531, coffee_id: 101 },
+						{ roast_id: 4532, coffee_id: 202 }
+					]
+				},
+				[101]
+			)
+		).toEqual([4531]);
+		expect(
+			roastIdsForInventory({ data: [{ roast_id: '4531', coffee_id: 101 }] }, [101])
+		).toBeNull();
+		expect(roastIdsForInventory({}, [101])).toBeNull();
+	});
+
+	it('deletes roast IDs through the route and reports failures for retry', async () => {
+		const request = requestStub(response(200), (url) =>
+			url.endsWith('4531') ? response(200) : response(503)
+		);
+		const log = vi.fn();
+		expect(await deleteRoastsById(request, [4531, 4532], log)).toEqual({
+			deleted: 1,
+			failed: 1
+		});
+		expect(request.delete).toHaveBeenCalledWith('/api/roast-profiles?id=4531');
+		expect(request.delete).toHaveBeenCalledWith('/api/roast-profiles?id=4532');
+		expect(log).toHaveBeenCalledWith('[teardown] Could not delete roast 4532 (503)');
 	});
 });
 

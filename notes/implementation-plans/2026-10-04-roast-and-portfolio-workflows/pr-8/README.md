@@ -97,7 +97,7 @@ The roast routes leave the Mallard Studio decision to Parchment, as they did bef
 ## End-to-end test data
 
 - Deleting a roast keeps its batch, so each run of `api-contracts.spec.ts` and `critical-path.spec.ts` left one empty batch on the test account. Each spec now deletes the batch it created, through `DELETE /api/roast-batches/[id]`.
-- The global teardown then removes the empty batches created since the run started, through the app's routes, signed in as the test account. It runs whether or not the account has inventory, and does nothing unless the saved session is the test account's.
+- The global teardown lists and deletes remaining roasts through the app's routes, then removes empty batches created since the run started through those routes, signed in as the test account. Batch cleanup runs whether or not the account has inventory; roast cleanup keeps inventory for retry if a roast request fails. Neither route cleanup runs unless the saved session is the test account's.
 - An empty batch is listed under a placeholder name, so a test batch cannot be recognised by `API_TEST_ROAST_` or `E2E_TEST_ROAST_`. The teardown goes by "holds no roasts" and "created during this run".
 - **Batches earlier runs left behind are not touched by default.** Setting `E2E_EMPTY_BATCH_CLEANUP=all` makes the teardown remove every empty batch on the test account. See the PR description for the one-time cleanup.
 

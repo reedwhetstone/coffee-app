@@ -98,6 +98,45 @@ export function batchesToRemove(
 	};
 }
 
+/** Read only the test account's roasts associated with its inventory from the app response. */
+export function roastIdsForInventory(body: unknown, inventoryIds: number[]): number[] | null {
+	const data = typeof body === 'object' && body !== null ? (body as { data?: unknown }).data : null;
+	if (!Array.isArray(data)) return null;
+	const inventory = new Set(inventoryIds);
+	const ids: number[] = [];
+	for (const row of data) {
+		if (typeof row !== 'object' || row === null) return null;
+		const { roast_id, coffee_id } = row as Record<string, unknown>;
+		if (!Number.isSafeInteger(roast_id) || !Number.isSafeInteger(coffee_id)) return null;
+		if (inventory.has(coffee_id as number)) ids.push(roast_id as number);
+	}
+	return ids;
+}
+
+/** Delete roast IDs through the app route, never the roast table. */
+export async function deleteRoastsById(
+	request: CleanupRequest,
+	ids: number[],
+	log: (message: string) => void = () => {}
+): Promise<{ deleted: number; failed: number }> {
+	let deleted = 0;
+	let failed = 0;
+	for (const id of ids) {
+		if (!Number.isSafeInteger(id) || id <= 0) {
+			failed += 1;
+			log(`[teardown] Invalid roast ID ${id}; roast not deleted`);
+			continue;
+		}
+		const response = await request.delete(`/api/roast-profiles?id=${id}`);
+		if (response.ok() || response.status() === 404) deleted += 1;
+		else {
+			failed += 1;
+			log(`[teardown] Could not delete roast ${id} (${response.status()})`);
+		}
+	}
+	return { deleted, failed };
+}
+
 /** Remove the selected empty batches through the app's routes. Failures are logged, not thrown. */
 export async function removeEmptyBatches(
 	request: CleanupRequest,
