@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { components } from '@purveyors/sdk';
 import {
+	buildCompareOptionGroups,
 	buildProfileOptionGroups,
 	filterProfileOptionGroups,
 	findProfileOption,
+	formatShortDay,
 	hasRecordedRoast,
 	recordedRoasts,
 	referenceOption,
@@ -187,5 +189,108 @@ describe('profile picker options', () => {
 		expect(findProfileOption(groups, 'reference_profile:a')?.title).toBe('Guji reference');
 		expect(findProfileOption(groups, 'executed_roast:4529')?.id).toBe('4529');
 		expect(findProfileOption(groups, 'executed_roast:1')).toBeNull();
+	});
+});
+
+describe('choices for one side of a comparison', () => {
+	const wushWush = { coffee_id: 101, coffee_name: 'Ethiopia Yirgacheffe Wush Wush' };
+	const colombia = { coffee_id: 102, coffee_name: 'Colombia Sierra Nevada' };
+	const roasts = [
+		roast(4507, { ...wushWush, batch_name: 'Wednesday roast', roast_date: '2026-09-17' }),
+		roast(4530, { ...colombia, batch_name: 'Wednesday roast', roast_date: '2026-10-01' }),
+		roast(4531, { ...wushWush, batch_name: 'Wednesday roast', roast_date: '2026-10-01' }),
+		roast(4528, { ...wushWush, batch_name: 'Guji drop test', roast_date: '2026-09-27' }),
+		roast(4529, { ...wushWush, batch_name: 'Guji drop test', roast_date: '2026-09-27' }),
+		roast(4520, { ...colombia, batch_name: 'Wednesday roast', roast_date: '2026-09-24' }),
+		// Set up and never roasted: nothing to compare.
+		roast(4540, { ...wushWush, charge_time: null, roast_date: '2026-10-04' })
+	];
+	const references = [
+		reference('keeper', 'Guji natural, September keeper', '2026-09-28T00:00:00Z'),
+		reference('plan', 'Guji plan', '2026-10-02T00:00:00Z', 'generated_revision')
+	];
+	const shape = (groups: ReturnType<typeof buildCompareOptionGroups>) =>
+		groups.map((group) => [group.key, group.heading, group.options.map((option) => option.id)]);
+
+	it("lists the chosen roast's coffee first, most recent first, then references, then the rest", () => {
+		const groups = buildCompareOptionGroups(roasts, references, 'executed_roast:4531');
+
+		expect(shape(groups)).toEqual([
+			['same-coffee', 'Same coffee', ['4529', '4528', '4507']],
+			['references', 'Saved references', ['plan', 'keeper']],
+			['roasts', 'Other roasts', ['4530', '4520']]
+		]);
+		expect(groups.map((group) => group.total)).toEqual([3, 2, 2]);
+	});
+
+	it('leaves the chosen roast out, so nothing is compared with itself', () => {
+		const everything = buildCompareOptionGroups(roasts, references, 'executed_roast:4531')
+			.flatMap((group) => group.options)
+			.map((option) => option.value);
+
+		expect(everything).not.toContain('executed_roast:4531');
+		expect(everything).toHaveLength(7);
+		expect(new Set(everything).size).toBe(7);
+	});
+
+	it('follows the other side when it changes to a different coffee', () => {
+		expect(shape(buildCompareOptionGroups(roasts, references, 'executed_roast:4530'))[0]).toEqual([
+			'same-coffee',
+			'Same coffee',
+			['4520']
+		]);
+	});
+
+	it('matches a coffee by name when a roast has no portfolio coffee on record', () => {
+		const unlinked = [
+			roast(1, { coffee_id: null, coffee_name: 'Kenya Nyeri', roast_date: '2026-09-01' }),
+			roast(2, { coffee_id: null, coffee_name: ' kenya nyeri ', roast_date: '2026-09-08' }),
+			roast(3, { coffee_id: null, coffee_name: 'Kenya Kirinyaga', roast_date: '2026-09-09' }),
+			roast(4, { coffee_id: null, coffee_name: null, roast_date: '2026-09-10' })
+		];
+
+		expect(shape(buildCompareOptionGroups(unlinked, [], 'executed_roast:1'))).toEqual([
+			['same-coffee', 'Same coffee', ['2']],
+			['references', 'Saved references', []],
+			['roasts', 'Other roasts', ['4', '3']]
+		]);
+		// Two roasts with no coffee named are not taken for the same coffee.
+		expect(shape(buildCompareOptionGroups(unlinked, [], 'executed_roast:4'))[0][0]).toBe(
+			'references'
+		);
+	});
+
+	it('keeps the usual two groups when the other side is a saved reference', () => {
+		expect(shape(buildCompareOptionGroups(roasts, references, 'reference_profile:keeper'))).toEqual(
+			[
+				['references', 'Saved references', ['plan']],
+				['roasts', 'Roasts', ['4531', '4530', '4529', '4528', '4520', '4507']]
+			]
+		);
+	});
+
+	it('keeps the usual two groups when the coffee has no other roast', () => {
+		const groups = buildCompareOptionGroups(
+			[roasts[1], roasts[2]],
+			references,
+			'executed_roast:4531'
+		);
+
+		expect(shape(groups)).toEqual([
+			['references', 'Saved references', ['plan', 'keeper']],
+			['roasts', 'Roasts', ['4530']]
+		]);
+	});
+
+	it('lists everything when no side is chosen yet', () => {
+		expect(buildCompareOptionGroups(roasts, references)).toEqual(
+			buildProfileOptionGroups(roasts, references)
+		);
+	});
+
+	it('writes a day without its year for a short mention', () => {
+		expect(formatShortDay('2026-10-01')).toBe('Oct 1');
+		expect(formatShortDay('2026-10-01T00:00:00+00:00')).toBe('Oct 1');
+		expect(formatShortDay(null)).toBeNull();
 	});
 });

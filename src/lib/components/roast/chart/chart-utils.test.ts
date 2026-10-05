@@ -5,6 +5,7 @@ import {
 	isMissingReading,
 	layoutMarkerLabels,
 	lineSegments,
+	milestoneKey,
 	milestoneLabel,
 	nearestPointWithinSamplingGap,
 	realReadings
@@ -140,6 +141,19 @@ describe('chart utilities', () => {
 			'Cool end'
 		]);
 		expect(milestoneLabel('yellowing_start')).toBe('Yellowing start');
+	});
+
+	it('gives a milestone one name however it was recorded', () => {
+		expect(
+			['fc_start', 'first_crack', 'First Crack', ' first-crack-start '].map(milestoneKey)
+		).toEqual(['first_crack', 'first_crack', 'first_crack', 'first_crack']);
+		expect(['tp', 'Turning Point'].map(milestoneKey)).toEqual(['turning_point', 'turning_point']);
+		// Different milestones stay different, known or not.
+		expect(
+			['fc_start', 'fc_end', 'dry_end', 'maillard', 'Yellowing Start'].map(milestoneKey)
+		).toEqual(['first_crack', 'first_crack_end', 'dry_end', 'maillard', 'yellowing_start']);
+		// Two names with the same key always read the same.
+		expect(milestoneLabel('sc_start')).toBe(milestoneLabel('Second Crack'));
 	});
 
 	it('moves a marker label to its own row instead of overlapping a neighbour', () => {

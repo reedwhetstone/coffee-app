@@ -21,6 +21,13 @@
 		loading?: boolean;
 	} = $props();
 
+	let inputElement = $state<HTMLInputElement | null>(null);
+
+	/** Move to this picker and open its list. */
+	export function focus() {
+		inputElement?.focus();
+	}
+
 	const uid = $props.id();
 	const inputId = `${uid}-input`;
 	const listId = `${uid}-list`;
@@ -128,6 +135,7 @@
 <div class="relative" onfocusout={handleFocusOut}>
 	<label for={inputId} class="text-sm font-medium text-ink">{label}</label>
 	<input
+		bind:this={inputElement}
 		id={inputId}
 		type="text"
 		role="combobox"
@@ -138,7 +146,9 @@
 		aria-autocomplete="list"
 		aria-activedescendant={open && activeOption ? optionId(activeOption) : undefined}
 		value={open ? query : (selected?.title ?? '')}
-		placeholder={open ? 'Search by coffee, date, batch, or roast number' : 'Choose a profile'}
+		placeholder={open
+			? 'Search by coffee, date, batch, or roast number'
+			: 'Choose a roast or saved reference'}
 		class="mt-1 min-h-11 w-full rounded-md border border-line bg-surface-canvas px-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-accent"
 		onfocus={show}
 		onclick={show}
@@ -186,7 +196,7 @@
 								>{option.title}</span
 							>
 							<span class="block text-xs text-muted"
-								>{option.detail}{unavailable ? ' · Chosen as the other profile' : ''}</span
+								>{option.detail}{unavailable ? ' · Chosen on the other side' : ''}</span
 							>
 						</div>
 					{/each}

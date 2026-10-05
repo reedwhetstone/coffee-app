@@ -175,7 +175,24 @@ describe('LiveRoastGuard', () => {
 			render(LiveRoastGuard, { active: true });
 
 			expect(navigate('/roast?profileId=1&modal=new')).not.toHaveBeenCalled();
+			expect(navigate('/roast?roast=1')).not.toHaveBeenCalled();
 			expect(dialog()).not.toBeInTheDocument();
+		});
+
+		it('holds the comparison page, which sits under /roast but is a different page', async () => {
+			render(LiveRoastGuard, { active: true });
+
+			const cancel = navigate('/roast/compare?a=roast:1');
+
+			expect(cancel).toHaveBeenCalledOnce();
+			await fireEvent.click(await screen.findByRole('button', { name: 'Keep roasting' }));
+			expect(goto).not.toHaveBeenCalled();
+
+			navigate('/roast/compare?a=roast:1');
+			await fireEvent.click(await screen.findByRole('button', { name: 'Leave' }));
+
+			await waitFor(() => expect(goto).toHaveBeenCalledOnce());
+			expect(String(goto.mock.calls[0][0])).toBe('http://localhost/roast/compare?a=roast:1');
 		});
 
 		it('leaves a reload or a closed tab to the browser prompt', () => {

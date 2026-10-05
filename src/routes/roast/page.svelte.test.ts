@@ -96,7 +96,7 @@ function timerDisplay() {
 /** Roast IDs the page has put in the address bar, in order. */
 function openedRoastIds() {
 	return goto.mock.calls
-		.map(([url]) => new URL(String(url), 'http://localhost').searchParams.get('profileId'))
+		.map(([url]) => new URL(String(url), 'http://localhost').searchParams.get('roast'))
 		.filter((id) => id !== null);
 }
 
@@ -121,7 +121,8 @@ function selectionSettled() {
 	return new Promise((resolve) => setTimeout(resolve, 150));
 }
 
-async function openRoast(search = '?profileId=1') {
+async function openRoast(search = '?profileId=1', listed = roasts) {
+	listedRoasts = listed;
 	pageState.url = new URL(`http://localhost/roast${search}`);
 	render(RoastPage, {
 		data: {
@@ -131,7 +132,7 @@ async function openRoast(search = '?profileId=1') {
 				role: 'member',
 				ppiAccess: false
 			},
-			initialRoasts: Promise.resolve({ data: { data: roasts }, error: null })
+			initialRoasts: Promise.resolve({ data: { data: listed }, error: null })
 		}
 	} as never);
 
@@ -457,6 +458,50 @@ describe('roast page live roast guard', () => {
 
 		await waitFor(() => expect(goto).toHaveBeenCalledOnce());
 		expect(String(goto.mock.calls[0][0])).toBe('http://localhost/beans');
+	});
+
+	it('asks before leaving a recording roast for the comparison page', async () => {
+		// A roast with weights on record can be compared and can still have its curve logged.
+		const weighed = roast({ roast_id: 1, oz_in: 16, oz_out: 13.6 });
+		await openRoast('?roast=1', [weighed, roasts[1]]);
+		await startRoast();
+		await logEvent('Charge');
+		const logged = loggedEvents();
+		goto.mockClear();
+
+		// "Compare with…" is a plain link, so the click is an ordinary navigation that the
+		// guard sees. It is not disabled and it does not navigate on its own.
+		const compare = screen.getByRole('link', { name: 'Compare with…' });
+		expect(compare).toHaveAttribute('href', '/roast/compare?a=roast:1');
+
+		expect(leavePage('/roast/compare?a=roast:1')).toHaveBeenCalledOnce();
+		await fireEvent.click(await screen.findByRole('button', { name: 'Keep roasting' }));
+		await selectionSettled();
+
+		expect(goto).not.toHaveBeenCalled();
+		expect(timerButton()).toHaveTextContent('Stop');
+		expect(loggedEvents()).toEqual(logged);
+
+		expect(leavePage('/roast/compare?a=roast:1')).toHaveBeenCalledOnce();
+		await fireEvent.click(await screen.findByRole('button', { name: 'Leave' }));
+
+		await waitFor(() => expect(goto).toHaveBeenCalledOnce());
+		expect(String(goto.mock.calls[0][0])).toBe('http://localhost/roast/compare?a=roast:1');
+	});
+
+	it('lets the comparison page open without asking when nothing is recording', async () => {
+		const weighed = roast({ roast_id: 1, oz_in: 16, oz_out: 13.6 });
+		await openRoast('?roast=1', [weighed, roasts[1]]);
+
+		expect(leavePage('/roast/compare?a=roast:1')).not.toHaveBeenCalled();
+		expect(leaveQuestion()).not.toBeInTheDocument();
+	});
+
+	it('does not offer comparison for a roast with nothing recorded yet', async () => {
+		await openRoast();
+
+		expect(screen.queryByRole('link', { name: 'Compare with…' })).toBeNull();
+		expect(screen.getByRole('button', { name: 'Compare with…' })).toBeDisabled();
 	});
 
 	it('opens a roast reached from portfolio on a clean timer, without asking', async () => {

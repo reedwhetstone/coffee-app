@@ -33,7 +33,7 @@ describe('portfolio Roasting tab', () => {
 		await fireEvent.click(screen.getByRole('button', { name: /Wednesday roast/ }));
 
 		expect(goto).toHaveBeenCalledOnce();
-		expect(goto).toHaveBeenCalledWith('/roast?profileId=4531');
+		expect(goto).toHaveBeenCalledWith('/roast?roast=4531');
 		expect(window.location.href).toBe(before);
 	});
 });

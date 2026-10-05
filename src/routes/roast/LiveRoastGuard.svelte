@@ -48,7 +48,7 @@
 		// A reload, a closed tab, or a link out of the app unloads the document.
 		// Only the browser's own prompt can hold that; see handleBeforeUnload.
 		if (navigation.willUnload || !navigation.to) return;
-		// The page rewrites its own query string (?profileId=, ?modal=) without leaving.
+		// The page rewrites its own query string (?roast=, ?modal=) without leaving.
 		if (navigation.to.url.pathname === navigation.from?.url.pathname) return;
 
 		navigation.cancel();
