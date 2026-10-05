@@ -61,6 +61,8 @@
 	}
 
 	function handleMouseEnter(item: NavItem) {
+		// A locked item's data is not available to the account, so there is nothing to warm.
+		if (item.locked) return;
 		if (item.href === '/beans' || item.href === '/roast') {
 			void preloadRouteData(item.href);
 		}

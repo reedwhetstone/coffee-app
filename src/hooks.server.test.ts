@@ -62,10 +62,10 @@ vi.mock('$lib/server/principal', () => ({
 
 let handle: typeof import('./hooks.server').handle;
 
-function makeEvent(path: string, headers: HeadersInit = {}) {
+function makeEvent(path: string, headers: HeadersInit = {}, method = 'GET') {
 	return {
 		url: new URL(`https://app.test${path}`),
-		request: new Request(`https://app.test${path}`, { headers }),
+		request: new Request(`https://app.test${path}`, { headers, method }),
 		cookies: {
 			getAll: vi.fn().mockReturnValue([]),
 			set: vi.fn()
@@ -259,6 +259,166 @@ describe('hooks auth guard integration', () => {
 		expect(response.status).toBe(200);
 		expect(await response.json()).toEqual({ hasSession: true, role: 'member' });
 		expect(mockGetSession).not.toHaveBeenCalled();
+	});
+
+	describe('locked roast page: the exact path /roast for an account without Mallard Studio', () => {
+		const signedIn = (role: 'viewer' | 'member', ppiAccess = false) => ({
+			isAuthenticated: true,
+			authKind: 'session',
+			source: 'cookie-session',
+			session: { access_token: 'cookie-token' },
+			user: { id: `${role}-user` },
+			appRoles: [role],
+			primaryAppRole: role,
+			ppiAccess
+		});
+		const signedOut = {
+			isAuthenticated: false,
+			authKind: 'anonymous',
+			source: 'anonymous',
+			session: null,
+			user: null,
+			appRoles: [],
+			primaryAppRole: null,
+			ppiAccess: false
+		};
+		// Each is a signed-in account without Mallard Studio.
+		const lockedAccounts = [
+			{ account: 'a viewer', principal: signedIn('viewer') },
+			{ account: 'a Parchment Intelligence-only account', principal: signedIn('viewer', true) }
+		];
+		// SvelteKit hands the hook `/roast` for the page and for its `__data.json` request.
+		const lockedPagePaths = [
+			'/roast',
+			'/roast?roast=123',
+			'/roast?profileId=123',
+			'/roast?modal=new&beanId=7&beanName=Wush%20Wush'
+		];
+		const childPaths = [
+			'/roast/compare',
+			'/roast/compare?a=roast:4531&b=roast:4507',
+			'/roast/plan',
+			'/roast/plan?from=roast:4531',
+			'/roast/saved',
+			'/roast/4531',
+			// Not the exact path. SvelteKit redirects a trailing slash to `/roast` and strips
+			// the data suffix before the hook runs, so these only arrive if that changes.
+			'/roast/',
+			'/roast/__data.json',
+			'/roast%2Fcompare',
+			'/roasts'
+		];
+		const each = <T>(accounts: T[], paths: string[]) =>
+			accounts.flatMap((entry) => paths.map((path) => ({ ...entry, path })));
+
+		it.each(each(lockedAccounts, lockedPagePaths))(
+			'lets $account read $path, where the page draws the locked page',
+			async ({ principal, path }) => {
+				mockResolvePrincipal.mockResolvedValue(principal);
+				const resolve = vi.fn(() => new Response('locked page'));
+
+				const response = await handle({ event: makeEvent(path), resolve });
+
+				expect(response.status).toBe(200);
+				expect(resolve).toHaveBeenCalledOnce();
+			}
+		);
+
+		it.each(lockedAccounts)('lets $account send HEAD to /roast', async ({ principal }) => {
+			mockResolvePrincipal.mockResolvedValue(principal);
+			const resolve = vi.fn(() => new Response(null));
+
+			await handle({ event: makeEvent('/roast', {}, 'HEAD'), resolve });
+
+			expect(resolve).toHaveBeenCalledOnce();
+		});
+
+		it.each(each(lockedAccounts, childPaths))(
+			'sends $account from $path to the dashboard',
+			async ({ principal, path }) => {
+				mockResolvePrincipal.mockResolvedValue(principal);
+				const resolve = vi.fn();
+
+				await expect(handle({ event: makeEvent(path), resolve })).rejects.toMatchObject({
+					status: 303,
+					location: '/dashboard'
+				});
+				expect(resolve).not.toHaveBeenCalled();
+			}
+		);
+
+		it.each(each(lockedAccounts, ['POST', 'PUT', 'PATCH', 'DELETE']))(
+			'sends $account to the dashboard for a $path to /roast',
+			async ({ principal, path: method }) => {
+				mockResolvePrincipal.mockResolvedValue(principal);
+				const resolve = vi.fn();
+
+				await expect(
+					handle({ event: makeEvent('/roast', {}, method), resolve })
+				).rejects.toMatchObject({ status: 303, location: '/dashboard' });
+				expect(resolve).not.toHaveBeenCalled();
+			}
+		);
+
+		it.each(each(lockedAccounts, ['/profit', '/profit?modal=new']))(
+			'still sends $account from $path to the dashboard',
+			async ({ principal, path }) => {
+				mockResolvePrincipal.mockResolvedValue(principal);
+				const resolve = vi.fn();
+
+				await expect(handle({ event: makeEvent(path), resolve })).rejects.toMatchObject({
+					status: 303,
+					location: '/dashboard'
+				});
+				expect(resolve).not.toHaveBeenCalled();
+			}
+		);
+
+		it.each([...lockedPagePaths, ...childPaths.slice(0, 6)])(
+			'lets a member open %s',
+			async (path) => {
+				mockResolvePrincipal.mockResolvedValue(signedIn('member'));
+				const resolve = vi.fn(() => new Response('ok'));
+
+				const response = await handle({ event: makeEvent(path), resolve });
+
+				expect(response.status).toBe(200);
+				expect(resolve).toHaveBeenCalledOnce();
+			}
+		);
+
+		it.each([...lockedPagePaths, ...childPaths])(
+			'sends a signed-out visitor from %s to the catalog',
+			async (path) => {
+				mockResolvePrincipal.mockResolvedValue(signedOut);
+				const resolve = vi.fn();
+
+				await expect(handle({ event: makeEvent(path), resolve })).rejects.toMatchObject({
+					status: 303,
+					location: '/catalog'
+				});
+				expect(resolve).not.toHaveBeenCalled();
+			}
+		);
+
+		it.each([
+			{ name: 'an API key', principal: { isAuthenticated: true, authKind: 'api-key' } },
+			{
+				name: 'a bearer session',
+				principal: { isAuthenticated: true, authKind: 'session', source: 'bearer-session' }
+			}
+		])('sends $name from /roast to the catalog, as before', async ({ principal }) => {
+			mockResolvePrincipal.mockResolvedValue({ ...principal, appRoles: ['viewer'] });
+			const resolve = vi.fn();
+
+			await expect(
+				handle({
+					event: makeEvent('/roast', { Authorization: 'Bearer header-credential' }),
+					resolve
+				})
+			).rejects.toMatchObject({ status: 303, location: '/catalog' });
+			expect(resolve).not.toHaveBeenCalled();
+		});
 	});
 
 	it('allows Parchment Intelligence users through /chat without member role', async () => {

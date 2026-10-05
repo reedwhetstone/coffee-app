@@ -7,7 +7,7 @@ const { goto, pageState } = vi.hoisted(() => ({
 	pageState: {
 		url: new URL('http://localhost/beans'),
 		route: { id: '/beans' },
-		data: {} as { trackedOnly?: boolean }
+		data: {} as { trackedOnly?: boolean; roastsLocked?: boolean }
 	}
 }));
 
@@ -91,6 +91,18 @@ describe('MobileAppShell actions launcher', () => {
 		pageState.url = new URL('http://localhost/profit');
 		render(MobileAppShell, { data: auth('member', false) });
 
+		expect(screen.queryByLabelText('Open filters')).toBeNull();
+	});
+
+	it('shows roast filters to a member and none beside the locked roast page', () => {
+		pageState.url = new URL('http://localhost/roast');
+		pageState.data = { roastsLocked: false };
+		const { unmount } = render(MobileAppShell, { data: auth('member', false) });
+		expect(screen.getByLabelText('Open filters')).toBeTruthy();
+		unmount();
+
+		pageState.data = { roastsLocked: true };
+		render(MobileAppShell, { data: auth('viewer', false) });
 		expect(screen.queryByLabelText('Open filters')).toBeNull();
 	});
 

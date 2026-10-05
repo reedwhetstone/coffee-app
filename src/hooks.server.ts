@@ -96,12 +96,19 @@ const authGuard: Handle = async ({ event, resolve }) => {
 		const isChatRoute = currentPath.startsWith('/chat');
 		const isPortfolioRoute = currentPath.startsWith('/beans');
 		const hasParchmentAccess = principal.ppiAccess || principalHasRole(principal, 'member');
+		// A signed-in account without Mallard Studio may read the exact path `/roast`. That
+		// page draws a locked page and its server load makes no roast request for the account
+		// (routes/roast/+page.server.ts). Child paths, writes, and `/profit` stay member-only,
+		// and the roast and reference API routes run their own checks.
+		const isLockedRoastPageRead =
+			currentPath === '/roast' &&
+			(event.request.method === 'GET' || event.request.method === 'HEAD');
 
 		if (isChatRoute || isPortfolioRoute) {
 			if (!hasParchmentAccess) {
 				throw redirect(303, '/dashboard');
 			}
-		} else if (!principalHasRole(principal, 'member')) {
+		} else if (!principalHasRole(principal, 'member') && !isLockedRoastPageRead) {
 			throw redirect(303, '/dashboard');
 		}
 	}

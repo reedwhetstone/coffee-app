@@ -85,6 +85,26 @@ describe('Navbar', () => {
 		expect(onClose).toHaveBeenCalledTimes(1);
 	});
 
+	it('links a locked Roast item to its locked page without requesting roasts', async () => {
+		const fetchSpy = vi.fn();
+		vi.stubGlobal('fetch', fetchSpy);
+
+		render(Navbar, {
+			data: { auth: signedInAuth }
+		});
+
+		const roastLink = screen.getByRole('link', { name: /Roast/ });
+		expect(roastLink.getAttribute('href')).toBe('/roast');
+		expect(roastLink.textContent).toContain('Roasting workflows require Mallard Studio.');
+		expect(screen.getByRole('link', { name: /Profit/ }).getAttribute('href')).toBe('/subscription');
+
+		await fireEvent.mouseEnter(roastLink);
+		await fireEvent.mouseEnter(screen.getByRole('link', { name: /Portfolio/ }));
+
+		expect(fetchSpy).not.toHaveBeenCalled();
+		vi.unstubAllGlobals();
+	});
+
 	it('exposes the shared account entry when the mobile shell supplies its account handler', async () => {
 		const onOpenAccount = vi.fn();
 
