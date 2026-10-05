@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 import { createParchmentServerClient } from '$lib/server/parchmentClient';
 import { unwrapParchment } from '$lib/services/tools/parchment';
 import { isCookieSessionPrincipal } from '$lib/server/principal';
+import { roastStudioFailure } from '$lib/server/roastAccess';
 
 export const GET: RequestHandler = async (event) => {
 	const { url, locals } = event;
@@ -10,6 +11,8 @@ export const GET: RequestHandler = async (event) => {
 	if (!isCookieSessionPrincipal(locals.principal)) {
 		return json({ error: 'Authentication required' }, { status: 401 });
 	}
+	const studioFailure = roastStudioFailure(locals.principal);
+	if (studioFailure) return studioFailure;
 
 	const roastId = url.searchParams.get('roastId');
 	if (!roastId || isNaN(parseInt(roastId))) {

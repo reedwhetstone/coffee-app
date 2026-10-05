@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createParchmentServerClient, ParchmentConfigError } from '$lib/server/parchmentClient';
 import { isCookieSessionPrincipal, isTrustedMutationRequest } from '$lib/server/principal';
+import { roastStudioFailure } from '$lib/server/roastAccess';
 
 /**
  * Replace an existing roast's curve/events from an Artisan export.
@@ -29,6 +30,8 @@ export const POST: RequestHandler = async (event) => {
 		if (!isTrustedMutationRequest(event, locals.principal)) {
 			return json({ error: 'Cross-site session mutation blocked' }, { status: 403 });
 		}
+		const studioFailure = roastStudioFailure(locals.principal);
+		if (studioFailure) return studioFailure;
 
 		const formData = await request.formData();
 		const file = formData.get('file') as File;
