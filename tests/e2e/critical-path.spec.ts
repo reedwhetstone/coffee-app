@@ -26,7 +26,7 @@ test.use({ storageState: 'tests/e2e/.auth/user.json' });
 test.describe.serial('Critical business workflow', () => {
 	let testBeanId: number | null = null;
 	let testRoastId: number | null = null;
-	// The batch the test roast was created in. Deleting the roast keeps its batch.
+	// The batch the test roast was created in. Deleting the roast may leave its batch behind.
 	let testBatchId: string | null = null;
 	let testSaleId: number | null = null;
 	const testBeanName = `E2E_TEST_BEAN_${Date.now()}`;
