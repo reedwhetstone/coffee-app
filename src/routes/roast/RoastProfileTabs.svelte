@@ -51,7 +51,7 @@
 		onProfileUpdate: (profile: RoastProfile) => void;
 		onProfileDelete: () => void;
 		onBatchDelete: () => void;
-		onClearProfile: () => void;
+		onClearProfile: () => Promise<boolean>;
 		onClearFilters: () => void;
 		onProfileRefresh: (roastId: number) => Promise<void>;
 		selectedBean: { id?: number; name: string };
@@ -66,11 +66,12 @@
 	}>();
 
 	// The link is a real one for the keyboard and for opening in a new tab; a plain click
-	// closes the roast in place so the page holding the timer is not reloaded.
+	// closes the roast in place so the page holding the timer is not reloaded. The page
+	// asks first while a roast is recording, and keeps the roast open if the member stays.
 	function handleBackToRoasts(event: MouseEvent) {
 		if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
 		event.preventDefault();
-		onClearProfile();
+		void onClearProfile();
 	}
 </script>
 

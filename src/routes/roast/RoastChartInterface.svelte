@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { untrack } from 'svelte';
+	import { onDestroy, untrack } from 'svelte';
 	import MilestoneBar from '$lib/components/roast/MilestoneBar.svelte';
 	import RoastControls from '$lib/components/roast/RoastControls.svelte';
 	import EventTimeline from '$lib/components/roast/EventTimeline.svelte';
@@ -157,6 +157,9 @@
 		if (dataLoggingInterval) clearInterval(dataLoggingInterval);
 		dataLoggingInterval = null;
 	}
+
+	// The sampler writes to page-level stores, so it must not outlive this view.
+	onDestroy(stopDataLogging);
 
 	function toggleTimer() {
 		if (timer.isIdle) {
