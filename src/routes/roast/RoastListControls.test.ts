@@ -95,6 +95,73 @@ describe('the roast list’s controls', () => {
 		expect(search()).toHaveValue('');
 	});
 
+	it('keeps a search that is still being typed when another filter is chosen', async () => {
+		const { onChange, rerender } = renderControls({ market: 'retail' });
+
+		await fireEvent.input(search(), { target: { value: 'guji' } });
+		await choose('Coffee', '101');
+
+		// The coffee and the search go together, at once.
+		const chosen: RoastListFilters = {
+			...NO_ROAST_LIST_FILTERS,
+			market: 'retail',
+			coffee: 101,
+			q: 'guji'
+		};
+		expect(onChange).toHaveBeenCalledOnce();
+		expect(onChange).toHaveBeenCalledWith(chosen);
+
+		await rerender({ filters: chosen });
+		await vi.advanceTimersByTimeAsync(1000);
+		expect(search()).toHaveValue('guji');
+		expect(onChange).toHaveBeenCalledOnce();
+	});
+
+	it.each([
+		['the date', () => choose('Roast date', '7d'), { range: '7d' }],
+		[
+			'retail or wholesale',
+			() => fireEvent.click(screen.getByRole('button', { name: 'Wholesale' })),
+			{ market: 'wholesale' }
+		]
+	])('sends a search still being typed along with %s', async (_control, act, expected) => {
+		const { onChange } = renderControls();
+
+		await fireEvent.input(search(), { target: { value: 'guji' } });
+		await act();
+
+		expect(onChange).toHaveBeenCalledWith({ ...NO_ROAST_LIST_FILTERS, ...expected, q: 'guji' });
+	});
+
+	it('does not replace what is being typed when the address catches up with an earlier search', async () => {
+		const { onChange, rerender } = renderControls();
+
+		await fireEvent.input(search(), { target: { value: 'guj' } });
+		await vi.advanceTimersByTimeAsync(300);
+		expect(onChange).toHaveBeenLastCalledWith({ ...NO_ROAST_LIST_FILTERS, q: 'guj' });
+
+		// One more letter is typed before the list for "guj" arrives.
+		await fireEvent.input(search(), { target: { value: 'guji' } });
+		await rerender({ filters: { ...NO_ROAST_LIST_FILTERS, q: 'guj' } });
+		expect(search()).toHaveValue('guji');
+
+		await vi.advanceTimersByTimeAsync(300);
+		expect(onChange).toHaveBeenLastCalledWith({ ...NO_ROAST_LIST_FILTERS, q: 'guji' });
+	});
+
+	it('empties the search box on "Clear all", typed or applied', async () => {
+		const { onChange, rerender } = renderControls({ market: 'retail' });
+
+		await fireEvent.input(search(), { target: { value: 'guji' } });
+		await fireEvent.click(screen.getByRole('button', { name: 'Clear all' }));
+		expect(onChange).toHaveBeenCalledWith(NO_ROAST_LIST_FILTERS);
+
+		await rerender({ filters: NO_ROAST_LIST_FILTERS });
+		await vi.advanceTimersByTimeAsync(1000);
+		expect(search()).toHaveValue('');
+		expect(onChange).toHaveBeenCalledOnce();
+	});
+
 	it('narrows to one coffee and back to all coffees', async () => {
 		const { onChange } = renderControls({ q: 'guji' });
 

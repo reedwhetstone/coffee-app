@@ -1474,7 +1474,7 @@ const docsPages: DocsPage[] = [
 							'GET',
 							'Session + Mallard Studio',
 							'Internal product route',
-							'Lists the member’s roast batches, newest batch date first, each with its ID, name, date, and roast IDs. Batch names can repeat, so a batch is identified by its ID. include_empty=true also lists batches that hold no roasts.'
+							'Lists the member’s roast batches, newest batch date first, each with its ID, name, date, and roast IDs. Batch names can repeat, so a batch is identified by its ID. include_empty=true also lists batches that hold no roasts. date_start and date_end (YYYY-MM-DD) keep the batches dated in that span.'
 						],
 						[
 							'/api/roast-batches/[id]',

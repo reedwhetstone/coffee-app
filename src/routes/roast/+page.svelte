@@ -35,12 +35,14 @@
 		type RoastListFilters
 	} from '$lib/roast/roast-list-filters';
 	import {
+		completeBatches,
 		mergeRoasts,
 		requestBatchRoasts,
 		requestRoast,
 		requestRoasts,
 		RoastListRequestError,
-		type RoastListTotals
+		type RoastListTotals,
+		type WholeBatches
 	} from '$lib/roast/roast-list-loader';
 	import { roastCoffeeOptions, type RoastCoffeeOption } from '$lib/roast/roast-coffee-options';
 	import { saveRoastAsReference } from '$lib/roast/save-reference';
@@ -134,6 +136,8 @@
 	// Roasts asked for so far, a page at a time. "Load more" continues from here.
 	let listOffset = $state(0);
 	let hasMoreRoasts = $state(false);
+	// Batches shown with every roast they have under the filters. A later page skips them.
+	let wholeBatches = new Set<string>();
 	// The filters the list on screen was loaded for.
 	let listKey = $state<string | null>(null);
 	// True for the first load and while the page reloads after a roast or batch changed.
@@ -184,6 +188,8 @@
 	// The member's portfolio coffees, as the choices in the list's coffee control. They are
 	// read once the list is on screen, from a request that reads the portfolio and no roasts.
 	let coffeeOptions = $state<RoastCoffeeOption[]>([]);
+	// Not reactive, so clearing it after a failure does not ask again by itself. The next
+	// time the list comes back, the choices are asked for once more.
 	let coffeeOptionsStarted = false;
 	$effect(() => {
 		if (isLoading || currentRoastProfile !== null || coffeeOptionsStarted) return;
@@ -235,23 +241,23 @@
 		operationInProgress = operation;
 	}
 
-	// A page can end partway through a batch. The rest of that batch is asked for, so each
-	// batch header counts every one of its roasts that matches.
-	async function withWholeLastBatch(
-		rows: RoastProfile[],
+	// A page is cut by roast, and any batch on it may have roasts the page did not reach.
+	// The rest of each is asked for, so a batch header counts every one of its roasts that
+	// matches.
+	function withWholeBatches(
+		held: RoastProfile[],
+		pageRoasts: RoastProfile[],
+		paged: { offset: number; matching: number; whole: ReadonlySet<string> },
 		forFilters: RoastListFilters,
 		day: Date
-	): Promise<RoastProfile[]> {
-		const batchId = parseBatchId(rows.at(-1)?.batch_id);
-		if (!batchId || forFilters.batch !== null) return rows;
-		try {
-			const rest = await requestRoasts(
-				roastListQuery({ ...forFilters, batch: batchId }, null, day)
-			);
-			return mergeRoasts(rows, rest.data);
-		} catch {
-			return rows;
-		}
+	): Promise<WholeBatches> {
+		return completeBatches({
+			held,
+			page: pageRoasts,
+			...paged,
+			query: (batch, onePage) =>
+				roastListQuery(batch === null ? forFilters : { ...forFilters, batch }, onePage, day)
+		});
 	}
 
 	// Load the first page of roasts for the filters in the address. Nothing about the open
@@ -271,19 +277,28 @@
 					roastListQuery(forFilters, { limit: ROAST_PAGE_SIZE, offset: 0 }, day)
 				));
 			const lastPage = isLastRoastPage(0, result.data.length, result.totals.roasts);
-			const rows = lastPage ? result.data : await withWholeLastBatch(result.data, forFilters, day);
+			const list = await withWholeBatches(
+				result.data,
+				result.data,
+				{ offset: result.data.length, matching: result.totals.roasts, whole: new Set() },
+				forFilters,
+				day
+			);
 			if (request !== listRequest) return;
 
-			listRoasts = rows;
+			listRoasts = list.roasts;
+			wholeBatches = list.whole;
 			listTotals = result.totals;
 			listOffset = result.data.length;
-			hasMoreRoasts = !lastPage;
+			// Finishing the page's batches can bring in every roast that was left.
+			hasMoreRoasts = !lastPage && list.roasts.length < result.totals.roasts;
 			listDay = day;
 			listFailed = false;
 			searchInvalid = false;
 		} catch (err) {
 			if (request !== listRequest) return;
 			listRoasts = [];
+			wholeBatches = new Set();
 			listTotals = null;
 			listOffset = 0;
 			hasMoreRoasts = false;
@@ -317,14 +332,24 @@
 			const lastPage =
 				result.data.length === 0 ||
 				isLastRoastPage(offset, result.data.length, result.totals.roasts);
-			const rows = mergeRoasts(listRoasts, result.data);
-			const whole = lastPage ? rows : await withWholeLastBatch(rows, forFilters, listDay);
+			const list = await withWholeBatches(
+				mergeRoasts(listRoasts, result.data),
+				result.data,
+				{
+					offset: offset + result.data.length,
+					matching: result.totals.roasts,
+					whole: wholeBatches
+				},
+				forFilters,
+				listDay
+			);
 			if (request !== listRequest) return;
 
-			listRoasts = whole;
+			listRoasts = list.roasts;
+			wholeBatches = list.whole;
 			listTotals = result.totals;
 			listOffset = offset + result.data.length;
-			hasMoreRoasts = !lastPage;
+			hasMoreRoasts = !lastPage && list.roasts.length < result.totals.roasts;
 		} catch (err) {
 			if (request !== listRequest) return;
 			console.error('Error loading more roasts:', err);

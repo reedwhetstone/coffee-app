@@ -31,22 +31,34 @@
 	// What is typed is applied a moment after the last key, or at once on Enter.
 	let searchText = $state(untrack(() => filters.q));
 	let searchTimer: ReturnType<typeof setTimeout> | undefined;
+	// True from a key until what was typed is applied. Until then the box is the member's:
+	// the search in the address does not replace it.
+	let searchPending = false;
 	$effect(() => {
 		const applied = filters.q;
 		untrack(() => {
-			if (applied !== searchText.trim()) searchText = applied;
+			if (!searchPending && applied !== searchText.trim()) searchText = applied;
 		});
 	});
 	$effect(() => () => clearTimeout(searchTimer));
 
+	// Every control changes the filters through here, so a search still being typed goes
+	// with the change and is not lost to it.
+	function change(next: Partial<RoastListFilters>) {
+		clearTimeout(searchTimer);
+		searchPending = false;
+		onChange({ ...filters, ...next, q: searchText.trim() });
+	}
+
 	function applySearch() {
 		clearTimeout(searchTimer);
-		const q = searchText.trim();
-		if (q !== filters.q) onChange({ ...filters, q });
+		searchPending = false;
+		if (searchText.trim() !== filters.q) change({});
 	}
 
 	function typeSearch(value: string) {
 		searchText = value;
+		searchPending = true;
 		clearTimeout(searchTimer);
 		searchTimer = setTimeout(applySearch, SEARCH_DELAY_MS);
 	}
@@ -67,19 +79,21 @@
 	function chooseDates(value: string) {
 		customOpen = value === 'custom';
 		if (value === 'custom') {
-			if (filters.range !== null) onChange({ ...filters, range: null });
+			if (filters.range !== null) change({ range: null });
 			return;
 		}
 		const range = ROAST_RANGES.find((option) => option.value === value)?.value ?? null;
-		onChange({ ...filters, range, from: null, to: null });
+		change({ range, from: null, to: null });
 	}
 
 	function setDay(end: 'from' | 'to', value: string) {
-		onChange({ ...filters, range: null, [end]: value || null });
+		change({ range: null, [end]: value || null });
 	}
 
 	function clearFilters() {
 		clearTimeout(searchTimer);
+		searchPending = false;
+		searchText = '';
 		customOpen = false;
 		onChange(NO_ROAST_LIST_FILTERS);
 	}
@@ -114,8 +128,7 @@
 				aria-label="Coffee"
 				value={filters.coffee === null ? '' : String(filters.coffee)}
 				onchange={(event) =>
-					onChange({
-						...filters,
+					change({
 						coffee: event.currentTarget.value ? Number(event.currentTarget.value) : null
 					})}
 				class="{selectClass} flex-1 sm:max-w-[16rem] sm:flex-none"
@@ -147,10 +160,7 @@
 			selected={[filters.market ?? 'all']}
 			onChange={(next) => {
 				const choice = next[0];
-				onChange({
-					...filters,
-					market: choice === 'retail' || choice === 'wholesale' ? choice : null
-				});
+				change({ market: choice === 'retail' || choice === 'wholesale' ? choice : null });
 			}}
 		/>
 

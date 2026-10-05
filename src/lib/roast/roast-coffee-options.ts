@@ -16,7 +16,8 @@ export interface PortfolioCoffee {
 
 /**
  * The coffees to choose from, by name. A coffee bought more than once is in the portfolio
- * once per purchase, so those choices add the purchase date to tell them apart.
+ * once per purchase, so those choices add the purchase date to tell them apart, and the
+ * portfolio number as well when two purchases share a date.
  */
 export function roastCoffeeOptions(coffees: readonly PortfolioCoffee[]): RoastCoffeeOption[] {
 	const named = coffees.map((coffee) => ({
@@ -24,16 +25,27 @@ export function roastCoffeeOptions(coffees: readonly PortfolioCoffee[]): RoastCo
 		name: coffee.name?.trim() || coffee.coffee_catalog?.name?.trim() || `Coffee #${coffee.id}`,
 		purchased: formatDay(coffee.purchase_date)
 	}));
-	const counts = new Map<string, number>();
-	for (const coffee of named) counts.set(coffee.name, (counts.get(coffee.name) ?? 0) + 1);
+	const count = (names: readonly string[]) => {
+		const counts = new Map<string, number>();
+		for (const name of names) counts.set(name, (counts.get(name) ?? 0) + 1);
+		return counts;
+	};
 
-	return named
+	const names = count(named.map((coffee) => coffee.name));
+	const dated = named.map((coffee) => ({
+		id: coffee.id,
+		purchased: coffee.purchased,
+		name:
+			(names.get(coffee.name) ?? 0) > 1
+				? `${coffee.name} · ${coffee.purchased ? `purchased ${coffee.purchased}` : `#${coffee.id}`}`
+				: coffee.name
+	}));
+	const labels = count(dated.map((coffee) => coffee.name));
+
+	return dated
 		.map((coffee) => ({
 			id: coffee.id,
-			name:
-				(counts.get(coffee.name) ?? 0) > 1
-					? `${coffee.name} · ${coffee.purchased ? `purchased ${coffee.purchased}` : `#${coffee.id}`}`
-					: coffee.name
+			name: (labels.get(coffee.name) ?? 0) > 1 ? `${coffee.name} · #${coffee.id}` : coffee.name
 		}))
 		.sort((a, b) => a.name.localeCompare(b.name) || a.id - b.id);
 }

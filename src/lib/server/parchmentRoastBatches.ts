@@ -19,12 +19,17 @@ export function parseRoastBatchId(value: unknown): string | null {
 /**
  * List every roast batch the member owns, newest batch date first. A batch with no roasts
  * is left out unless `includeEmpty` is set; Parchment lists one under a placeholder name.
+ * `dateStart` and `dateEnd` (`YYYY-MM-DD`, inclusive) keep the batches dated in that span.
  */
 export function fetchParchmentRoastBatches(
 	client: ParchmentClient,
-	options: { includeEmpty?: boolean } = {}
+	options: { includeEmpty?: boolean; dateStart?: string; dateEnd?: string } = {}
 ): Promise<RoastBatch[]> {
-	const filter = options.includeEmpty ? { include_empty: 'true' as const } : {};
+	const filter = {
+		...(options.includeEmpty ? { include_empty: 'true' as const } : {}),
+		...(options.dateStart === undefined ? {} : { date_start: options.dateStart }),
+		...(options.dateEnd === undefined ? {} : { date_end: options.dateEnd })
+	};
 	return collectOffsetPages({
 		// Called only after session authorization (no API-key cap).
 		pageSize: PAGE_LIMIT,

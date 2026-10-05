@@ -32,6 +32,34 @@ describe('the roast list’s coffee choices', () => {
 		]);
 	});
 
+	it('adds the portfolio number when two purchases of one coffee share a date', () => {
+		expect(
+			roastCoffeeOptions([
+				{ id: 7, name: 'Ethiopia Guji', purchase_date: '2026-07-28' },
+				{ id: 8, name: 'Ethiopia Guji', purchase_date: '2026-07-28' },
+				{ id: 9, name: 'Ethiopia Guji', purchase_date: '2026-09-14' },
+				{ id: 12, name: 'Ethiopia Guji', purchase_date: null }
+			])
+		).toEqual([
+			{ id: 12, name: 'Ethiopia Guji · #12' },
+			{ id: 7, name: 'Ethiopia Guji · purchased Jul 28, 2026 · #7' },
+			{ id: 8, name: 'Ethiopia Guji · purchased Jul 28, 2026 · #8' },
+			{ id: 9, name: 'Ethiopia Guji · purchased Sep 14, 2026' }
+		]);
+	});
+
+	it('gives every choice its own name', () => {
+		const options = roastCoffeeOptions([
+			{ id: 1, name: 'Kenya Nyeri', purchase_date: '2026-07-28' },
+			{ id: 2, name: 'Kenya Nyeri', purchase_date: '2026-07-28T09:00:00Z' },
+			{ id: 3, name: 'Kenya Nyeri' },
+			{ id: 4, name: 'Kenya Nyeri' },
+			{ id: 5, coffee_catalog: { name: 'Kenya Nyeri' }, purchase_date: '2026-08-02' }
+		]);
+
+		expect(new Set(options.map((option) => option.name)).size).toBe(options.length);
+	});
+
 	it('names a coffee by its number when it has no name', () => {
 		expect(roastCoffeeOptions([{ id: 55 }])).toEqual([{ id: 55, name: 'Coffee #55' }]);
 	});

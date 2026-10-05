@@ -3,7 +3,11 @@ import { get } from 'svelte/store';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RoastProfile } from '$lib/types/component.types';
 import { page } from './__test-fixtures__/reactivePage.svelte';
-import { roastListRequests, roastListResponse } from './__test-fixtures__/roastListBackend';
+import {
+	roastBatchesResponse,
+	roastListRequests,
+	roastListResponse
+} from './__test-fixtures__/roastListBackend';
 import RoastPage from './+page.svelte';
 import { eventEntries, roastData, roastEvents, temperatureEntries } from './stores';
 
@@ -90,6 +94,7 @@ const planned = roast({
 
 let listed: RoastProfile[] = history;
 let listStatus = 200;
+let coffeesStatus = 200;
 type Sent = { url: string; method: string };
 let requests: Sent[] = [];
 
@@ -100,6 +105,7 @@ const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => 
 	if (url.startsWith('/api/roast-chart-settings')) return Response.json({ settings: null });
 	if (url.startsWith('/api/roast-chart-data')) return Response.json({ series: [], events: [] });
 	if (url.startsWith('/api/roast-coffees') || url.startsWith('/api/beans')) {
+		if (coffeesStatus !== 200) return Response.json({ error: 'Failed' }, { status: coffeesStatus });
 		return Response.json({
 			data: [
 				{ id: 101, name: 'Ethiopia Yirgacheffe Wush Wush', stocked: true },
@@ -108,6 +114,7 @@ const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => 
 			]
 		});
 	}
+	if (url.startsWith('/api/roast-batches')) return roastBatchesResponse(listed, url);
 	if (url.startsWith('/api/roast-profiles') && method === 'POST') {
 		const created = roast({ roast_id: 7001, batch_id: batchId(901), batch_name: 'Next batch' });
 		listed = [created, ...listed];
@@ -139,7 +146,8 @@ function renderPage(data: Record<string, unknown> = {}) {
 }
 
 const listRequests = () => roastListRequests(fetchMock);
-const pageRequests = () => listRequests().filter((query) => query.has('limit'));
+// The pages the list asks for, 50 roasts at a time.
+const pageRequests = () => listRequests().filter((query) => query.get('limit') === '50');
 const lastPageRequest = () => Object.fromEntries(pageRequests().at(-1)!);
 
 const roastRows = () =>
@@ -167,6 +175,7 @@ beforeEach(() => {
 	vi.useFakeTimers({ toFake: ['Date'], now: new Date(2026, 9, 5, 15, 0) });
 	listed = history;
 	listStatus = 200;
+	coffeesStatus = 200;
 	requests = [];
 	sessionStorage.clear();
 	vi.stubGlobal('fetch', fetchMock);
@@ -214,6 +223,21 @@ describe('loading the roast list a page at a time', () => {
 		expect(requests.some((request) => request.url.startsWith('/api/beans'))).toBe(false);
 	});
 
+	it('asks for the coffee choices once when they cannot be read, and the list still works', async () => {
+		coffeesStatus = 500;
+		visit('/roast');
+		renderPage();
+		await waitFor(() => expect(roastRows()).toHaveLength(50));
+
+		const coffeeRequests = () =>
+			requests.filter((request) => request.url === '/api/roast-coffees').length;
+		await waitFor(() => expect(coffeeRequests()).toBe(1));
+		// Long enough for a request that repeats itself to show.
+		await new Promise((resolve) => setTimeout(resolve, 150));
+		expect(coffeeRequests()).toBe(1);
+		expect(screen.getByRole('combobox', { name: 'Coffee' })).toBeInTheDocument();
+	});
+
 	it('loads the next pages on "Load more" and stops at the last one', async () => {
 		visit('/roast');
 		renderPage();
@@ -252,6 +276,86 @@ describe('loading the roast list a page at a time', () => {
 		await waitFor(() => expect(roastRows()).toHaveLength(101));
 		expect(lastPageRequest()).toMatchObject({ offset: '50' });
 		expect(new Set(roastRows()).size).toBe(101);
+	});
+
+	it('offers no "Load more" when finishing the last batch brought in every roast', async () => {
+		// 51 roasts: the first page ends on the first roast of the last batch of two.
+		listed = [planned, ...history.slice(0, 50)];
+		visit('/roast');
+		renderPage();
+		await listTitle();
+
+		await waitFor(() => expect(roastRows()).toHaveLength(51));
+		expect(screen.getByText('51 roasts in 26 batches · 15.0% average loss')).toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'Load more' })).toBeNull();
+		expect(screen.queryByText(/^Showing/)).toBeNull();
+	});
+
+	it('finishes a batch that also holds a roast from long before the page ends', async () => {
+		// The newest batch, of October 4, also holds the oldest roast on record.
+		listed = history.map((row) =>
+			row.roast_id === 5001 ? { ...row, batch_id: batchId(60), batch_name: 'Daily roast' } : row
+		);
+		visit('/roast');
+		renderPage();
+		await listTitle();
+
+		await waitFor(() => expect(roastRows()).toHaveLength(51));
+		expect(roastRows()).toContain(5001);
+		const spanning = screen
+			.getAllByRole('button', { name: /Toggle .* batch/ })
+			.find((header) => /\b3 roasts/.test(header.textContent ?? ''));
+		expect(spanning).toBeDefined();
+		expect(listRequests().some((query) => query.get('batch_id') === batchId(60))).toBe(true);
+		// No request asks for the whole list.
+		expect(listRequests().every((query) => query.has('limit') || query.has('batch_id'))).toBe(true);
+
+		// The roast already shown is not repeated when its own page arrives.
+		await fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+		await waitFor(() => expect(roastRows()).toHaveLength(101));
+		await fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+		await waitFor(() => expect(roastRows()).toHaveLength(120));
+		expect(new Set(roastRows()).size).toBe(120);
+		expect(screen.queryByRole('button', { name: 'Load more' })).toBeNull();
+	});
+
+	it('finishes a batch cut on the page’s last day that the page does not end in', async () => {
+		// The first page ends on September 10. Two batches were roasted that day, turn about,
+		// so the page ends in one of them while the other still has a roast to come.
+		const other = batchId(700);
+		const boundaryDay = history[48].roast_date;
+		listed = [
+			...history.slice(0, 48),
+			roast({ roast_id: 4904, batch_id: batchId(36), roast_date: boundaryDay }),
+			roast({
+				roast_id: 4903,
+				batch_id: other,
+				batch_name: 'Second roaster',
+				roast_date: boundaryDay
+			}),
+			roast({ roast_id: 4902, batch_id: batchId(36), roast_date: boundaryDay }),
+			roast({
+				roast_id: 4901,
+				batch_id: other,
+				batch_name: 'Second roaster',
+				roast_date: boundaryDay
+			}),
+			...history.slice(50, 60)
+		];
+		visit('/roast');
+		renderPage();
+		await listTitle();
+
+		// 48, then 4904 and 4903: the page ends in the second batch with 4901 left, and the
+		// first batch, which the page does not end in, still has 4902 to come.
+		await waitFor(() => expect(roastRows()).toHaveLength(52));
+		expect(roastRows()).toEqual(expect.arrayContaining([4904, 4903, 4902, 4901]));
+		expect(screen.getByText('Showing 52 of 62 roasts')).toBeInTheDocument();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+		await waitFor(() => expect(roastRows()).toHaveLength(62));
+		expect(new Set(roastRows()).size).toBe(62);
+		expect(screen.queryByRole('button', { name: 'Load more' })).toBeNull();
 	});
 
 	it('uses the first page the server sent with the page, and asks for nothing again', async () => {

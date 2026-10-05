@@ -35,7 +35,8 @@ export function parseBatchId(value: string | null | undefined): string | null {
 	return text && BATCH_ID.test(text) ? text.toLowerCase() : null;
 }
 
-function roastDay(roast: BatchedRoast): string | null {
+/** The day a roast was roasted, `YYYY-MM-DD`, or null when it has no date. */
+export function roastDay(roast: Pick<BatchedRoast, 'roast_date'>): string | null {
 	return roast.roast_date?.match(/^\d{4}-\d{2}-\d{2}/)?.[0] ?? null;
 }
 

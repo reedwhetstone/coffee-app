@@ -45,10 +45,10 @@ Search, coffee, date, and retail or wholesale sit in one row under the segments,
 
 ## Loading a page at a time
 
-- **One visit to the list** asks Parchment for one page of 50 roasts, the rest of the batch that page ended in, and the portfolio's coffees for the coffee control. Before this PR it read every roast.
+- **One visit to the list** asks Parchment for one page of 50 roasts, the rest of the batch that page ended in, the batches dated in that page's days with the roast numbers each holds, and the portfolio's coffees for the coffee control. Before this PR it read every roast.
 - **"Load more"** adds the next 50. The list showed 51, then 102, then all 110, each roast once, and "Load more" was gone after the third page. The requests were `offset=0`, `offset=50`, and `offset=100`.
 - **The count line does not change with the pages.** It read "110 roasts in 44 batches · 14.9% average loss" with 51 roasts on screen and with all 110.
-- **A page can end partway through a batch.** The rest of that batch is asked for by its ID, so a batch header never counts fewer roasts than the batch has under the filters. That is why the first page shows 51 roasts and not 50.
+- **A page is cut by roast, so any batch on it can be cut.** A batch can hold roasts from more than one day, and two batches roasted on one day can alternate, so the cut batch is not always the one the page ends in. The batch the page ends in is asked for by its ID. The batch route lists the roast numbers each batch on the page holds, and a batch with a roast the list does not hold is asked for as well, or the roasts after the page are read through for it when that takes fewer requests. A batch header never counts fewer roasts than the batch has under the filters. That is why the first page shows 51 roasts and not 50.
 
 | View                       | Desktop                              | Phone                              |
 | -------------------------- | ------------------------------------ | ---------------------------------- |
@@ -126,3 +126,15 @@ Two readers still ask for every roast: the compare picker and the sale form. Bot
 - **A batch header in a filtered list counts and dates the roasts shown.** The chip for `?batch=` still names the batch as a whole.
 - **The wholesale list is empty for every account today.** parchment-api #355 found no wholesale roast in production, so "Wholesale" shows "No roasts match. No wholesale roasts." until one exists.
 - **The average loss covers roasts with a loss on record,** as it did before. For the account with the most roasts that is 89 of 252.
+
+## Corrected in review
+
+Found by review of the first version of this PR and corrected in it. Each is covered by tests.
+
+- **Any batch on a page is finished, not only the last one.** The first version asked for the rest of the batch the page ended in. A batch with a roast from an earlier day, or one of two batches roasted turn about on the page's last day, kept a header that counted too few roasts until a later page arrived.
+- **"Load more" is not offered when finishing a batch brought in every roast.** With 51 roasts and the last batch cut by the page, the list showed all 51 and still offered "Load more", which added nothing.
+- **A search still being typed is kept.** Choosing a coffee, a date, or retail or wholesale within the moment before a typed search is applied now sends the search with it. The search in the address also no longer replaces what is being typed when the list for an earlier search arrives.
+- **Two purchases of one coffee on the same date are told apart.** Their choices in the coffee control add the portfolio number: "Ethiopia Guji · purchased Jul 28, 2026 · #7".
+- **`/api/roast-batches` takes `date_start` and `date_end`,** so the list reads the batches of the page it is showing and no others.
+
+Checked again in the local render on desktop after the corrections: one visit made four Parchment reads (the page of 50, the batch it ended in, the batches dated in that page's days, and the portfolio's coffees); "Load more" showed 51, then 102, then all 110, each roast once, and was gone at the end; the batch that spans September 27 and 28 showed both of its roasts; and typing "wednesday" and choosing a coffee straight after gave `/roast?coffee=102&q=wednesday` with the search still in the box.

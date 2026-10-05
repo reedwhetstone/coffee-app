@@ -56,6 +56,41 @@ export function roastListResponse(roasts: readonly RoastProfile[], address: stri
 	return Response.json({ data, totals });
 }
 
+/**
+ * A stand-in for the batch route, `GET /api/roast-batches`, over the same roasts: each batch
+ * with every roast it holds. A batch is dated by its earliest roast, and `date_start` and
+ * `date_end` keep the batches dated in that span.
+ */
+export function roastBatchesResponse(roasts: readonly RoastProfile[], address: string): Response {
+	const params = new URL(address, 'http://localhost').searchParams;
+	const start = params.get('date_start');
+	const end = params.get('date_end');
+	const batches = new Map<string, { id: string; batch_date: string; roast_ids: number[] }>();
+	for (const roast of roasts) {
+		if (!roast.batch_id) continue;
+		const day = roast.roast_date?.slice(0, 10) ?? '';
+		const batch = batches.get(roast.batch_id);
+		if (batch) {
+			batch.roast_ids.push(roast.roast_id);
+			if (day < batch.batch_date) batch.batch_date = day;
+		} else {
+			batches.set(roast.batch_id, {
+				id: roast.batch_id,
+				batch_date: day,
+				roast_ids: [roast.roast_id]
+			});
+		}
+	}
+	return Response.json({
+		data: [...batches.values()]
+			.filter(
+				(batch) =>
+					(start === null || batch.batch_date >= start) && (end === null || batch.batch_date <= end)
+			)
+			.map((batch) => ({ ...batch, roast_count: batch.roast_ids.length }))
+	});
+}
+
 /** The roast list requests a fetch stand-in received, as their query parameters. */
 export function roastListRequests(fetchMock: { mock: { calls: unknown[][] } }): URLSearchParams[] {
 	return fetchMock.mock.calls
