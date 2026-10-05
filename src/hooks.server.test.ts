@@ -62,10 +62,10 @@ vi.mock('$lib/server/principal', () => ({
 
 let handle: typeof import('./hooks.server').handle;
 
-function makeEvent(path: string, headers: HeadersInit = {}) {
+function makeEvent(path: string, headers: HeadersInit = {}, method = 'GET') {
 	return {
 		url: new URL(`https://app.test${path}`),
-		request: new Request(`https://app.test${path}`, { headers }),
+		request: new Request(`https://app.test${path}`, { headers, method }),
 		cookies: {
 			getAll: vi.fn().mockReturnValue([]),
 			set: vi.fn()
@@ -261,6 +261,178 @@ describe('hooks auth guard integration', () => {
 		expect(mockGetSession).not.toHaveBeenCalled();
 	});
 
+	describe('locked roast page: the roast list page for an account without Mallard Studio', () => {
+		const signedIn = (role: 'viewer' | 'member', ppiAccess = false) => ({
+			isAuthenticated: true,
+			authKind: 'session',
+			source: 'cookie-session',
+			session: { access_token: 'cookie-token' },
+			user: { id: `${role}-user` },
+			appRoles: [role],
+			primaryAppRole: role,
+			ppiAccess
+		});
+		const signedOut = {
+			isAuthenticated: false,
+			authKind: 'anonymous',
+			source: 'anonymous',
+			session: null,
+			user: null,
+			appRoles: [],
+			primaryAppRole: null,
+			ppiAccess: false
+		};
+		// Each is a signed-in account without Mallard Studio.
+		const lockedAccounts = [
+			{ account: 'a viewer', principal: signedIn('viewer') },
+			{ account: 'a Parchment Intelligence-only account', principal: signedIn('viewer', true) }
+		];
+		// SvelteKit hands the hook `/roast` for the page and for its `__data.json` request.
+		// It hands it `/roast/` for the data request behind an in-app link to `/roast/`; a
+		// page request for `/roast/` is redirected to `/roast` before the hook runs.
+		const lockedPagePaths = [
+			'/roast',
+			'/roast?roast=123',
+			'/roast?profileId=123',
+			'/roast?modal=new&beanId=7&beanName=Wush%20Wush',
+			'/roast/',
+			'/roast/?roast=123'
+		];
+		const childPaths = [
+			'/roast/compare',
+			'/roast/compare?a=roast:4531&b=roast:4507',
+			'/roast/plan',
+			'/roast/plan?from=roast:4531',
+			'/roast/saved',
+			'/roast/4531',
+			// Not the roast list page. SvelteKit strips the data suffix before the hook runs,
+			// so `/roast/__data.json` only arrives if that changes.
+			'/roast/__data.json',
+			'/roast//',
+			'/roast%2F',
+			'/roast%2Fcompare',
+			'/roasts'
+		];
+		const each = <T>(accounts: T[], paths: string[]) =>
+			accounts.flatMap((entry) => paths.map((path) => ({ ...entry, path })));
+
+		it.each(each(lockedAccounts, lockedPagePaths))(
+			'lets $account read $path, where the page draws the locked page',
+			async ({ principal, path }) => {
+				mockResolvePrincipal.mockResolvedValue(principal);
+				const resolve = vi.fn(() => new Response('locked page'));
+
+				const response = await handle({ event: makeEvent(path), resolve });
+
+				expect(response.status).toBe(200);
+				expect(resolve).toHaveBeenCalledOnce();
+			}
+		);
+
+		it.each(each(lockedAccounts, ['/roast', '/roast/']))(
+			'lets $account send HEAD to $path',
+			async ({ principal, path }) => {
+				mockResolvePrincipal.mockResolvedValue(principal);
+				const resolve = vi.fn(() => new Response(null));
+
+				await handle({ event: makeEvent(path, {}, 'HEAD'), resolve });
+
+				expect(resolve).toHaveBeenCalledOnce();
+			}
+		);
+
+		it.each(each(lockedAccounts, childPaths))(
+			'sends $account from $path to the dashboard',
+			async ({ principal, path }) => {
+				mockResolvePrincipal.mockResolvedValue(principal);
+				const resolve = vi.fn();
+
+				await expect(handle({ event: makeEvent(path), resolve })).rejects.toMatchObject({
+					status: 303,
+					location: '/dashboard'
+				});
+				expect(resolve).not.toHaveBeenCalled();
+			}
+		);
+
+		it.each(
+			each(lockedAccounts, ['POST', 'PUT', 'PATCH', 'DELETE']).flatMap((entry) =>
+				['/roast', '/roast/'].map((target) => ({ ...entry, method: entry.path, target }))
+			)
+		)(
+			'sends $account to the dashboard for a $method to $target',
+			async ({ principal, method, target }) => {
+				mockResolvePrincipal.mockResolvedValue(principal);
+				const resolve = vi.fn();
+
+				await expect(
+					handle({ event: makeEvent(target, {}, method), resolve })
+				).rejects.toMatchObject({ status: 303, location: '/dashboard' });
+				expect(resolve).not.toHaveBeenCalled();
+			}
+		);
+
+		it.each(each(lockedAccounts, ['/profit', '/profit?modal=new']))(
+			'still sends $account from $path to the dashboard',
+			async ({ principal, path }) => {
+				mockResolvePrincipal.mockResolvedValue(principal);
+				const resolve = vi.fn();
+
+				await expect(handle({ event: makeEvent(path), resolve })).rejects.toMatchObject({
+					status: 303,
+					location: '/dashboard'
+				});
+				expect(resolve).not.toHaveBeenCalled();
+			}
+		);
+
+		it.each([...lockedPagePaths, ...childPaths.slice(0, 6)])(
+			'lets a member open %s',
+			async (path) => {
+				mockResolvePrincipal.mockResolvedValue(signedIn('member'));
+				const resolve = vi.fn(() => new Response('ok'));
+
+				const response = await handle({ event: makeEvent(path), resolve });
+
+				expect(response.status).toBe(200);
+				expect(resolve).toHaveBeenCalledOnce();
+			}
+		);
+
+		it.each([...lockedPagePaths, ...childPaths])(
+			'sends a signed-out visitor from %s to the catalog',
+			async (path) => {
+				mockResolvePrincipal.mockResolvedValue(signedOut);
+				const resolve = vi.fn();
+
+				await expect(handle({ event: makeEvent(path), resolve })).rejects.toMatchObject({
+					status: 303,
+					location: '/catalog'
+				});
+				expect(resolve).not.toHaveBeenCalled();
+			}
+		);
+
+		it.each([
+			{ name: 'an API key', principal: { isAuthenticated: true, authKind: 'api-key' } },
+			{
+				name: 'a bearer session',
+				principal: { isAuthenticated: true, authKind: 'session', source: 'bearer-session' }
+			}
+		])('sends $name from /roast to the catalog, as before', async ({ principal }) => {
+			mockResolvePrincipal.mockResolvedValue({ ...principal, appRoles: ['viewer'] });
+			const resolve = vi.fn();
+
+			await expect(
+				handle({
+					event: makeEvent('/roast', { Authorization: 'Bearer header-credential' }),
+					resolve
+				})
+			).rejects.toMatchObject({ status: 303, location: '/catalog' });
+			expect(resolve).not.toHaveBeenCalled();
+		});
+	});
+
 	it('allows Parchment Intelligence users through /chat without member role', async () => {
 		mockResolvePrincipal.mockResolvedValue({
 			isAuthenticated: true,
@@ -350,7 +522,7 @@ describe('hooks auth guard integration', () => {
 		).rejects.toMatchObject({ status: 303, location: '/dashboard' });
 	});
 
-	describe('every /roast path is member-only', () => {
+	describe('every path under /roast is member-only', () => {
 		const principalOf = (role: 'viewer' | 'member', ppiAccess = false) => ({
 			isAuthenticated: true,
 			authKind: 'session',
@@ -361,7 +533,10 @@ describe('hooks auth guard integration', () => {
 			primaryAppRole: role,
 			ppiAccess
 		});
-		const paths = ['/roast', '/roast/compare', '/roast/compare?a=roast:4531&b=roast:4507'];
+		// `/roast` itself draws a locked page for an account without Mallard Studio; the
+		// locked roast page tests above cover it.
+		const childPaths = ['/roast/compare', '/roast/compare?a=roast:4531&b=roast:4507'];
+		const paths = ['/roast', ...childPaths];
 
 		it.each(paths)('lets a member open %s', async (path) => {
 			mockResolvePrincipal.mockResolvedValue(principalOf('member'));
@@ -373,7 +548,7 @@ describe('hooks auth guard integration', () => {
 			expect(resolve).toHaveBeenCalledOnce();
 		});
 
-		it.each(paths)(
+		it.each(childPaths)(
 			'sends a signed-in account without Mallard Studio from %s to the dashboard',
 			async (path) => {
 				// Parchment Intelligence opens portfolio and chat, never the roast pages.
@@ -408,6 +583,124 @@ describe('hooks auth guard integration', () => {
 				location: '/catalog'
 			});
 			expect(resolve).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('a percent-encoded path gets the same guard as the page it routes to', () => {
+		const signedIn = (role: 'viewer' | 'member', ppiAccess = false) => ({
+			isAuthenticated: true,
+			authKind: 'session',
+			source: 'cookie-session',
+			session: { access_token: 'cookie-token' },
+			user: { id: `${role}-user` },
+			appRoles: [role],
+			primaryAppRole: role,
+			ppiAccess
+		});
+		const signedOut = {
+			isAuthenticated: false,
+			authKind: 'anonymous',
+			source: 'none',
+			session: null,
+			user: null,
+			appRoles: [],
+			primaryAppRole: null,
+			ppiAccess: false
+		};
+		// SvelteKit decodes the pathname before it matches a route, so each of these opens the
+		// page named in the comment beside it.
+		const memberOnly = [
+			'/%70rofit', // /profit
+			'/%70rofit?modal=new',
+			'/pro%66it',
+			'/%72oast/compare', // /roast/compare
+			'/roas%74/4531'
+		];
+
+		it.each([...memberOnly, '/%62eans', '/%63hat', '/%61dmin', '/%61pi-dashboard'])(
+			'sends a signed-out visitor from %s to the catalog',
+			async (path) => {
+				mockResolvePrincipal.mockResolvedValue(signedOut);
+				const resolve = vi.fn();
+
+				await expect(handle({ event: makeEvent(path), resolve })).rejects.toMatchObject({
+					status: 303,
+					location: '/catalog'
+				});
+				expect(resolve).not.toHaveBeenCalled();
+			}
+		);
+
+		it('sends a signed-out visitor from /%64ashboard to sign-in', async () => {
+			mockResolvePrincipal.mockResolvedValue(signedOut);
+			const resolve = vi.fn();
+
+			await expect(handle({ event: makeEvent('/%64ashboard'), resolve })).rejects.toMatchObject({
+				status: 303,
+				location: '/auth'
+			});
+			expect(resolve).not.toHaveBeenCalled();
+		});
+
+		it.each([...memberOnly, '/%62eans', '/%63hat', '/%61dmin'])(
+			'sends a signed-in account without access from %s to the dashboard',
+			async (path) => {
+				mockResolvePrincipal.mockResolvedValue(signedIn('viewer'));
+				const resolve = vi.fn();
+
+				await expect(handle({ event: makeEvent(path), resolve })).rejects.toMatchObject({
+					status: 303,
+					location: '/dashboard'
+				});
+				expect(resolve).not.toHaveBeenCalled();
+			}
+		);
+
+		it.each(memberOnly)(
+			'sends a Parchment Intelligence-only account from %s to the dashboard',
+			async (path) => {
+				mockResolvePrincipal.mockResolvedValue(signedIn('viewer', true));
+				const resolve = vi.fn();
+
+				await expect(handle({ event: makeEvent(path), resolve })).rejects.toMatchObject({
+					status: 303,
+					location: '/dashboard'
+				});
+				expect(resolve).not.toHaveBeenCalled();
+			}
+		);
+
+		it('sends a member from /%61dmin to the dashboard', async () => {
+			mockResolvePrincipal.mockResolvedValue(signedIn('member'));
+			const resolve = vi.fn();
+
+			await expect(handle({ event: makeEvent('/%61dmin'), resolve })).rejects.toMatchObject({
+				status: 303,
+				location: '/dashboard'
+			});
+			expect(resolve).not.toHaveBeenCalled();
+		});
+
+		it.each([...memberOnly, '/%62eans', '/%63hat'])('lets a member open %s', async (path) => {
+			mockResolvePrincipal.mockResolvedValue(signedIn('member'));
+			const resolve = vi.fn(() => new Response('ok'));
+
+			const response = await handle({ event: makeEvent(path), resolve });
+
+			expect(response.status).toBe(200);
+			expect(resolve).toHaveBeenCalledOnce();
+		});
+
+		// A doubly encoded path decodes to a literal `%70`, which is no route: it passes the
+		// guard and SvelteKit answers 404. A path that cannot be decoded is left as it came.
+		it.each(['/%2570rofit', '/%E0%A4%A'])('leaves %s to the router', async (path) => {
+			mockResolvePrincipal.mockResolvedValue(signedOut);
+			const resolve = vi.fn(() => new Response('not found', { status: 404 }));
+
+			const response = await handle({ event: makeEvent(path), resolve });
+
+			expect(response.status).toBe(404);
+			expect(resolve).toHaveBeenCalledOnce();
 		});
 	});
 });

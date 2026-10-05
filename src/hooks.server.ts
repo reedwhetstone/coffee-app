@@ -66,12 +66,22 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 	});
 };
 
+// SvelteKit matches routes against the decoded pathname, so `/%72oast` reaches the `/roast`
+// route. The guard compares its prefixes against the same decoded form.
+function decodeGuardPath(pathname: string): string {
+	try {
+		return pathname.split('%25').map(decodeURI).join('%25');
+	} catch {
+		return pathname;
+	}
+}
+
 const authGuard: Handle = async ({ event, resolve }) => {
 	const protectedRoutes = ['/roast', '/profit', '/beans', '/chat'];
 	const adminRoutes = ['/admin'];
 	const apiRoutes = ['/api-dashboard'];
 	const dashboardRoutes = ['/dashboard'];
-	const currentPath = event.url.pathname;
+	const currentPath = decodeGuardPath(event.url.pathname);
 	const requiresProtection = protectedRoutes.some((route) => currentPath.startsWith(route));
 	const requiresAdminAccess = adminRoutes.some((route) => currentPath.startsWith(route));
 	const requiresApiAccess = apiRoutes.some((route) => currentPath.startsWith(route));
@@ -96,12 +106,23 @@ const authGuard: Handle = async ({ event, resolve }) => {
 		const isChatRoute = currentPath.startsWith('/chat');
 		const isPortfolioRoute = currentPath.startsWith('/beans');
 		const hasParchmentAccess = principal.ppiAccess || principalHasRole(principal, 'member');
+		// A signed-in account without Mallard Studio may read the roast list page, and only
+		// that page. It draws a locked page and its server load makes no roast request for the
+		// account (routes/roast/+page.server.ts). Child paths, writes, and `/profit` stay
+		// member-only, and the roast and reference API routes run their own checks.
+		//
+		// `/roast/` is the same page. SvelteKit redirects a page request for it to `/roast`
+		// before this hook runs, but the data request made when an in-app link points at
+		// `/roast/` arrives here with the slash kept.
+		const isLockedRoastPageRead =
+			(currentPath === '/roast' || currentPath === '/roast/') &&
+			(event.request.method === 'GET' || event.request.method === 'HEAD');
 
 		if (isChatRoute || isPortfolioRoute) {
 			if (!hasParchmentAccess) {
 				throw redirect(303, '/dashboard');
 			}
-		} else if (!principalHasRole(principal, 'member')) {
+		} else if (!principalHasRole(principal, 'member') && !isLockedRoastPageRead) {
 			throw redirect(303, '/dashboard');
 		}
 	}
