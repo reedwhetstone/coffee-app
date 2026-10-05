@@ -311,7 +311,10 @@ async function resolveCanonicalPrincipal(
  * role, a cancelled plan removes one. Its own check ran before it took effect,
  * so that answer is not remembered and anything remembered is dropped. The
  * pages that follow are then drawn from a new check, not from the access the
- * caller had before the write.
+ * caller had before the write. That holds for a browser session, which also
+ * carries the recheck cookie below. A header-authenticated caller has no
+ * cookie: a read of its own that overlaps its write can be remembered with the
+ * answer from before the write, for the usual window and no longer.
  */
 const IDENTITY_REUSE_MS = 10_000;
 const IDENTITY_REUSE_MAX_ENTRIES = 500;
@@ -344,6 +347,17 @@ const recentIdentity = new Map<string, RememberedIdentity>();
 /** Test-only: forget every recently verified identity. */
 export function resetIdentityReuse(): void {
 	recentIdentity.clear();
+}
+
+/** Test-only: how many identities are held, reusable or not. */
+export function rememberedIdentityCount(): number {
+	return recentIdentity.size;
+}
+
+/** A clock that has stepped backwards makes an answer look newer than it is; treat it as expired. */
+function isFresh(entry: RememberedIdentity, now: number): boolean {
+	const age = now - entry.verifiedAt;
+	return age >= 0 && age < IDENTITY_REUSE_MS;
 }
 
 function identityKey(token: string): string {
@@ -384,15 +398,14 @@ function rememberIdentity(key: string, canonical: Promise<CanonicalPrincipal>): 
 	const now = Date.now();
 	// Re-inserting moves the credential to the newest position.
 	recentIdentity.delete(key);
-	if (recentIdentity.size >= IDENTITY_REUSE_MAX_ENTRIES) {
-		for (const [entryKey, entry] of recentIdentity) {
-			if (now - entry.verifiedAt >= IDENTITY_REUSE_MS) recentIdentity.delete(entryKey);
-		}
-		// Still full of live entries: drop the oldest. A Map keeps insertion order.
-		for (const entryKey of recentIdentity.keys()) {
-			if (recentIdentity.size < IDENTITY_REUSE_MAX_ENTRIES) break;
-			recentIdentity.delete(entryKey);
-		}
+	// An answer that can no longer be reused is not kept around.
+	for (const [entryKey, entry] of recentIdentity) {
+		if (!isFresh(entry, now)) recentIdentity.delete(entryKey);
+	}
+	// Still full of live entries: drop the oldest. A Map keeps insertion order.
+	for (const entryKey of recentIdentity.keys()) {
+		if (recentIdentity.size < IDENTITY_REUSE_MAX_ENTRIES) break;
+		recentIdentity.delete(entryKey);
 	}
 	const entry = { verifiedAt: now, canonical };
 	recentIdentity.set(key, entry);
@@ -418,7 +431,7 @@ async function resolveRequestIdentity(
 	// Reused while recent; otherwise verified now. Requests arriving while that
 	// is in flight share it.
 	const entry =
-		recent && Date.now() - recent.verifiedAt < IDENTITY_REUSE_MS
+		recent && isFresh(recent, Date.now())
 			? recent
 			: rememberIdentity(key, resolveCanonicalPrincipal(event, token));
 	return { canonical: await entry.canonical, forget: () => forgetIdentity(key, entry) };
@@ -488,7 +501,8 @@ export async function resolvePrincipal(event: RequestEvent): Promise<RequestPrin
 		data: { session },
 		error
 	} = await event.locals.supabase.auth.getSession();
-	if (session && !error) {
+	// A cookie is caller-supplied, so its token may be anything; only text is a credential.
+	if (session && !error && typeof session.access_token === 'string' && session.access_token) {
 		const verified = await resolveRequestIdentity(event, session.access_token);
 		const { canonical } = verified;
 		if (!canonical.authenticated || canonical.authKind !== 'session' || !canonical.userId) {
