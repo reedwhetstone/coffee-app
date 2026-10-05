@@ -51,6 +51,36 @@ Parchment, and consumes `GET /v1/me` through `@purveyors/sdk` for canonical
 request-principal, role, plan, scope, and entitlement decisions. The projection
 is cached on request locals. Invalid credentials resolve anonymously; an
 upstream principal-resolution failure is not downgraded to viewer access.
+
+A verified projection is also reused across requests for ten seconds
+(`IDENTITY_REUSE_MS` in `src/lib/server/principal.ts`), so the reads of one page
+view share one `/v1/me` check. The rule, which that file owns:
+
+- **Reused:** `GET` and `HEAD` requests outside `/auth`, for the same credential
+  on the same server instance. The whole projection is reused: user ID, email,
+  roles, plan, Parchment Intelligence access, and scopes.
+- **Always verified:** every other method, and every path under `/auth` as
+  SvelteKit routes it, so a percent-encoded spelling is treated the same.
+- **Never remembered:** a failed check, or an answer that does not sign the
+  request in, including a missing, malformed, or mismatched session identity.
+  An always-verified request is not remembered either.
+- **A write ends reuse:** a write can change the projection (a purchase adds a
+  role, a cancelled plan removes one), and its own check ran before it took
+  effect. So the write drops what was remembered for its credential, and a
+  browser session's write sets the `purveyors_identity_recheck` cookie for
+  fifteen seconds. Reads carrying that cookie are always verified, on whichever
+  server instance they land. The page data reloaded after a purchase therefore
+  comes from a new check.
+- **Freshness:** after a session is revoked, a role or entitlement changes, or
+  an account is deleted, a read request may keep the previous projection for up
+  to ten seconds. That covers the access guard, the page shell, and the user ID
+  and email in page data. It does not cover product data: Parchment verifies the
+  caller's credential on every data call. A change the caller makes from the
+  same browser is the exception: it shows on the next read.
+
+Do not describe request authentication as verified on every request without this
+qualification.
+
 Server routes consume only `locals.principal` for request authentication and
 authorization. `locals.safeGetIdentity()` remains narrowly scoped to Supabase
 browser identity hydration; legacy `locals.session`, `locals.user`,

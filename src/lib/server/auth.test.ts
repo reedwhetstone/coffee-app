@@ -68,6 +68,7 @@ function makeEvent(options: EventOptions = {}) {
 			headers
 		},
 		url: new URL(url),
+		cookies: { get: vi.fn(), set: vi.fn() },
 		locals: {
 			principal: options.principal,
 			supabase: {

@@ -1,4 +1,6 @@
+import { createHash } from 'node:crypto';
 import { createParchmentPrincipalClient } from '$lib/server/parchmentClient';
+import { decodeRoutePath } from '$lib/server/routePath';
 import { checkRole, type UserRole } from '$lib/types/auth.types';
 import type { RequestEvent } from '@sveltejs/kit';
 import type { Session, User } from '@supabase/supabase-js';
@@ -279,10 +281,162 @@ async function resolveCanonicalPrincipal(
 	}
 }
 
+/**
+ * How long a verified identity is reused for read requests.
+ *
+ * One page view is a burst of requests carrying the same credential: the page,
+ * the reads it makes of this app's own `/api` routes while rendering, and the
+ * data calls the browser makes as it loads. Each used to ask Parchment who the
+ * caller is before doing anything else. Within this window they share one
+ * answer.
+ *
+ * What that changes: after a session is revoked, a role is removed or an
+ * account is deleted, this app may keep treating the caller as it did for up
+ * to this long, on read requests only. The remembered answer is the whole
+ * verified identity: user ID, email, roles, plan, Parchment Intelligence
+ * access and scopes. So for that long a read request still draws the same
+ * page shell and still returns that ID and email in page data. It is the
+ * answer the same credential was given at its last check, and nothing newer.
+ * Everything else is unaffected, because this app holds no product data of
+ * its own: every private data read is made at Parchment with the caller's own
+ * credential, and Parchment verifies that credential on each call.
+ *
+ * What it never covers: anything but GET and HEAD, and anything under `/auth`
+ * (sign-in, callbacks, CLI approval), however the path is spelled. Those are
+ * verified every time. An answer that does not sign the request in, or a
+ * check that fails, is never remembered: signing in takes effect at once, and
+ * a rejected answer ends reuse for that credential.
+ *
+ * A write also ends reuse, because it can change the answer: a purchase adds a
+ * role, a cancelled plan removes one. Its own check ran before it took effect,
+ * so that answer is not remembered and anything remembered is dropped. The
+ * pages that follow are then drawn from a new check, not from the access the
+ * caller had before the write.
+ */
+const IDENTITY_REUSE_MS = 10_000;
+const IDENTITY_REUSE_MAX_ENTRIES = 500;
+
+/**
+ * Set on a browser session's write. Reads carrying it are verified every time.
+ *
+ * Dropping what this server instance remembers is not enough: another instance
+ * may still hold the answer from before the write, and the read that follows
+ * can land there. The cookie travels with the browser, so that read is verified
+ * wherever it lands. It must outlast the reuse window, so that every answer
+ * from before the write has expired by the time the cookie does.
+ */
+const IDENTITY_RECHECK_COOKIE = 'purveyors_identity_recheck';
+const IDENTITY_RECHECK_SECONDS = IDENTITY_REUSE_MS / 1000 + 5;
+
+interface RememberedIdentity {
+	verifiedAt: number;
+	canonical: Promise<CanonicalPrincipal>;
+}
+
+interface RequestIdentity {
+	canonical: CanonicalPrincipal;
+	/** Stop reusing this answer. Called when it does not sign the request in. */
+	forget: () => void;
+}
+
+const recentIdentity = new Map<string, RememberedIdentity>();
+
+/** Test-only: forget every recently verified identity. */
+export function resetIdentityReuse(): void {
+	recentIdentity.clear();
+}
+
+function identityKey(token: string): string {
+	// The credential itself is not kept as a key.
+	return createHash('sha256').update(token).digest('hex');
+}
+
+function isReadRequest(event: RequestEvent): boolean {
+	const method = event.request.method.toUpperCase();
+	return method === 'GET' || method === 'HEAD';
+}
+
+function mayReuseIdentity(event: RequestEvent): boolean {
+	if (!isReadRequest(event)) return false;
+	if (event.cookies.get(IDENTITY_RECHECK_COOKIE)) return false;
+	// `/%61uth/cli` reaches the `/auth/cli` route, so compare the path as routed.
+	const path = decodeRoutePath(event.url.pathname);
+	return path !== null && path !== '/auth' && !path.startsWith('/auth/');
+}
+
+function requireRecheckAfterWrite(event: RequestEvent): void {
+	if (isReadRequest(event)) return;
+	event.cookies.set(IDENTITY_RECHECK_COOKIE, '1', {
+		httpOnly: true,
+		maxAge: IDENTITY_RECHECK_SECONDS,
+		path: '/',
+		sameSite: 'lax',
+		secure: event.url.protocol === 'https:'
+	});
+}
+
+function forgetIdentity(key: string, entry: RememberedIdentity): void {
+	// A newer check for the same credential is left alone.
+	if (recentIdentity.get(key) === entry) recentIdentity.delete(key);
+}
+
+function rememberIdentity(key: string, canonical: Promise<CanonicalPrincipal>): RememberedIdentity {
+	const now = Date.now();
+	// Re-inserting moves the credential to the newest position.
+	recentIdentity.delete(key);
+	if (recentIdentity.size >= IDENTITY_REUSE_MAX_ENTRIES) {
+		for (const [entryKey, entry] of recentIdentity) {
+			if (now - entry.verifiedAt >= IDENTITY_REUSE_MS) recentIdentity.delete(entryKey);
+		}
+		// Still full of live entries: drop the oldest. A Map keeps insertion order.
+		for (const entryKey of recentIdentity.keys()) {
+			if (recentIdentity.size < IDENTITY_REUSE_MAX_ENTRIES) break;
+			recentIdentity.delete(entryKey);
+		}
+	}
+	const entry = { verifiedAt: now, canonical };
+	recentIdentity.set(key, entry);
+	// A failed check is dropped here; an answer that does not sign the request
+	// in is dropped by resolvePrincipal, which is where that is decided.
+	canonical.catch(() => forgetIdentity(key, entry));
+	return entry;
+}
+
+async function resolveRequestIdentity(
+	event: RequestEvent,
+	token: string
+): Promise<RequestIdentity> {
+	const key = identityKey(token);
+	if (!mayReuseIdentity(event)) {
+		// Verified now, and not remembered: see IDENTITY_REUSE_MS on writes.
+		const forget = () => void recentIdentity.delete(key);
+		forget();
+		return { canonical: await resolveCanonicalPrincipal(event, token), forget };
+	}
+
+	const recent = recentIdentity.get(key);
+	// Reused while recent; otherwise verified now. Requests arriving while that
+	// is in flight share it.
+	const entry =
+		recent && Date.now() - recent.verifiedAt < IDENTITY_REUSE_MS
+			? recent
+			: rememberIdentity(key, resolveCanonicalPrincipal(event, token));
+	return { canonical: await entry.canonical, forget: () => forgetIdentity(key, entry) };
+}
+
 export async function resolvePrincipal(event: RequestEvent): Promise<RequestPrincipal> {
 	if (event.locals.principal) {
 		return event.locals.principal;
 	}
+
+	// Every way a verified answer can fail to sign the request in ends here, so
+	// none of them is reused by the next request.
+	const rejectIdentity = (identity: RequestIdentity): AnonymousPrincipal => {
+		identity.forget();
+		const anonymous = createAnonymousPrincipal();
+		event.locals.principal = anonymous;
+		return anonymous;
+	};
 
 	const authorizationHeader = event.request.headers.get('Authorization');
 	if (authorizationHeader !== null) {
@@ -292,10 +446,10 @@ export async function resolvePrincipal(event: RequestEvent): Promise<RequestPrin
 			return event.locals.principal;
 		}
 
-		const canonical = await resolveCanonicalPrincipal(event, token);
+		const verified = await resolveRequestIdentity(event, token);
+		const { canonical } = verified;
 		if (!canonical.authenticated || !canonical.userId) {
-			event.locals.principal = createAnonymousPrincipal();
-			return event.locals.principal;
+			return rejectIdentity(verified);
 		}
 
 		if (canonical.authKind === 'api-key') {
@@ -307,37 +461,38 @@ export async function resolvePrincipal(event: RequestEvent): Promise<RequestPrin
 		}
 
 		if (canonical.authKind !== 'session') {
-			event.locals.principal = createAnonymousPrincipal();
-			return event.locals.principal;
+			return rejectIdentity(verified);
 		}
 
 		const user =
 			canonical.sessionIdentity === undefined
 				? await hydrateBearerUser(event, token)
 				: canonical.sessionIdentity;
-		event.locals.principal =
-			user && user.id === canonical.userId
-				? createSessionPrincipal({
-						source: 'bearer-session',
-						session: null,
-						user,
-						canonical
-					})
-				: createAnonymousPrincipal();
+		if (!user || user.id !== canonical.userId) {
+			return rejectIdentity(verified);
+		}
+		event.locals.principal = createSessionPrincipal({
+			source: 'bearer-session',
+			session: null,
+			user,
+			canonical
+		});
 		return event.locals.principal;
 	}
 
 	// getSession supplies a credential, never trusted identity or entitlements.
-	// Parchment verifies that credential live and owns the canonical identity.
+	// Parchment verifies that credential and owns the canonical identity; see
+	// resolveRequestIdentity for when a verification from the last few seconds
+	// is reused.
 	const {
 		data: { session },
 		error
 	} = await event.locals.supabase.auth.getSession();
 	if (session && !error) {
-		const canonical = await resolveCanonicalPrincipal(event, session.access_token);
+		const verified = await resolveRequestIdentity(event, session.access_token);
+		const { canonical } = verified;
 		if (!canonical.authenticated || canonical.authKind !== 'session' || !canonical.userId) {
-			event.locals.principal = createAnonymousPrincipal();
-			return event.locals.principal;
+			return rejectIdentity(verified);
 		}
 
 		let user = canonical.sessionIdentity;
@@ -347,9 +502,9 @@ export async function resolvePrincipal(event: RequestEvent): Promise<RequestPrin
 			user = identity.session?.access_token === session.access_token ? identity.user : null;
 		}
 		if (!user || user.id !== canonical.userId) {
-			event.locals.principal = createAnonymousPrincipal();
-			return event.locals.principal;
+			return rejectIdentity(verified);
 		}
+		requireRecheckAfterWrite(event);
 		event.locals.principal = createSessionPrincipal({
 			source: 'cookie-session',
 			session,
