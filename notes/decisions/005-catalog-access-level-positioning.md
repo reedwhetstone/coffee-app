@@ -22,6 +22,18 @@
 > Parchment Intelligence remains a separate entitlement. This amendment does not
 > change the Anonymous, Viewer, or Member boundaries for the Purveyors website.
 
+> **Price filter amendment (2026-10-04):** A price-per-pound range is the
+> Viewer level's broad filter ("one or two obvious broad filters" in the table
+> below): signed-in free accounts may filter the catalog by price. Price is the
+> most common shopper question, and answering it shows the catalog's value
+> without handing over sourcing leverage. Anonymous access stays frozen, so the
+> control is shown locked there with a sign-in prompt. Score ranges, elevation
+> ranges and every other range filter remain Member capabilities. Reed decided
+> in #purveyors on 2026-10-02 that price filtering is free; placing it at the
+> Viewer level, not the anonymous one, follows this decision's anonymous freeze.
+> Recorded with the catalog filter rework plan
+> (`notes/implementation-plans/2026-10-02-catalog-filter-ux-rework.md`).
+
 ## Context
 
 PR #302 exposed advanced process-transparency filters on the public catalog. That made a local implementation question visible as a product strategy question: what should anonymous visitors, free signed-in viewers, subscribed members, API customers, and admins each be able to see and do?

@@ -163,15 +163,20 @@
       by default and avoid verification or compliance claims the data cannot support.
 
 - [ ] **Finish the green coffee grading rollout (ADR-016).** ADR-016 is still
-      Proposed. Accept it, or revise it, before shipping the remaining public
-      contract work below (API response, `/v1/catalog/grades`, SDK release) and
-      before `grade` removal; until then this item is conditional on acceptance.
+      Proposed, although its public contract has shipped (API response and
+      filters, `/v1/catalog/grades`, SDK, CLI). Accept it, or revise it and
+      bring the shipped contract in line, before the remaining work below and
+      before `grade` removal; until then that work is conditional on acceptance.
       Done so far: numeric elevation for every supplier (coffee-scraper
       #562/#563 plus a backfill), the grading schema (Parchment #332, migration
-      `20261002020000`), and the scraper grading extractor (coffee-scraper #564).
-      Remaining: Parchment catalog response and filters, `/v1/catalog/grades`,
-      grading comparison rows, SDK, Cherry and CLI; coffee-app filters and
-      display; the coffee-app beans pages and `BeanForm` manual-bean write path,
+      `20261002020000`), the scraper grading extractor (coffee-scraper #564),
+      the Parchment catalog response and filters, `/v1/catalog/grades` and
+      grading comparison rows (Parchment #333, SDK 0.52.0), grading facets and
+      Cherry grading tools (Parchment #334, SDK 0.53.0), and CLI grades and
+      grading filters (purveyors-cli #153).
+      Remaining: coffee-app filters and display, in slice 2 of
+      `notes/implementation-plans/2026-10-02-catalog-filter-ux-rework.md`;
+      the coffee-app beans pages and `BeanForm` manual-bean write path,
       which still sends `grade` (move elevation-shaped input to the elevation
       fields and other text to `appearance`, per ADR-016 section 7); Purveyor
       Score provenance; Market Index like-for-like value; then `grade` removal,
