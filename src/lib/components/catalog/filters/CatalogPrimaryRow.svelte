@@ -78,10 +78,13 @@
 	);
 
 	let sort = $derived(
-		catalogSortOptions(access, {
-			field: $filterStore.sortField,
-			direction: $filterStore.sortDirection
-		})
+		catalogSortOptions(
+			access,
+			{ field: $filterStore.sortField, direction: $filterStore.sortDirection },
+			typeof $filterStore.filters.score_protocol === 'string'
+				? $filterStore.filters.score_protocol
+				: null
+		)
 	);
 
 	function setPrice(min: string, max: string) {

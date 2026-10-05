@@ -57,4 +57,28 @@ describe('Parchment catalog query adapter', () => {
 	it('normalizes canonical repeated coffee IDs to the scalar list contract', () => {
 		expect(toParchmentCatalogQuery({ coffeeIds: ['5', '9'] })).toEqual({ coffeeIds: '5,9' });
 	});
+
+	it('maps the grade and quality filters to the canonical SDK contract', () => {
+		expect(
+			toParchmentCatalogQuery({
+				grade_code: ['KE:AA', 'PREP:EP'],
+				peaberry: 'true',
+				lab_analyzed: 'true',
+				screen_min: 15,
+				screen_max: 18,
+				include_unknown_screen: 'true',
+				moisture_max: 11.5,
+				score_protocol: 'sca_2004'
+			})
+		).toEqual({
+			gradeCode: ['KE:AA', 'PREP:EP'],
+			peaberry: 'true',
+			labAnalyzed: 'true',
+			screenMin: 15,
+			screenMax: 18,
+			includeUnknownScreen: 'true',
+			moistureMax: 11.5,
+			scoreProtocol: 'sca_2004'
+		});
+	});
 });

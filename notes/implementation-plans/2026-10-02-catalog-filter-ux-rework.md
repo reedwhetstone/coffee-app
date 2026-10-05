@@ -132,6 +132,18 @@ Slice 1 follows the description above, with three points worth knowing before sl
 - **Counts are slower than the results.** Parchment's `/v1/catalog/facets` is not cached and its cost grows with the number of coffees it counts: for the whole stocked catalog it took 2 to 7 seconds in production on 2026-10-04 (longest with `include=taxonomy`), against about 1 second for the listing; a well-filtered read takes under a second. A control's "own filter removed" read is a whole-catalog read whenever it is the only filter set. So the results update first and the counts follow, typically 1 to 5 seconds later, and the panel says "Updating counts" while they do. The BFF keeps the wait to the slowest single read (the vocabulary, the two listing totals and the per-control reads run alongside it) and returns only the facets the controls read: 7 to 25 KB instead of about 230 KB. Making the facets read faster, or letting a caller ask for only the facets it needs, is Parchment work and is the main thing that would improve this panel.
 - **An unknown code does not break the page.** Parchment rejects a variety, species or drying code that is not in its vocabulary. A link carrying one loads the catalog without that filter and says so.
 
+### Slice 2 as built (2026-10-05)
+
+The Grade and quality section follows the description above. It replaces the elevation and cup score ranges that slice 1 carried over, and sits third in the panel. Points worth knowing before slice 3:
+
+- **The protocol choice and cup score sort are built and do not show yet.** On 2026-10-05 all 443 scored coffees in the stocked catalog had no protocol stated. Offering a protocol list where every other option matches nothing would break the "no control that leads nowhere" rule, so the section says instead that no supplier in the results states its protocol. The choice appears, with counts, as soon as any coffee under the active filters states one, and "Cup score, high to low" joins the sort list only while one stated protocol is selected. Getting protocols onto coffees is scraper work.
+- **Protocol counts come from listing totals, not facets.** Parchment has no protocol facet. The BFF asks two totals (scored, and scored with no protocol stated) and counts the four stated protocols only when the two differ.
+- **One grade selection, five groups.** `gradeCode` is one any-of set, so each group writes the whole selection, a designation that grades two things (Ethiopia Grade 1: defects and cup) is listed under both, and the section says a coffee matches any selected grade. The groups keep their counts when a grade is selected, from one extra read with the selection removed.
+- **Screen sizes and elevation bands show their counts next to the range.** Screen sizes are listed as text; elevation bands are chips that set the range to that band.
+- **Peaberry, lab analyzed and moisture have no counts.** The facets do not report them.
+- **The section is locked as a whole** for accounts without the grading filters: it shows the reason and none of its controls.
+- **Not added:** water activity and density, which the API accepts but this plan does not list.
+
 ## Decisions
 
 The six open questions this plan was reviewed with, as answered.

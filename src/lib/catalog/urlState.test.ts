@@ -357,4 +357,50 @@ describe('catalog URL state helpers', () => {
 		expect(state.sortField).toBe('region');
 		expect(buildCatalogShareParams(state).toString()).toBe(search);
 	});
+
+	it('round-trips the grade and quality filters', () => {
+		const search =
+			'grade_code=KE%3AAA&grade_code=PREP%3AEP&peaberry=true&lab_analyzed=true&screen_min=15&screen_max=18&include_unknown_screen=true&moisture_max=11.5&score_value_min=86&score_protocol=sca_2004';
+		const state = parseCatalogUrlState(new URL(`https://app.test/catalog?${search}`));
+
+		expect(state.filters).toEqual({
+			grade_code: ['KE:AA', 'PREP:EP'],
+			peaberry: true,
+			lab_analyzed: true,
+			screen_size: { min: '15', max: '18', includeUnknown: true },
+			moisture_max: 11.5,
+			score_value: { min: '86', max: '' },
+			score_protocol: 'sca_2004'
+		});
+		expect(buildCatalogShareParams(state).toString()).toBe(search);
+		expect(catalogUrlStateToSearchState(state)).toMatchObject({
+			gradeCodes: ['KE:AA', 'PREP:EP'],
+			peaberry: true,
+			labAnalyzed: true,
+			screenMin: 15,
+			screenMax: 18,
+			includeUnknownScreen: true,
+			moistureMax: 11.5,
+			scoreValueMin: 86,
+			scoreProtocol: 'sca_2004'
+		});
+	});
+
+	it('normalizes hand-typed grade codes and ignores grading values Parchment would not accept', () => {
+		const filters = (search: string) =>
+			parseCatalogUrlState(new URL(`https://app.test/catalog?${search}`)).filters;
+
+		expect(filters('grade_code=ke:aa&grade_code=KE:AA')).toEqual({ grade_code: ['KE:AA'] });
+		// There is no "not a peaberry" filter, and an unknown protocol is not a filter.
+		expect(filters('peaberry=false&lab_analyzed=no&score_protocol=made_up')).toEqual({});
+		expect(filters('score_protocol=SUPPLIER_UNSPECIFIED')).toEqual({
+			score_protocol: 'supplier_unspecified'
+		});
+		// Screen sizes are whole numbers from 8 to 20; an inverted pair is dropped whole.
+		expect(filters('screen_min=7&screen_max=18')).toEqual({ screen_size: { min: '', max: '18' } });
+		expect(filters('screen_min=15.5')).toEqual({});
+		expect(filters('screen_min=18&screen_max=15')).toEqual({});
+		expect(filters('include_unknown_screen=true')).toEqual({});
+		expect(filters('moisture_max=0&moisture_max=abc')).toEqual({});
+	});
 });

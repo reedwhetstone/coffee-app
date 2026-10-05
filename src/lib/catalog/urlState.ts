@@ -35,6 +35,14 @@ export interface CatalogSearchState {
 	dryingMethodCodes?: string[];
 	varietyCodes?: string[];
 	speciesCodes?: string[];
+	gradeCodes?: string[];
+	peaberry?: boolean;
+	labAnalyzed?: boolean;
+	screenMin?: number;
+	screenMax?: number;
+	includeUnknownScreen?: boolean;
+	moistureMax?: number;
+	scoreProtocol?: string;
 	cultivarDetail?: string;
 	type?: string;
 	grade?: string;
@@ -67,7 +75,13 @@ const DEFAULT_CATALOG_SORT = {
 const RANGE_FILTER_PARAM_NAMES: Readonly<Record<string, { min: string; max: string }>> = {
 	score_value: { min: 'score_value_min', max: 'score_value_max' },
 	cost_lb: { min: 'price_per_lb_min', max: 'price_per_lb_max' },
-	elevation_masl: { min: 'elevation_min_masl', max: 'elevation_max_masl' }
+	elevation_masl: { min: 'elevation_min_masl', max: 'elevation_max_masl' },
+	screen_size: { min: 'screen_min', max: 'screen_max' }
+};
+/** A range whose "include coffees with no stated value" choice has its own param. */
+const RANGE_INCLUDE_UNKNOWN_PARAM: Readonly<Record<string, string>> = {
+	elevation_masl: 'include_unknown_elevation',
+	screen_size: 'include_unknown_screen'
 };
 const RANGE_FILTER_KEYS = new Set(Object.keys(RANGE_FILTER_PARAM_NAMES));
 /**
@@ -79,7 +93,34 @@ export const TAXONOMY_CODE_FILTER_KEYS = [
 	'species_code',
 	'drying_method_code'
 ] as const;
-const MULTI_VALUE_FILTER_KEYS = new Set(['country', 'source', ...TAXONOMY_CODE_FILTER_KEYS]);
+/**
+ * Green coffee grading filters (ADR-016): grade designations, the peaberry and
+ * lab-analyzed facts, screen size, moisture, and the cup score's protocol.
+ */
+export const GRADING_FILTER_KEYS = [
+	'grade_code',
+	'peaberry',
+	'lab_analyzed',
+	'screen_size',
+	'moisture_max',
+	'score_protocol'
+] as const;
+/** The cup score protocols Parchment recognizes; a score with none stated is `supplier_unspecified`. */
+export const SCORE_PROTOCOLS = [
+	'sca_2004',
+	'cva_affective',
+	'q_arabica',
+	'coe',
+	'supplier_unspecified'
+] as const;
+const SCREEN_SIZE_MIN = 8;
+const SCREEN_SIZE_MAX = 20;
+const MULTI_VALUE_FILTER_KEYS = new Set([
+	'country',
+	'source',
+	...TAXONOMY_CODE_FILTER_KEYS,
+	'grade_code'
+]);
 const STRING_FILTER_KEYS = [
 	'origin',
 	'continent',
@@ -112,6 +153,11 @@ const FILTER_SERIALIZATION_ORDER = [
 	'drying_method_code',
 	'variety_code',
 	'species_code',
+	'grade_code',
+	'peaberry',
+	'lab_analyzed',
+	'screen_size',
+	'moisture_max',
 	'cultivar_detail',
 	'type',
 	'grade',
@@ -119,6 +165,7 @@ const FILTER_SERIALIZATION_ORDER = [
 	'name',
 	'region',
 	'score_value',
+	'score_protocol',
 	'cost_lb',
 	'elevation_masl',
 	'arrival_date',
@@ -249,6 +296,45 @@ export function parseCatalogUrlState(url: URL, routeId = '/catalog'): CatalogUrl
 		};
 	}
 
+	// Grade codes are upper case ("KE:AA"); a link typed by hand may not be.
+	if (Array.isArray(filters.grade_code)) {
+		filters.grade_code = [...new Set(filters.grade_code.map((code) => code.toUpperCase()))];
+	}
+	for (const key of ['peaberry', 'lab_analyzed'] as const) {
+		// These narrow to coffees that state the fact; there is no "false" form.
+		if (url.searchParams.get(key) === 'true') filters[key] = true;
+	}
+	const screenSize = (param: string) => {
+		const value = parseOptionalNumber(url.searchParams.get(param));
+		return value !== undefined &&
+			Number.isInteger(value) &&
+			value >= SCREEN_SIZE_MIN &&
+			value <= SCREEN_SIZE_MAX
+			? value
+			: undefined;
+	};
+	const screenMin = screenSize('screen_min');
+	const screenMax = screenSize('screen_max');
+	// An inverted pair is dropped whole, as Parchment does.
+	if (
+		(screenMin !== undefined || screenMax !== undefined) &&
+		!(screenMin !== undefined && screenMax !== undefined && screenMin > screenMax)
+	) {
+		filters.screen_size = {
+			min: screenMin?.toString() ?? '',
+			max: screenMax?.toString() ?? '',
+			...(url.searchParams.get('include_unknown_screen') === 'true' ? { includeUnknown: true } : {})
+		};
+	}
+	const moistureMax = parseOptionalNumber(url.searchParams.get('moisture_max'));
+	if (moistureMax !== undefined && moistureMax > 0) {
+		filters.moisture_max = moistureMax;
+	}
+	const scoreProtocol = url.searchParams.get('score_protocol')?.toLowerCase();
+	if (scoreProtocol && (SCORE_PROTOCOLS as readonly string[]).includes(scoreProtocol)) {
+		filters.score_protocol = scoreProtocol;
+	}
+
 	const processingConfidenceMin = parseProcessingConfidenceMin(
 		url.searchParams.get('processing_confidence_min')
 	);
@@ -324,8 +410,9 @@ function appendFilterParam(
 		if (value.max !== '') {
 			params.append(rangeParamNames.max, value.max.toString());
 		}
-		if (filterKey === 'elevation_masl' && value.includeUnknown === true) {
-			params.append('include_unknown_elevation', 'true');
+		const includeUnknownParam = RANGE_INCLUDE_UNKNOWN_PARAM[filterKey];
+		if (includeUnknownParam && value.includeUnknown === true) {
+			params.append(includeUnknownParam, 'true');
 		}
 		return;
 	}
@@ -342,6 +429,11 @@ function appendFilterParam(
 		if (typeof value === 'boolean') {
 			params.append(paramKey, value.toString());
 		}
+		return;
+	}
+
+	if (filterKey === 'peaberry' || filterKey === 'lab_analyzed') {
+		if (value === true) params.append(paramKey, 'true');
 		return;
 	}
 
@@ -483,7 +575,7 @@ function readBooleanValue(value: CatalogFilterValue | undefined): boolean | unde
 	return typeof value === 'boolean' ? value : undefined;
 }
 
-function readIncludeUnknownElevation(value: CatalogFilterValue | undefined): boolean | undefined {
+function readIncludeUnknown(value: CatalogFilterValue | undefined): boolean | undefined {
 	if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
 	return value.includeUnknown === true ? true : undefined;
 }
@@ -492,6 +584,7 @@ export function catalogUrlStateToSearchState(state: CatalogUrlState): CatalogSea
 	const scoreRange = readRangeValue(state.filters.score_value);
 	const priceRange = readRangeValue(state.filters.cost_lb);
 	const elevationRange = readRangeValue(state.filters.elevation_masl);
+	const screenRange = readRangeValue(state.filters.screen_size);
 	const countries = readArrayValue(state.filters.country);
 
 	return {
@@ -511,6 +604,14 @@ export function catalogUrlStateToSearchState(state: CatalogUrlState): CatalogSea
 		dryingMethodCodes: readArrayValue(state.filters.drying_method_code),
 		varietyCodes: readArrayValue(state.filters.variety_code),
 		speciesCodes: readArrayValue(state.filters.species_code),
+		gradeCodes: readArrayValue(state.filters.grade_code),
+		peaberry: state.filters.peaberry === true ? true : undefined,
+		labAnalyzed: state.filters.lab_analyzed === true ? true : undefined,
+		screenMin: screenRange?.min,
+		screenMax: screenRange?.max,
+		includeUnknownScreen: screenRange ? readIncludeUnknown(state.filters.screen_size) : undefined,
+		moistureMax: parseOptionalNumber(state.filters.moisture_max?.toString() ?? null),
+		scoreProtocol: readStringValue(state.filters.score_protocol),
 		cultivarDetail: readStringValue(state.filters.cultivar_detail),
 		type: readStringValue(state.filters.type),
 		grade: readStringValue(state.filters.grade),
@@ -524,7 +625,7 @@ export function catalogUrlStateToSearchState(state: CatalogUrlState): CatalogSea
 		elevationMinMasl: elevationRange?.min,
 		elevationMaxMasl: elevationRange?.max,
 		includeUnknownElevation: elevationRange
-			? readIncludeUnknownElevation(state.filters.elevation_masl)
+			? readIncludeUnknown(state.filters.elevation_masl)
 			: undefined,
 		arrivalDate: readStringValue(state.filters.arrival_date),
 		stockedDate: readStringValue(state.filters.stocked_date),

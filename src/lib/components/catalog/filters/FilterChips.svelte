@@ -8,6 +8,8 @@
 		label: string;
 		/** Coffees this option would match under the other active filters. */
 		count?: number | null;
+		/** A longer explanation, shown on hover. */
+		title?: string;
 	}
 
 	interface Props {
@@ -54,6 +56,7 @@
 			<button
 				type="button"
 				aria-pressed={isSelected}
+				title={option.title}
 				disabled={disabled || isEmpty}
 				onclick={() => toggle(option.value)}
 				class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-40 {isSelected

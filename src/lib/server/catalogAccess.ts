@@ -162,9 +162,9 @@ export function createCatalogAccessDeniedNotice(input: {
 		processParams.length === 0 &&
 		!advancedSortRequested
 	) {
-		authMessage = 'Importer, elevation, and appearance filters require a member account.';
+		authMessage = 'Grade, elevation, and other detail filters require a member account.';
 		entitlementMessage =
-			'Importer, elevation, and appearance filters are available to members and customer API keys.';
+			'Grade, elevation, and other detail filters are available to members and customer API keys.';
 	} else if (
 		advancedSortRequested &&
 		processParams.length === 0 &&

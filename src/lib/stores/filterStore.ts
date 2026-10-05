@@ -10,7 +10,8 @@ import { preserveCatalogExperienceParams } from '$lib/catalog/mapState';
 import type {
 	CatalogFacetCount,
 	CatalogFilterOptions,
-	CatalogFilterVocabulary
+	CatalogFilterVocabulary,
+	CatalogGradeEntry
 } from '$lib/catalog/filterOptions';
 import {
 	isCatalogRoute,
@@ -55,7 +56,14 @@ const UPSTREAM_NOTICE_TO_APP_FILTER_KEY: Readonly<Record<string, string>> = {
 	variety: 'cultivar_detail',
 	varietyCode: 'variety_code',
 	speciesCode: 'species_code',
-	dryingMethodCode: 'drying_method_code'
+	dryingMethodCode: 'drying_method_code',
+	gradeCode: 'grade_code',
+	labAnalyzed: 'lab_analyzed',
+	screenMin: 'screen_size',
+	screenMax: 'screen_size',
+	includeUnknownScreen: 'screen_size',
+	moistureMax: 'moisture_max',
+	scoreProtocol: 'score_protocol'
 };
 
 /**
@@ -108,6 +116,8 @@ type FilterState = {
 	facetCounts: Record<string, CatalogFacetCount[]>;
 	/** Catalog only: variety, species and drying labels, for callers who may filter on them. */
 	vocabulary: CatalogFilterVocabulary | null;
+	/** Catalog only: grade designations, for callers who may filter on them. */
+	grades: CatalogGradeEntry[] | null;
 	/** Catalog only: coffees with no standardized variety under the other active filters. */
 	unstandardizedVarietyCount: number | null;
 	/** Catalog only: whether the option lists are being read, are current, or could not be read. */
@@ -162,6 +172,7 @@ const initialState: FilterState = {
 	uniqueValues: {},
 	facetCounts: {},
 	vocabulary: null,
+	grades: null,
 	unstandardizedVarietyCount: null,
 	optionsStatus: 'loading',
 	originalData: [],
@@ -412,6 +423,7 @@ function createFilterStore() {
 				uniqueValues: options.values ?? {},
 				facetCounts: options.facets ?? {},
 				vocabulary: options.vocabulary ?? null,
+				grades: options.grades ?? null,
 				unstandardizedVarietyCount: options.unstandardizedVarietyCount ?? null,
 				optionsStatus: 'ready'
 			}));

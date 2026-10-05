@@ -2,9 +2,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockFacets = vi.fn();
 const mockTaxonomies = vi.fn();
+const mockGrades = vi.fn();
 const mockList = vi.fn();
 const mockCreateParchmentServerClient = vi.fn(async () => ({
-	catalog: { facets: mockFacets, taxonomies: mockTaxonomies, list: mockList }
+	catalog: { facets: mockFacets, taxonomies: mockTaxonomies, grades: mockGrades, list: mockList }
 }));
 const mockResolveCatalogCredentialMode = vi.fn();
 const mockResolvePrincipal = vi.fn();
@@ -166,6 +167,21 @@ describe('/api/catalog/filters', () => {
 				},
 				error: null
 			});
+			mockGrades.mockResolvedValue({
+				data: {
+					data: [
+						{
+							code: 'KE:AA',
+							label: 'Kenya AA',
+							description: "Kenya's largest standard screen grade.",
+							dimensions: ['size'],
+							sort_order: 100,
+							active: true
+						}
+					]
+				},
+				error: null
+			});
 			mockList.mockResolvedValue({ data: { data: [], pagination: { total: 10 } }, error: null });
 		});
 
@@ -209,8 +225,17 @@ describe('/api/catalog/filters', () => {
 				{ code: 'bourbon', label: 'Bourbon', parent_code: null }
 			]);
 			expect(body.unstandardizedVarietyCount).toBe(0);
+			expect(body.grades).toEqual([
+				{
+					code: 'KE:AA',
+					label: 'Kenya AA',
+					description: "Kenya's largest standard screen grade.",
+					dimensions: ['size'],
+					sort_order: 100
+				}
+			]);
 			expect(mockFacets).toHaveBeenCalledWith(
-				expect.objectContaining({ include: 'taxonomy', varietyCode: 'bourbon' })
+				expect.objectContaining({ include: 'taxonomy,grading', varietyCode: 'bourbon' })
 			);
 			expect(response.headers.get('cache-control')).toContain('no-store');
 		});
@@ -225,9 +250,14 @@ describe('/api/catalog/filters', () => {
 
 			const response = await GET(makeEvent(countsUrl));
 
-			expect(await response.json()).not.toHaveProperty('vocabulary');
-			expect(mockFacets).toHaveBeenCalledWith(expect.not.objectContaining({ include: 'taxonomy' }));
+			const body = await response.json();
+			expect(body).not.toHaveProperty('vocabulary');
+			expect(body).not.toHaveProperty('grades');
+			expect(mockFacets).toHaveBeenCalledWith(
+				expect.not.objectContaining({ include: expect.anything() })
+			);
 			expect(mockTaxonomies).not.toHaveBeenCalled();
+			expect(mockGrades).not.toHaveBeenCalled();
 		});
 
 		it('returns 500 when the counts cannot be read', async () => {

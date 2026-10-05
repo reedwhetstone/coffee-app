@@ -717,6 +717,67 @@ describe('/catalog page load', () => {
 		expect(mockCatalogList).toHaveBeenLastCalledWith(expect.objectContaining({ stocked: 'all' }));
 	});
 
+	it('strips the grade and quality filters for free accounts, says so, and passes them for members', async () => {
+		const url =
+			'https://app.test/catalog?grade_code=KE:AA&peaberry=true&lab_analyzed=true&screen_min=15&screen_max=18&include_unknown_screen=true&moisture_max=11.5&score_protocol=sca_2004&country=Kenya';
+
+		const viewer = (await load(
+			makeLoadInput('viewer', { access_token: 'cookie-token' } as Session | null, url)
+		)) as {
+			initialCatalogState: { filters: Record<string, unknown> };
+			catalogAccessNotice: { message: string; deniedParams: string[] } | null;
+		};
+		expect(viewer.initialCatalogState.filters).toEqual({ country: ['Kenya'] });
+		expect(viewer.catalogAccessNotice?.deniedParams).toEqual([
+			'grade_code',
+			'peaberry',
+			'lab_analyzed',
+			'screen_min',
+			'screen_max',
+			'include_unknown_screen',
+			'moisture_max',
+			'score_protocol'
+		]);
+		expect(viewer.catalogAccessNotice?.message).toBe(
+			'Grade, elevation, and other detail filters are available to members and customer API keys.'
+		);
+		expect(mockCatalogList).toHaveBeenLastCalledWith(
+			expect.not.objectContaining({ gradeCode: expect.anything() })
+		);
+		expect(mockCatalogList).toHaveBeenLastCalledWith(
+			expect.not.objectContaining({ peaberry: expect.anything() })
+		);
+
+		const member = (await load(
+			makeLoadInput('member', { access_token: 'cookie-token' } as Session | null, url)
+		)) as {
+			initialCatalogState: { filters: Record<string, unknown> };
+			catalogAccessNotice: unknown;
+		};
+		expect(member.catalogAccessNotice).toBeNull();
+		expect(member.initialCatalogState.filters).toEqual({
+			country: ['Kenya'],
+			grade_code: ['KE:AA'],
+			peaberry: true,
+			lab_analyzed: true,
+			screen_size: { min: '15', max: '18', includeUnknown: true },
+			moisture_max: 11.5,
+			score_protocol: 'sca_2004'
+		});
+		expect(mockCatalogList).toHaveBeenLastCalledWith(
+			expect.objectContaining({
+				gradeCode: ['KE:AA'],
+				peaberry: 'true',
+				labAnalyzed: 'true',
+				screenMin: 15,
+				screenMax: 18,
+				includeUnknownScreen: 'true',
+				moistureMax: 11.5,
+				scoreProtocol: 'sca_2004'
+			})
+		);
+	});
+
 	it('strips premium discovery filters and sorts from viewer SSR state', async () => {
 		const result = (await load(
 			makeLoadInput(

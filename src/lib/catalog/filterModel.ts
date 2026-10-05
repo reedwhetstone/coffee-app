@@ -1,5 +1,5 @@
 import type { CatalogFilterValue } from '$lib/catalog/urlState';
-import type { CatalogFilterVocabulary } from '$lib/catalog/filterOptions';
+import type { CatalogFilterVocabulary, CatalogGradeEntry } from '$lib/catalog/filterOptions';
 import { formatProcessDisplayValue } from '$lib/catalog/processDisplay';
 import { formatSourceName } from '$lib/utils/formatters';
 
@@ -35,6 +35,7 @@ export function catalogFilterLock(
 		| 'process'
 		| 'variety'
 		| 'freshness'
+		| 'grading'
 		| 'elevation'
 		| 'score'
 		| 'wholesaleOnly'
@@ -60,6 +61,14 @@ export function catalogFilterLock(
 			return access.canUseAdvancedFilters
 				? null
 				: { reason: 'Members filter by how recently a coffee was stocked.', ...MEMBER_LOCK };
+		case 'grading':
+			return access.canUseAdvancedFilters
+				? null
+				: {
+						reason:
+							'Members filter by grade, screen size, moisture, growing elevation and cup score.',
+						...MEMBER_LOCK
+					};
 		case 'elevation':
 			return access.canUseAdvancedFilters
 				? null
@@ -119,41 +128,105 @@ const LEGACY_SORT_LABELS: Record<string, string> = {
 	name: 'Name'
 };
 
-function sortOptionId(field: string | null, direction: 'asc' | 'desc' | null): string {
-	if (!field) return 'recent';
-	// The catalog's default order is most recently stocked first.
-	if (field === 'stocked_date' && direction !== 'asc') return 'recent';
-	const price = field === 'price_per_lb' || field === 'cost_lb';
-	if (price) return direction === 'desc' ? 'price_desc' : 'price_asc';
-	if (field === 'purveyor_score' && direction !== 'asc') return 'purveyor_score';
-	if (field === 'name' && direction !== 'desc') return 'name';
-	return `custom:${field}:${direction ?? 'desc'}`;
+/** Cup scores are only ranked against each other within one stated protocol (ADR-016). */
+const CUP_SCORE_SORT: CatalogSortOption & { advanced: true } = {
+	id: 'cup_score',
+	label: 'Cup score, high to low',
+	field: 'score_value',
+	direction: 'desc',
+	advanced: true
+};
+
+function matchesSort(
+	option: CatalogSortOption,
+	field: string | null,
+	direction: 'asc' | 'desc' | null
+): boolean {
+	if (option.field === null) {
+		// The catalog's default order is most recently stocked first.
+		return !field || (field === 'stocked_date' && direction !== 'asc');
+	}
+	const sameField =
+		option.field === 'price_per_lb'
+			? field === 'price_per_lb' || field === 'cost_lb'
+			: field === option.field;
+	return sameField && (direction ?? 'desc') === option.direction;
 }
 
 /**
  * The sort list for this viewer, and which entry is active. A sort from an
  * older link that is no longer offered stays selectable as its own entry, so
  * opening that link does not silently change the order.
+ *
+ * Cup score is offered only while one stated protocol is selected: scores on
+ * different or unstated scales do not order meaningfully.
  */
 export function catalogSortOptions(
 	access: Pick<CatalogFilterAccess, 'canUseAdvancedSorts'>,
-	current: { field: string | null; direction: 'asc' | 'desc' | null }
+	current: { field: string | null; direction: 'asc' | 'desc' | null },
+	scoreProtocol: string | null = null
 ): { options: CatalogSortOption[]; activeId: string } {
-	const activeId = sortOptionId(current.field, current.direction);
-	const options: CatalogSortOption[] = SORT_OPTIONS.map(({ advanced, ...option }) => ({
+	const offered = [...SORT_OPTIONS];
+	if (isStatedScoreProtocol(scoreProtocol)) {
+		offered.splice(offered.length - 1, 0, CUP_SCORE_SORT);
+	}
+	const options: CatalogSortOption[] = offered.map(({ advanced, ...option }) => ({
 		...option,
 		...(advanced && !access.canUseAdvancedSorts ? { locked: true } : {})
 	}));
-	if (activeId.startsWith('custom:') && current.field) {
-		const name = LEGACY_SORT_LABELS[current.field] ?? formatProcessDisplayValue(current.field);
-		options.push({
-			id: activeId,
-			label: `${name}, ${current.direction === 'asc' ? 'ascending' : 'descending'}`,
-			field: current.field,
-			direction: current.direction ?? 'desc'
-		});
-	}
+	const active = options.find((option) => matchesSort(option, current.field, current.direction));
+	if (active) return { options, activeId: active.id };
+
+	const field = current.field as string;
+	const direction = current.direction ?? 'desc';
+	const activeId = `custom:${field}:${direction}`;
+	const name = LEGACY_SORT_LABELS[field] ?? formatProcessDisplayValue(field);
+	options.push({
+		id: activeId,
+		label: `${name}, ${direction === 'asc' ? 'ascending' : 'descending'}`,
+		field,
+		direction
+	});
 	return { options, activeId };
+}
+
+// ── Cup score protocols ──────────────────────────────────────────────────────
+
+const SCORE_PROTOCOL_LABELS: Record<string, string> = {
+	sca_2004: 'SCA cupping form (2004)',
+	cva_affective: 'SCA Coffee Value Assessment',
+	q_arabica: 'Q Arabica',
+	coe: 'Cup of Excellence',
+	supplier_unspecified: 'Protocol not stated'
+};
+
+export function scoreProtocolLabel(protocol: string): string {
+	return SCORE_PROTOCOL_LABELS[protocol] ?? formatProcessDisplayValue(protocol);
+}
+
+/** True for a protocol whose scores share one scale, so they can be ranked. */
+export function isStatedScoreProtocol(protocol: string | null | undefined): boolean {
+	return (
+		Boolean(protocol) && protocol !== 'supplier_unspecified' && protocol! in SCORE_PROTOCOL_LABELS
+	);
+}
+
+// ── Grades ───────────────────────────────────────────────────────────────────
+
+/** The kinds of grade, in the order the panel lists them. */
+export const GRADE_KINDS = [
+	{ dimension: 'size', label: 'Size', facet: 'grade_size' },
+	{ dimension: 'altitude', label: 'Altitude', facet: 'grade_altitude' },
+	{ dimension: 'defects', label: 'Defects', facet: 'grade_defects' },
+	{ dimension: 'cup', label: 'Cup', facet: 'grade_cup' },
+	{ dimension: 'preparation', label: 'Preparation', facet: 'grade_preparation' }
+] as const;
+
+export function gradeLabel(
+	grades: readonly CatalogGradeEntry[] | null | undefined,
+	code: string
+): string {
+	return grades?.find((grade) => grade.code === code)?.label ?? code;
 }
 
 // ── Price presets ────────────────────────────────────────────────────────────
@@ -276,7 +349,8 @@ const CONFIDENCE_LABELS: Record<string, string> = {
  */
 export function describeActiveCatalogFilters(
 	snapshot: CatalogFilterSnapshot,
-	vocabulary: CatalogFilterVocabulary | null = null
+	vocabulary: CatalogFilterVocabulary | null = null,
+	grades: readonly CatalogGradeEntry[] | null = null
 ): ActiveCatalogFilter[] {
 	const { filters } = snapshot;
 	const chips: ActiveCatalogFilter[] = [];
@@ -314,6 +388,52 @@ export function describeActiveCatalogFilters(
 				inPanel
 			});
 		}
+	}
+
+	if (Array.isArray(filters.grade_code)) {
+		const codes = filters.grade_code.map(String);
+		for (const code of codes) {
+			chips.push({
+				id: `grade_code:${code}`,
+				label: `Grade: ${gradeLabel(grades, code)}`,
+				remove: {
+					kind: 'filter',
+					key: 'grade_code',
+					value: codes.filter((entry) => entry !== code)
+				},
+				inPanel: true
+			});
+		}
+	}
+	if (filters.peaberry === true) {
+		chips.push({ id: 'peaberry', label: 'Peaberry', remove: clear('peaberry'), inPanel: true });
+	}
+	if (filters.lab_analyzed === true) {
+		chips.push({
+			id: 'lab_analyzed',
+			label: 'Lab analyzed',
+			remove: clear('lab_analyzed'),
+			inPanel: true
+		});
+	}
+	const screen = readRange(filters.screen_size);
+	if (String(screen.min) !== '' || String(screen.max) !== '') {
+		const text = rangeText(screen, (value) => value, { below: 'up to', above: 'and up' });
+		chips.push({
+			id: 'screen_size',
+			label: `Screen size: ${text}${screen.includeUnknown ? ', or not stated' : ''}`,
+			remove: clear('screen_size'),
+			inPanel: true
+		});
+	}
+	const moistureMax = Number(filters.moisture_max);
+	if (filters.moisture_max !== undefined && Number.isFinite(moistureMax) && moistureMax > 0) {
+		chips.push({
+			id: 'moisture_max',
+			label: `Moisture: up to ${moistureMax}%`,
+			remove: clear('moisture_max'),
+			inPanel: true
+		});
 	}
 
 	if (typeof filters.has_additives === 'boolean') {
@@ -366,6 +486,15 @@ export function describeActiveCatalogFilters(
 			id: 'score_value',
 			label: `Cup score: ${rangeText(score, (value) => value, { below: 'up to', above: 'and up' })}`,
 			remove: clear('score_value'),
+			inPanel: true
+		});
+	}
+
+	if (typeof filters.score_protocol === 'string' && filters.score_protocol !== '') {
+		chips.push({
+			id: 'score_protocol',
+			label: `Cup score protocol: ${scoreProtocolLabel(filters.score_protocol)}`,
+			remove: clear('score_protocol'),
 			inPanel: true
 		});
 	}
