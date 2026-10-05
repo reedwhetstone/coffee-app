@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Component, Snippet } from 'svelte';
+	import { untrack, type Component, type Snippet } from 'svelte';
 	import { detailDialog } from '$lib/utils/detailDialog';
 	import { dismissOnOutsidePointer } from '$lib/utils/dismissOnOutsidePointer';
 	import { coffeeDetailFocus } from '$lib/stores/coffeeDetailFocus.svelte';
@@ -48,6 +48,8 @@
 		onToggleCompare = undefined,
 		showCatalogLink = false,
 		initialDetailsOpen = false,
+		open = undefined,
+		cardAction = undefined,
 		detailOnly = false,
 		detailCloseLabel = 'Close',
 		detailNotice = '',
@@ -82,6 +84,14 @@
 		showCatalogLink?: boolean;
 		/** Open the detail panel on mount (used by /catalog?coffee=<id> deep links). */
 		initialDetailsOpen?: boolean;
+		/**
+		 * When given, the embedding surface owns whether the panel is open, for example from
+		 * the URL. The card still reports opening and closing through onDetailOpen and
+		 * onDetailClose.
+		 */
+		open?: boolean;
+		/** One labeled link in the card's action row, such as "Roast" on a portfolio coffee. */
+		cardAction?: { label: string; href: string; ariaLabel?: string };
 		/** Reuse only the canonical sheet for a separately owned reference trigger. */
 		detailOnly?: boolean;
 		/** Optional context-specific label for leaving the detail panel. */
@@ -151,7 +161,7 @@
 	let radarComponentLoading = $state(true);
 	// Deliberate initial-value capture: the prop seeds the open state only.
 	// svelte-ignore state_referenced_locally
-	let detailsOpen = $state(initialDetailsOpen);
+	let detailsOpen = $state(initialDetailsOpen || open === true);
 
 	// One shared entitlement rule for every surface that renders a CoffeeCard
 	// (catalog, Market Index, portfolio, chat), unless a caller overrides it.
@@ -171,6 +181,20 @@
 	});
 	$effect(() => () => coffeeDetailFocus.release(detailOwner));
 	let activeTab = $state<DetailTab>('overview');
+
+	// An embedding surface that owns the open state (Back, Forward, or a link changed it)
+	// is followed without reporting the change back to it.
+	$effect(() => {
+		if (open === undefined) return;
+		const wanted = open;
+		untrack(() => {
+			if (wanted === detailsOpen) return;
+			activeTab = 'overview';
+			detailsOpen = wanted;
+			if (wanted) coffeeDetailFocus.claim(detailOwner);
+			else coffeeDetailFocus.release(detailOwner);
+		});
+	});
 	let hydratedCoffee = $state.raw<CoffeeCatalog | null>(null);
 	let hydratedSource = $state.raw<CoffeeCatalog | null>(null);
 	let detailsLoading = $state(false);
@@ -518,6 +542,16 @@
 			{/if}
 
 			<div class="mt-auto flex items-center justify-between gap-2 pt-1 text-muted">
+				{#if cardAction}
+					<a
+						href={cardAction.href}
+						class="pointer-events-auto inline-flex h-8 items-center rounded-md border border-line px-3 text-xs font-semibold text-ink transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+						aria-label={cardAction.ariaLabel}
+						onclick={(event) => event.stopPropagation()}
+					>
+						{cardAction.label}
+					</a>
+				{/if}
 				{#if showSimilarComparisonAction}
 					<button
 						type="button"
@@ -546,7 +580,7 @@
 							/>
 						</svg>
 					</button>
-				{:else}
+				{:else if !cardAction}
 					<span></span>
 				{/if}
 

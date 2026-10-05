@@ -98,4 +98,39 @@ describe('Settingsbar', () => {
 		expect(screen.queryByText(/Suppliers Only/i)).not.toBeInTheDocument();
 		expect(screen.queryByLabelText('Elevation (MASL)')).not.toBeInTheDocument();
 	});
+
+	it('offers Remaining as a portfolio sort, and never as a filter', async () => {
+		storeState.set({ ...storeState.value, portfolioServerSide: true } as SettingsbarStoreValue);
+		render(Settingsbar, { onClose: vi.fn() });
+
+		const sort = screen.getByLabelText('Sort by') as HTMLSelectElement;
+		expect([...sort.options].map((option) => option.textContent?.trim())).toEqual([
+			'None',
+			'Name',
+			'Source',
+			'Score Value',
+			'Stocked',
+			'Remaining'
+		]);
+		expect(screen.queryByLabelText('Remaining')).not.toBeInTheDocument();
+
+		await fireEvent.change(sort, { target: { value: 'remaining' } });
+		expect(filterStore.setSortField).toHaveBeenCalledWith('remaining');
+	});
+
+	it('does not offer the Remaining sort on the roast list', () => {
+		pageState.url = new URL('http://localhost/roast');
+		storeState.set({ ...storeState.value, portfolioServerSide: true } as SettingsbarStoreValue);
+		render(Settingsbar, { onClose: vi.fn() });
+
+		const sort = screen.getByLabelText('Sort by') as HTMLSelectElement;
+		expect([...sort.options].map((option) => option.value)).not.toContain('remaining');
+	});
+
+	it('does not offer the Remaining sort on a shared portfolio, which is sorted in the browser', () => {
+		render(Settingsbar, { onClose: vi.fn() });
+
+		const sort = screen.getByLabelText('Sort by') as HTMLSelectElement;
+		expect([...sort.options].map((option) => option.value)).not.toContain('remaining');
+	});
 });

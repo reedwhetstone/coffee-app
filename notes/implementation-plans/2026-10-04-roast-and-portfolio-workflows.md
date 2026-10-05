@@ -207,16 +207,16 @@ Roasts of this coffee                    [ Roast this coffee ]  See all in Roast
 - **Tick two rows, then Compare** opens `/roast/compare?a=roast:<id>&b=roast:<id>`.
 - **Plan next roast** in the row menu opens `/roast/plan?from=roast:<id>`. It is added to the menu by PR 5, when that page exists. **Log sale** is added by PR 8, or earlier with name and date prefill if that part of PR 8 is brought forward.
 - **Roast this coffee** opens the new-roast form with the coffee filled in. It exists today as "Start New Roast".
-- **See all in Roasts** opens `/roast?coffee=<inventory id>`. PR 3 makes the roast list read that parameter and show only that coffee's roasts, with the coffee named in a chip that can be removed. The control for choosing a coffee on the list itself comes with PR 7.
+- **See all in Roasts** opens `/roast?coffee=<inventory id>`. PR 3 makes the roast list read that parameter and show only that coffee's roasts, with the coffee named in a chip that can be removed. Until PR 7 the page still holds every roast, so PR 3 narrows them in the browser; the filter moves to Parchment's `coffee_id` with PR 7, when the list loads a page at a time. The control for choosing a coffee on the list itself comes with PR 7.
 - **Phone:** each row becomes two lines (date and batch, then loss, time, drop, and development). Selection and Compare stay. This is the ADR-009 column-priority form.
 - **Data:** the panel's current roast list carries six fields. The trend columns come from `GET /v1/roasts?coffee_id=`, which Parchment already supports and the pinned SDK already types. The app's `/api/roast-profiles` route ignores query parameters today and needs to forward `coffee_id`. No Parchment or SDK change.
 
 On the portfolio list itself:
 
 - The card's top line gains the last roast: "6.0 lb remaining · last roasted Oct 1 · 5 roasts".
-- A "Remaining" sort is added.
+- A "Remaining" sort is added. Parchment's portfolio query cannot order by what is left to roast, so the app's server route reads the whole filtered selection, 100 coffees per request, and sorts it there. That is what PR 3 ships.
 - A "Roast" action is added to the card's action row.
-- "Portfolio by source" moves below the cards so the first card is on the first screen.
+- "Portfolio by source" moves below the cards so the first card is on the first screen. Measured in PR 3: at desktop size the first card moves from 754 px to 522 px of a 900 px screen. On a phone it moves from 1.8 screens to 1.6, because the hero and the five tiles still stack above it.
 - The last-roast date and count need either a join against the roast list in the app's server route or two fields added to Parchment's portfolio response. The first needs no upstream change and is what PR 3 assumes.
 
 ### 4.3 The roast page
@@ -565,6 +565,7 @@ The two parameters keep Parchment's existing order (newest roast date, then high
 Two optional upstream additions:
 
 - **Last roast per coffee.** `last_roast_date` and `roast_count` on Parchment's portfolio response would replace the join PR 3 does in the app's server route. Worth doing only if that join is slow on real data.
+- **Sort the portfolio by what is left.** A `remaining` sort in Parchment's portfolio query would replace the sort PR 3 does in the app's server route, which reads every coffee in the filtered selection first. Worth doing only for portfolios of several hundred coffees.
 - **Follow a roast unchanged.** A plan needs at least one temperature change, so "send this roast to Artisan as it is" has no path. It needs a small Parchment change. See decision 6.
 
 ## 6. Decisions for Reed

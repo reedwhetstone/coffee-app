@@ -61,6 +61,20 @@ describe('fetchParchmentRoasts', () => {
 		expect(list).toHaveBeenCalledTimes(2);
 	});
 
+	it("asks Parchment for one coffee's roasts on every page when a coffee is given", async () => {
+		const firstPage = Array.from({ length: 200 }, (_, i) => ({ ...roast, roast_id: i + 10 }));
+		const list = vi
+			.fn()
+			.mockResolvedValueOnce({ data: { data: firstPage } })
+			.mockResolvedValueOnce({ data: { data: [] } });
+
+		await expect(
+			fetchParchmentRoasts({ roasts: { list } } as never, { coffeeId: 101 })
+		).resolves.toEqual(firstPage);
+		expect(list).toHaveBeenNthCalledWith(1, { coffee_id: 101, limit: 200, offset: 0 });
+		expect(list).toHaveBeenNthCalledWith(2, { coffee_id: 101, limit: 200, offset: 200 });
+	});
+
 	it('rejects a failed Parchment response', async () => {
 		const list = vi.fn().mockResolvedValue({
 			error: { message: 'roasts unavailable' },

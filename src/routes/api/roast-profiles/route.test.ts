@@ -124,6 +124,34 @@ describe('/api/roast-profiles thin Parchment adapter', () => {
 		expect(parchmentMocks.fetchParchmentRoasts).toHaveBeenCalledWith({ kind: 'session-client' });
 	});
 
+	it("forwards ?coffee_id= so the list holds one portfolio coffee's roasts", async () => {
+		parchmentMocks.fetchParchmentRoasts.mockResolvedValue([profile]);
+
+		const response = await GET(
+			makeEvent({ url: 'https://app.test/api/roast-profiles?coffee_id=7' }) as never
+		);
+
+		expect(response.status).toBe(200);
+		expect(await response.json()).toEqual({ data: [profile] });
+		expect(parchmentMocks.fetchParchmentRoasts).toHaveBeenCalledWith(
+			{ kind: 'session-client' },
+			{ coffeeId: 7 }
+		);
+	});
+
+	it.each(['0', '-3', '7.5', 'abc', ''])(
+		'rejects ?coffee_id=%s without asking Parchment for roasts',
+		async (coffeeId) => {
+			const response = await GET(
+				makeEvent({ url: `https://app.test/api/roast-profiles?coffee_id=${coffeeId}` }) as never
+			);
+
+			expect(response.status).toBe(400);
+			expect(await response.json()).toEqual({ error: 'Invalid coffee id' });
+			expect(parchmentMocks.fetchParchmentRoasts).not.toHaveBeenCalled();
+		}
+	);
+
 	it.each(['anonymous', 'api-key'] as const)(
 		'rejects %s principals from the cookie-session BFF',
 		async (principal) => {

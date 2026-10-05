@@ -65,8 +65,18 @@ export const GET: RequestHandler = async (event) => {
 			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
+		// `?coffee_id=<inventory id>` narrows the list to one portfolio coffee's roasts.
+		const coffeeParam = event.url.searchParams.get('coffee_id');
+		const coffeeId = parsePositiveInteger(coffeeParam);
+		if (coffeeParam !== null && coffeeId === null) {
+			return json({ error: 'Invalid coffee id' }, { status: 400 });
+		}
+
 		const client = await createParchmentServerClient(event, { mode: 'session' });
-		const data = await fetchParchmentRoasts(client);
+		const data =
+			coffeeId === null
+				? await fetchParchmentRoasts(client)
+				: await fetchParchmentRoasts(client, { coffeeId });
 		return json({ data });
 	} catch (error) {
 		console.error('Error fetching roast profiles:', error);

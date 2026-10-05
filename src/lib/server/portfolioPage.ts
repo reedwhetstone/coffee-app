@@ -7,6 +7,15 @@ import {
 } from '$lib/data/catalogFilters';
 import type { CatalogFilterValue } from '$lib/catalog/urlState';
 import { fetchParchmentInventoryProjection, projectInventoryResource } from './parchmentInventory';
+import { fetchParchmentRoasts } from './parchmentRoasts';
+
+/**
+ * Sort by green coffee left to roast. Parchment's Portfolio query cannot order by it, so
+ * this one sort is applied here over the whole filtered selection.
+ */
+export const REMAINING_SORT = 'remaining';
+/** Parchment returns at most this many Portfolio rows per request. */
+const SELECTION_PAGE_LIMIT = 100;
 export type PortfolioQuery = {
 	filters: Record<string, CatalogFilterValue>;
 	sortField: string | null;
@@ -50,7 +59,8 @@ export function parsePortfolioQuery(params: URLSearchParams): PortfolioQuery {
 	if (Object.keys(filters).some((key) => !fields.includes(key)))
 		throw new Error('Invalid portfolio filter');
 	const sort = params.get('sort_field') ?? 'purchase_date';
-	if (sort && !fields.includes(sort)) throw new Error('Invalid portfolio sort');
+	if (sort && sort !== REMAINING_SORT && !fields.includes(sort))
+		throw new Error('Invalid portfolio sort');
 	const direction = params.get('sort_direction') ?? 'desc';
 	if (!['asc', 'desc'].includes(direction)) throw new Error('Invalid portfolio sort');
 	return {
@@ -62,9 +72,35 @@ export function parsePortfolioQuery(params: URLSearchParams): PortfolioQuery {
 	};
 }
 
+/** Pounds of a portfolio coffee not yet roasted. Mirrors the card's "remaining" figure. */
+function remainingLbs(row: DataItem): number {
+	const roasts = (row.roast_profiles ?? []) as { oz_in?: number | null }[];
+	const roastedOz =
+		row.roasted_oz_in != null
+			? Number(row.roasted_oz_in) || 0
+			: roasts.reduce((sum, roast) => sum + (Number(roast.oz_in) || 0), 0);
+	return (Number(row.purchased_qty_lbs) || 0) - roastedOz / 16;
+}
+
+function sortByRemaining(rows: DataItem[], direction: 'asc' | 'desc' | null): DataItem[] {
+	const sign = direction === 'asc' ? 1 : -1;
+	return [...rows].sort(
+		(a, b) =>
+			sign * (remainingLbs(a) - remainingLbs(b)) || (Number(b.id) || 0) - (Number(a.id) || 0)
+	);
+}
+
 /** Compatibility only for an older API or specifically absent Portfolio RPC. */
 export function legacyPortfolioPage(rows: DataItem[], query: PortfolioQuery): PortfolioPage {
-	const selected = processData(rows, query.sortField, query.sortDirection, query.filters, true);
+	const byRemaining = query.sortField === REMAINING_SORT;
+	const matched = processData(
+		rows,
+		byRemaining ? null : query.sortField,
+		byRemaining ? null : query.sortDirection,
+		query.filters,
+		true
+	);
+	const selected = byRemaining ? sortByRemaining(matched, query.sortDirection) : matched;
 	const sources: PortfolioContext['sources'] = Object.create(null);
 	const summary = {
 		totalCount: selected.length,
@@ -118,11 +154,50 @@ export function legacyPortfolioPage(rows: DataItem[], query: PortfolioQuery): Po
 		portfolio: { summary, sources, uniqueValues, ownerTotal: rows.length }
 	};
 }
-export async function fetchPortfolioPage(
+/** How often and how recently each portfolio coffee was roasted, keyed by inventory id. */
+type RoastFacts = Map<number, { roast_count: number; last_roast_date: string | null }>;
+
+/**
+ * The card's "last roasted" line. Parchment's Portfolio response does not carry it, so it
+ * is joined here from the owner's roast list. A failed roast read leaves the cards without
+ * that line and never fails the portfolio.
+ */
+async function fetchRoastFacts(client: ParchmentClient): Promise<RoastFacts | null> {
+	try {
+		const facts: RoastFacts = new Map();
+		for (const roast of await fetchParchmentRoasts(client)) {
+			if (roast.coffee_id === null) continue;
+			const entry = facts.get(roast.coffee_id) ?? { roast_count: 0, last_roast_date: null };
+			entry.roast_count += 1;
+			const day = roast.roast_date?.slice(0, 10) ?? null;
+			if (day && (entry.last_roast_date === null || day > entry.last_roast_date)) {
+				entry.last_roast_date = day;
+			}
+			facts.set(roast.coffee_id, entry);
+		}
+		return facts;
+	} catch (error) {
+		console.error('Error loading roast dates for the portfolio:', error);
+		return null;
+	}
+}
+
+function withRoastFacts(page: PortfolioPage, facts: RoastFacts | null): PortfolioPage {
+	if (!facts) return page;
+	return {
+		...page,
+		data: page.data.map((row) => ({
+			...row,
+			...(facts.get(Number(row.id)) ?? { roast_count: 0, last_roast_date: null })
+		}))
+	};
+}
+
+/** One bounded page from Parchment's Portfolio query, or null when the API predates it. */
+async function requestPortfolioPage(
 	client: ParchmentClient,
-	query: PortfolioQuery,
-	includeRoasts: boolean
-): Promise<PortfolioPage> {
+	query: PortfolioQuery
+): Promise<PortfolioPage | null> {
 	const request = {
 		portfolio: 'true',
 		include_pagination: 'true',
@@ -158,8 +233,63 @@ export async function fetchPortfolioPage(
 	// envelope. Never mistake that first page for the whole selected portfolio.
 	if (!result.error && (!body || !Array.isArray(body.data)))
 		throw new Error('Invalid Portfolio response');
+	return null;
+}
+
+/**
+ * The "Remaining" sort. Every row of the filtered selection is read in Parchment's own
+ * order, sorted here by what is left to roast, and cut to the requested page. The totals
+ * and source groups are Parchment's and already describe the whole selection.
+ */
+async function requestPortfolioPageByRemaining(
+	client: ParchmentClient,
+	query: PortfolioQuery
+): Promise<PortfolioPage | null> {
+	const selection = { ...query, sortField: 'purchase_date', sortDirection: 'desc' as const };
+	const rows: DataItem[] = [];
+	let first: PortfolioPage | null = null;
+	for (let offset = 0; ; offset += SELECTION_PAGE_LIMIT) {
+		const page = await requestPortfolioPage(client, {
+			...selection,
+			offset,
+			limit: SELECTION_PAGE_LIMIT
+		});
+		if (!page) return null;
+		first ??= page;
+		rows.push(...page.data);
+		if (!page.pagination.hasNext || page.data.length === 0) break;
+	}
+	const sorted = sortByRemaining(rows, query.sortDirection);
+	return {
+		data: sorted.slice(query.offset, query.offset + query.limit),
+		pagination: {
+			offset: query.offset,
+			limit: query.limit,
+			total: sorted.length,
+			hasNext: query.offset + query.limit < sorted.length
+		},
+		portfolio: first!.portfolio
+	};
+}
+
+export async function fetchPortfolioPage(
+	client: ParchmentClient,
+	query: PortfolioQuery,
+	includeRoasts: boolean
+): Promise<PortfolioPage> {
+	// The roast read does not depend on the inventory read, so both start together.
+	const roastFacts = includeRoasts ? fetchRoastFacts(client) : Promise.resolve(null);
+	const page =
+		query.sortField === REMAINING_SORT
+			? await requestPortfolioPageByRemaining(client, query)
+			: await requestPortfolioPage(client, query);
+	if (page) return withRoastFacts(page, await roastFacts);
+
 	const rows = await fetchParchmentInventoryProjection(client, {
 		includeRoastProfiles: includeRoasts
 	});
-	return legacyPortfolioPage(rows as unknown as DataItem[], query);
+	return withRoastFacts(
+		legacyPortfolioPage(rows as unknown as DataItem[], query),
+		await roastFacts
+	);
 }

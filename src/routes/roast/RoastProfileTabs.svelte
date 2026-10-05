@@ -4,6 +4,7 @@
 	import RoastActionBar from './RoastActionBar.svelte';
 	import ArtisanImportDialog from '$lib/components/roast/ArtisanImportDialog.svelte';
 	import ChartSkeleton from '$lib/components/ChartSkeleton.svelte';
+	import { coffeeRoastsHref } from '$lib/roast/coffee-links';
 	import { compareHref } from '$lib/roast/compare-sides';
 	import { hasRecordedRoast } from '$lib/roast/profile-picker-model';
 	import { hasRecordedCurve, roastDetailLine, roastMilestones } from '$lib/roast/roast-summary';
@@ -32,6 +33,10 @@
 		onBatchDelete,
 		onClearProfile,
 		onClearFilters,
+		listBatchNames = undefined,
+		listGroupedProfiles = undefined,
+		coffeeFilter = null,
+		onClearCoffeeFilter = undefined,
 		onProfileRefresh,
 		selectedBean,
 		timer,
@@ -64,6 +69,12 @@
 		onBatchDelete: () => void;
 		onClearProfile: () => Promise<boolean>;
 		onClearFilters: () => void;
+		/** The batches the list shows when it is narrowed; every batch otherwise. */
+		listBatchNames?: string[];
+		listGroupedProfiles?: Record<string, RoastProfile[]>;
+		/** The portfolio coffee the list is narrowed to by `?coffee=`. */
+		coffeeFilter?: { id: number; name: string | null } | null;
+		onClearCoffeeFilter?: () => void;
 		onProfileRefresh: (roastId: number) => Promise<void>;
 		selectedBean: { id?: number; name: string };
 		timer: RoastTimer;
@@ -75,6 +86,13 @@
 		saveRoastProfile: () => Promise<void>;
 		clearRoastData: () => void;
 	}>();
+
+	let visibleBatchNames = $derived<string[]>(listBatchNames ?? sortedBatchNames);
+	let visibleGroupedProfiles = $derived<Record<string, RoastProfile[]>>(
+		listGroupedProfiles ?? sortedGroupedProfiles
+	);
+	// "← Roasts" returns to the list as it was narrowed.
+	let listHref = $derived(coffeeFilter ? coffeeRoastsHref(coffeeFilter.id) : '/roast');
 
 	let detailPanel = $state<RoastProfileDisplay>();
 	let detailSection = $state<HTMLDivElement>();
@@ -113,7 +131,7 @@
 			(p: RoastProfile) => p.roast_id !== currentRoastProfile.roast_id
 		)}
 		<div class="mb-4">
-			<a href="/roast" class="text-sm text-link hover:text-accent" onclick={handleBackToRoasts}>
+			<a href={listHref} class="text-sm text-link hover:text-accent" onclick={handleBackToRoasts}>
 				← Roasts
 			</a>
 			<h1 class="mt-2 break-words text-xl font-bold text-ink sm:text-2xl">
@@ -230,8 +248,25 @@
 		<div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 			<div>
 				<h1 class="text-2xl font-bold text-ink">Roasts</h1>
-				{#if sortedBatchNames.length > 0}
+				{#if visibleBatchNames.length > 0}
 					<p class="mt-1 text-muted">{countLine}</p>
+				{/if}
+				{#if coffeeFilter}
+					<p class="mt-3">
+						<span
+							class="inline-flex max-w-full items-center gap-1 rounded-full bg-surface-panel py-1 pl-3 pr-1 text-sm font-medium text-ink ring-1 ring-line"
+						>
+							<span class="truncate">{coffeeFilter.name ?? 'This coffee'}</span>
+							<button
+								type="button"
+								class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-accent/10 hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+								aria-label="Show roasts of every coffee"
+								onclick={() => onClearCoffeeFilter?.()}
+							>
+								<span aria-hidden="true">×</span>
+							</button>
+						</span>
+					</p>
 				{/if}
 			</div>
 			<div class="flex flex-wrap gap-2">
@@ -259,11 +294,14 @@
 		</div>
 
 		<RoastHistoryTable
-			{sortedBatchNames}
-			{sortedGroupedProfiles}
+			sortedBatchNames={visibleBatchNames}
+			sortedGroupedProfiles={visibleGroupedProfiles}
 			{collapsedBatches}
 			{currentRoastProfile}
 			{totalRoasts}
+			emptyDetail={coffeeFilter
+				? `Nothing was roasted for ${coffeeFilter.name ?? 'this coffee'}.`
+				: ''}
 			{onToggleBatch}
 			{onSelectProfile}
 			{onClearFilters}

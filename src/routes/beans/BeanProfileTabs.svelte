@@ -13,12 +13,17 @@
 	import { page } from '$app/state';
 	import PriceHistorySparkline from '$lib/components/catalog/PriceHistorySparkline.svelte';
 	import { canViewPriceHistoryFor, type PriceHistoryAuth } from '$lib/catalog/priceHistoryAccess';
+	import type { PortfolioPanelTab } from '$lib/portfolio/panel-url';
+	import { newRoastHref } from '$lib/roast/coffee-links';
 
 	let {
 		selectedBean,
 		role,
 		canManagePortfolio = false,
 		embedded = false,
+		sharedView = false,
+		tab = undefined,
+		onTabChange = undefined,
 		onUpdate,
 		onDelete
 	} = $props<{
@@ -26,11 +31,22 @@
 		role?: 'viewer' | 'member' | 'admin';
 		canManagePortfolio?: boolean;
 		embedded?: boolean;
+		/** A portfolio opened from a share link: it is someone else's coffee, so nothing is roasted from it. */
+		sharedView?: boolean;
+		/** The open tab, when the page keeps it in the URL. Left out, the panel keeps its own. */
+		tab?: PortfolioPanelTab;
+		onTabChange?: (tab: PortfolioPanelTab) => void;
 		onUpdate: (bean: InventoryWithCatalog) => void;
 		onDelete: (id: number) => void | Promise<void>;
 	}>();
 
-	let currentTab = $state('overview');
+	let ownTab = $state<PortfolioPanelTab>('overview');
+	let currentTab = $derived<PortfolioPanelTab>(tab ?? ownTab);
+
+	function selectTab(next: PortfolioPanelTab) {
+		ownTab = next;
+		onTabChange?.(next);
+	}
 
 	// Market price history for the supplier listing this inventory came from.
 	let priceHistoryCatalogId = $derived.by(() => {
@@ -151,11 +167,11 @@
 		'stocked'
 	];
 
-	const tabs = [
-		{ id: 'overview', label: 'Overview', icon: '📊' },
-		{ id: 'cupping', label: 'Cupping', icon: '☕' },
-		{ id: 'roasting', label: 'Roasting', icon: '🔥' },
-		{ id: 'analytics', label: 'Analytics', icon: '📈' }
+	const tabs: Array<{ id: PortfolioPanelTab; label: string }> = [
+		{ id: 'overview', label: 'Overview' },
+		{ id: 'cupping', label: 'Cupping' },
+		{ id: 'roasting', label: 'Roasting' },
+		{ id: 'analytics', label: 'Analytics' }
 	];
 
 	/**
@@ -172,7 +188,7 @@
 			);
 		}
 		const safeName = beanName || 'Unknown Coffee';
-		goto(`/roast?modal=new&beanId=${selectedBean.id}&beanName=${encodeURIComponent(safeName)}`);
+		goto(newRoastHref(selectedBean.id, safeName));
 	}
 
 	// Function to handle editing
@@ -388,22 +404,22 @@
 			</div>
 		</div>
 
-		<!-- Tab Navigation -->
-		<div class="mt-6 border-b border-line">
-			<div class="flex space-x-8">
-				{#each tabs as tab}
-					<button
-						class="flex items-center gap-2 border-b-2 px-1 py-2 text-sm font-medium transition-colors duration-200 {currentTab ===
-						tab.id
-							? 'border-accent text-accent'
-							: 'border-transparent text-muted hover:border-line hover:text-ink'}"
-						onclick={() => (currentTab = tab.id)}
-					>
-						<span>{tab.icon}</span>
-						{tab.label}
-					</button>
-				{/each}
-			</div>
+		<!-- Tab navigation: the same pill tabs as the catalog coffee panel. -->
+		<div class="mt-4 flex gap-2 overflow-x-auto" role="tablist" aria-label="Coffee detail tabs">
+			{#each tabs as panelTab}
+				<button
+					type="button"
+					role="tab"
+					aria-selected={currentTab === panelTab.id}
+					class="shrink-0 rounded-md px-3 py-2 text-sm font-semibold transition-colors {currentTab ===
+					panelTab.id
+						? 'bg-accent text-ink'
+						: 'border border-line text-muted hover:border-accent hover:text-accent'}"
+					onclick={() => selectTab(panelTab.id)}
+				>
+					{panelTab.label}
+				</button>
+			{/each}
 		</div>
 	</div>
 
@@ -432,7 +448,7 @@
 				onSave={handleCuppingSave}
 			/>
 		{:else if currentTab === 'roasting'}
-			<RoastingTab {selectedBean} {role} onStartNewRoast={startNewRoast} />
+			<RoastingTab {selectedBean} {role} readOnly={sharedView} onStartNewRoast={startNewRoast} />
 		{:else if currentTab === 'analytics'}
 			<AnalyticsTab {selectedBean} />
 		{/if}

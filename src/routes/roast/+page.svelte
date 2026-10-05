@@ -14,6 +14,11 @@
 	import { createRoastTimer } from '$lib/roast';
 	import { roastCountLine } from '$lib/roast/roast-summary';
 	import { readOpenRoastId } from '$lib/roast/compare-sides';
+	import {
+		coffeeFilterName,
+		filterBatchesByCoffee,
+		readCoffeeFilter
+	} from '$lib/roast/coffee-links';
 	import { saveRoastAsReference } from '$lib/roast/save-reference';
 	import { trackProfileStudioActivation } from '$lib/profileStudio/analytics';
 	import {
@@ -270,9 +275,32 @@
 		return batchNames;
 	});
 
+	// `/roast?coffee=<inventory id>` narrows the list to one portfolio coffee. The page still
+	// holds every roast, so an open roast keeps its batch and nothing is reloaded.
+	let coffeeFilterId = $derived(readCoffeeFilter(page.url.searchParams));
+	let coffeeFilter = $derived(
+		coffeeFilterId === null
+			? null
+			: { id: coffeeFilterId, name: coffeeFilterName(clientData, coffeeFilterId) }
+	);
+	let listBatches = $derived(
+		filterBatchesByCoffee(sortedBatchNames(), sortedGroupedProfiles(), coffeeFilterId)
+	);
+
+	function clearCoffeeFilter() {
+		const url = new URL(page.url);
+		url.searchParams.delete('coffee');
+		const search = url.searchParams.toString();
+		goto(url.pathname + (search ? '?' + search : ''), {
+			replaceState: true,
+			keepFocus: true,
+			noScroll: true
+		});
+	}
+
 	let roastSummary = $derived.by(() => {
-		const profiles = typedFilteredData ?? [];
-		const batches = sortedBatchNames();
+		const batches = listBatches.batchNames;
+		const profiles = batches.flatMap((batchName) => listBatches.groupedRoasts[batchName]);
 		const profilesWithLossData = profiles.filter(
 			(profile) => profile.weight_loss_percent !== null && profile.weight_loss_percent !== undefined
 		);
@@ -294,7 +322,9 @@
 	// Publish the actual selection, not just the route name. Cherry receives
 	// canonical roast IDs so its read tool can retrieve the complete profiles.
 	$effect(() => {
-		const visible = isLoading ? [] : (typedFilteredData ?? []);
+		const visible = isLoading
+			? []
+			: listBatches.batchNames.flatMap((batchName) => listBatches.groupedRoasts[batchName]);
 		pageChatContext.set(buildRoastPageContext(visible, currentRoastProfile, isLoading));
 		return () => pageChatContext.clear();
 	});
@@ -875,11 +905,13 @@
 		$roastData = [];
 		$roastEvents = [];
 
-		// Clear URL params
-		const currentUrl = new URL(window.location.href);
-		currentUrl.searchParams.delete('roast');
-		currentUrl.searchParams.delete('profileId');
-		goto(currentUrl.pathname, { replaceState: true, keepFocus: true, noScroll: true });
+		// Back to the list as it was: the coffee it was narrowed to stays in the address.
+		const coffee = readCoffeeFilter(new URL(window.location.href).searchParams);
+		goto(coffee === null ? '/roast' : `/roast?coffee=${coffee}`, {
+			replaceState: true,
+			keepFocus: true,
+			noScroll: true
+		});
 		return true;
 	}
 </script>
@@ -1004,7 +1036,14 @@
 		onProfileDelete={handleProfileDelete}
 		onBatchDelete={handleBatchDelete}
 		onClearProfile={handleClearProfile}
-		onClearFilters={() => filterStore.clearFilters()}
+		onClearFilters={() => {
+			filterStore.clearFilters();
+			if (coffeeFilterId !== null) clearCoffeeFilter();
+		}}
+		listBatchNames={listBatches.batchNames}
+		listGroupedProfiles={listBatches.groupedRoasts}
+		{coffeeFilter}
+		onClearCoffeeFilter={clearCoffeeFilter}
 		onProfileRefresh={refreshProfileAfterArtisanImport}
 		{selectedBean}
 		{timer}
