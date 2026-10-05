@@ -468,6 +468,62 @@ describe('adding an Artisan file', () => {
 		await waitFor(() => expect(rowTitles()[0]).toBe('Kenya Nyeri 10-04'));
 	});
 
+	it('names the reference after the file chosen last, until the member types a name', async () => {
+		await renderLibrary();
+		await fireEvent.click(screen.getByRole('button', { name: 'Add an Artisan file' }));
+		const form = screen.getByRole('form', { name: 'Add an Artisan file' });
+		const picker = within(form).getByLabelText('Artisan file (.alog)');
+		const name = within(form).getByLabelText('Name');
+
+		await fireEvent.change(picker, {
+			target: { files: [new File([FILE_BYTES], 'Kenya_Nyeri 10-04.alog')] }
+		});
+		expect(name).toHaveValue('Kenya Nyeri 10-04');
+
+		// Choosing another file in its place renames the reference to match.
+		const second = new File([FILE_BYTES], 'Guji_natural 10-05.alog');
+		await fireEvent.change(picker, { target: { files: [second] } });
+		expect(name).toHaveValue('Guji natural 10-05');
+
+		// Clearing the choice clears a name the member did not type.
+		await fireEvent.change(picker, { target: { files: [] } });
+		expect(name).toHaveValue('');
+
+		// A name the member typed stays, whichever file is chosen after it.
+		await fireEvent.input(name, { target: { value: 'October keeper' } });
+		await fireEvent.change(picker, { target: { files: [second] } });
+		expect(name).toHaveValue('October keeper');
+
+		// Emptying the name hands it back to the file.
+		await fireEvent.input(name, { target: { value: '' } });
+		await fireEvent.change(picker, {
+			target: { files: [new File([FILE_BYTES], 'Kenya_Nyeri 10-04.alog')] }
+		});
+		expect(name).toHaveValue('Kenya Nyeri 10-04');
+
+		await fireEvent.click(within(form).getByRole('button', { name: 'Save reference' }));
+		await waitFor(() => expect(requests('POST', '/api/reference-profiles')).toHaveLength(1));
+		const [upload] = requests('POST', '/api/reference-profiles');
+		expect((upload.body as FormData).get('title')).toBe('Kenya Nyeri 10-04');
+	});
+
+	it('starts the next file’s name fresh after the form is closed', async () => {
+		await renderLibrary();
+		await fireEvent.click(screen.getByRole('button', { name: 'Add an Artisan file' }));
+		let form = screen.getByRole('form', { name: 'Add an Artisan file' });
+		await fireEvent.input(within(form).getByLabelText('Name'), {
+			target: { value: 'October keeper' }
+		});
+		await fireEvent.click(within(form).getByRole('button', { name: 'Cancel' }));
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Add an Artisan file' }));
+		form = screen.getByRole('form', { name: 'Add an Artisan file' });
+		await fireEvent.change(within(form).getByLabelText('Artisan file (.alog)'), {
+			target: { files: [new File([FILE_BYTES], 'Guji_natural 10-05.alog')] }
+		});
+		expect(within(form).getByLabelText('Name')).toHaveValue('Guji natural 10-05');
+	});
+
 	it('says why a file was refused and keeps the form open', async () => {
 		answers['POST /api/reference-profiles'] = () =>
 			json({ error: 'This is not an Artisan file' }, 400);
@@ -633,7 +689,7 @@ describe('removing', () => {
 });
 
 describe('downloading for Artisan', () => {
-	it('downloads the original file of an uploaded reference, unchanged', async () => {
+	it('downloads the file stored with an uploaded reference, as the bytes that arrive', async () => {
 		await renderLibrary();
 
 		await chooseFromMenu(keeper.title, 'Download for Artisan');
@@ -643,7 +699,7 @@ describe('downloading for Artisan', () => {
 		);
 		const status = await within(rowOf(keeper.title)).findByRole('status');
 		expect(status).toHaveTextContent(
-			'Downloading Guji natural 09-28.alog. It is the Artisan file you added, unchanged. In Artisan, open Roast, then Background, and load this file.'
+			'Downloading Guji natural 09-28.alog. It is the Artisan file stored with this reference when you added it. In Artisan, open Roast, then Background, and load this file.'
 		);
 		expect(clicked).toEqual(['Guji natural 09-28.alog']);
 		expect(Array.from(new Uint8Array(await saved[0].arrayBuffer()))).toEqual(
@@ -660,7 +716,7 @@ describe('downloading for Artisan', () => {
 			expect(requests('GET', `/api/reference-profiles/${KEPT}/artisan-file`)).toHaveLength(1)
 		);
 		expect(await within(rowOf(kept.title)).findByRole('status')).toHaveTextContent(
-			'It is the Artisan file of the roast this reference was kept from, unchanged.'
+			'It is the Artisan file stored with the roast this reference was kept from.'
 		);
 	});
 
@@ -722,6 +778,48 @@ describe('downloading for Artisan', () => {
 			'This file could not be downloaded. Try again in a moment.'
 		);
 		expect(clicked).toEqual([]);
+	});
+
+	it('says to try again, and frees the other downloads, when the file stops arriving part way', async () => {
+		// The headers arrived, so the request itself succeeded; the body then fails to read.
+		answers[`GET /api/reference-profiles/${KEEPER}/artisan-file`] = () => {
+			const response = new Response(FILE_BYTES, {
+				headers: { 'Content-Disposition': 'attachment; filename="Guji natural 09-28.alog"' }
+			});
+			vi.spyOn(response, 'blob').mockRejectedValue(new TypeError('network error'));
+			return response;
+		};
+		await renderLibrary();
+
+		await chooseFromMenu(keeper.title, 'Download for Artisan');
+
+		expect(await within(rowOf(keeper.title)).findByRole('alert')).toHaveTextContent(
+			'This file could not be downloaded. Try again in a moment.'
+		);
+		expect(clicked).toEqual([]);
+		// No row is left waiting on the one that failed.
+		const planDownload = screen.getByRole('button', {
+			name: `Download for Artisan: ${plan.title}`
+		});
+		expect(planDownload).toBeEnabled();
+		await fireEvent.click(planDownload);
+		expect(await within(rowOf(plan.title)).findByRole('status')).toHaveTextContent(
+			'Downloading Guji-plan.alog.'
+		);
+		expect(clicked).toEqual(['Guji-plan.alog']);
+	});
+
+	it('never says the download matches the file the member chose', async () => {
+		// An upload is read as text on its way in, so only the stored copy can be vouched for.
+		await renderLibrary();
+
+		await chooseFromMenu(keeper.title, 'Download for Artisan');
+		const uploaded = (await within(rowOf(keeper.title)).findByRole('status')).textContent;
+		await chooseFromMenu(kept.title, 'Download for Artisan');
+		const fromRoast = (await within(rowOf(kept.title)).findByRole('status')).textContent;
+
+		const said = `${uploaded} ${fromRoast}`;
+		expect(said).not.toMatch(/unchanged|original|byte for byte|exactly/i);
 	});
 });
 

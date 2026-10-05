@@ -37,6 +37,9 @@ export function downloadFileName(disposition: string | null, fallback: string): 
  * Fetch a file and hand it to the browser to save. The body is kept as bytes from the
  * response to the saved file. A refusal resolves with Parchment's reason so the page can
  * say what to do next, instead of the browser saving an error in the file's place.
+ *
+ * This never rejects: a request that fails, or a body that stops arriving part way, resolves
+ * as a failure with no reason, so the page can always say what happened.
  */
 export async function downloadFile(href: string, fallbackName: string): Promise<FileDownload> {
 	let response: Response;
@@ -56,7 +59,13 @@ export async function downloadFile(href: string, fallbackName: string): Promise<
 		};
 	}
 	const fileName = downloadFileName(response.headers.get('content-disposition'), fallbackName);
-	const url = URL.createObjectURL(await response.blob());
+	let url: string;
+	try {
+		// The connection can drop after the headers arrive, while the body is still being read.
+		url = URL.createObjectURL(await response.blob());
+	} catch {
+		return { ok: false, reason: null, message: null };
+	}
 	const link = document.createElement('a');
 	link.href = url;
 	link.download = fileName;

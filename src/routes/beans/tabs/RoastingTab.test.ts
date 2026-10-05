@@ -353,6 +353,26 @@ describe('portfolio Roasting tab', () => {
 		expect(screen.queryByText('Log sale')).toBeNull();
 	});
 
+	it('lets the last roast’s menu open below the table instead of cutting it off', async () => {
+		renderTab({
+			rowMenu: (roast: { roast_id: number }) => [
+				{ label: 'Plan next roast', href: `/roast/plan?from=roast:${roast.roast_id}` }
+			]
+		});
+
+		const rows = await dataRows();
+		const last = rows[rows.length - 1];
+		const link = within(last).getByRole('link', { name: 'Plan next roast', hidden: true });
+		// The menu hangs below its row, so nothing between it and the page may clip what
+		// runs past its own edge.
+		const table = screen.getByRole('table', { name: 'Roasts of this coffee, newest first' });
+		for (let box = link.parentElement; box && table.contains(box); box = box.parentElement) {
+			expect(box.className).not.toMatch(/\boverflow-(?:hidden|clip|auto|scroll)\b/);
+		}
+		// The last row still follows the table's rounded corners when it is pointed at.
+		expect(last).toHaveClass('last:rounded-b-lg');
+	});
+
 	it('draws no row menu on a shared coffee, where nothing can be planned', async () => {
 		render(RoastingTab, {
 			selectedBean: {

@@ -874,8 +874,8 @@
 		}
 	}
 
-	// "Download Artisan file" in the roast's More menu: the file the roast was imported
-	// from, as it was uploaded. Nothing on the page changes, so a roast that is recording
+	// "Download Artisan file" in the roast's More menu: the Artisan file stored with the
+	// roast when it was imported. Nothing on the page changes, so a roast that is recording
 	// keeps recording.
 	async function handleDownloadArtisanFile() {
 		const roast = currentRoastProfile;
@@ -892,7 +892,7 @@
 				actionNotice = {
 					roastId: roast.roast_id,
 					notice: {
-						message: `Downloading ${result.fileName}. It is the Artisan file this roast was imported from, unchanged. ${ARTISAN_BACKGROUND_STEPS}`
+						message: `Downloading ${result.fileName}. It is the Artisan file stored with this roast when it was imported. ${ARTISAN_BACKGROUND_STEPS}`
 					}
 				};
 			} else if (result.reason) {

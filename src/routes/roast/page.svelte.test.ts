@@ -589,7 +589,7 @@ describe('roast page live roast guard', () => {
 
 		const notice = await screen.findByText(/Downloading Ethiopia 10-01\.alog\./);
 		expect(notice).toHaveTextContent(
-			'It is the Artisan file this roast was imported from, unchanged.'
+			'It is the Artisan file stored with this roast when it was imported.'
 		);
 		expect(requests.some((request) => request.url === '/api/roast-profiles/1/artisan-file')).toBe(
 			true

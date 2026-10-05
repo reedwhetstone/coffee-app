@@ -139,6 +139,27 @@ describe('downloading a file', () => {
 		});
 		expect(clicked).toEqual([]);
 	});
+
+	it('answers with no reason, and saves nothing, when the file stops arriving part way', async () => {
+		// The headers arrived, so the request itself succeeded; the body then fails to read.
+		const response = new Response(FILE_BYTES, {
+			headers: { 'Content-Disposition': 'attachment; filename="Wush Wush 10-01.alog"' }
+		});
+		vi.spyOn(response, 'blob').mockRejectedValue(new TypeError('network error'));
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => response)
+		);
+
+		expect(await downloadFile(roastFileHref(4531), 'roast-4531.alog')).toEqual({
+			ok: false,
+			reason: null,
+			message: null
+		});
+		expect(clicked).toEqual([]);
+		expect(saved).toEqual([]);
+		expect(document.querySelector('a[download]')).toBeNull();
+	});
 });
 
 describe('why there is no file, as the next thing to do', () => {

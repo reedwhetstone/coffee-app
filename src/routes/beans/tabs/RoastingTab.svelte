@@ -176,10 +176,11 @@
 			{/if}
 		</div>
 	{:else}
+		<!-- Nothing is clipped at the table's edge, so the last row's menu can open below it. -->
 		<div
 			role="table"
 			aria-label="Roasts of this coffee, newest first"
-			class="overflow-hidden rounded-lg bg-surface-canvas ring-1 ring-line"
+			class="rounded-lg bg-surface-canvas ring-1 ring-line"
 		>
 			<!-- On a phone the header names the four values on each row's second line. -->
 			<div
@@ -203,7 +204,7 @@
 				{@const menuLinks = readOnly || !roasts ? [] : rowMenu(roasts[index])}
 				<div
 					role="row"
-					class="relative gap-y-1 border-b border-line px-3 py-2.5 text-sm transition-colors last:border-b-0 hover:bg-surface-panel {rowGrid}"
+					class="relative gap-y-1 border-b border-line px-3 py-2.5 text-sm transition-colors last:rounded-b-lg last:border-b-0 hover:bg-surface-panel {rowGrid}"
 				>
 					<span
 						role="cell"

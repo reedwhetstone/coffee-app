@@ -100,6 +100,8 @@
 	const UPLOAD_SCOPE = 'profile-studio-upload';
 	let adding = $state(false);
 	let addName = $state('');
+	// True once the member has typed a name of their own.
+	let addNameEdited = $state(false);
 	let addFile = $state<File | null>(null);
 	let addSaving = $state(false);
 	let addError = $state<string | null>(null);
@@ -117,6 +119,7 @@
 	function closeAddForm() {
 		adding = false;
 		addName = '';
+		addNameEdited = false;
 		addFile = null;
 		addError = null;
 		addButton?.focus();
@@ -124,8 +127,9 @@
 
 	function chooseFile(event: Event) {
 		addFile = (event.currentTarget as HTMLInputElement).files?.[0] ?? null;
-		// The file's own name tells one upload from the next until the member types another.
-		if (addFile && !addName.trim()) addName = referenceNameFromFile(addFile.name);
+		// The file's own name tells one upload from the next. It follows the chosen file until
+		// the member types a name of their own.
+		if (!addNameEdited) addName = addFile ? referenceNameFromFile(addFile.name) : '';
 	}
 
 	async function uploadReference() {
@@ -174,8 +178,8 @@
 	function downloadedFileIs(row: LibraryRow): string {
 		if (row.isPlan) return 'It is this plan as an Artisan file.';
 		return row.profile.sourceClass === 'artisan_upload'
-			? 'It is the Artisan file you added, unchanged.'
-			: 'It is the Artisan file of the roast this reference was kept from, unchanged.';
+			? 'It is the Artisan file stored with this reference when you added it.'
+			: 'It is the Artisan file stored with the roast this reference was kept from.';
 	}
 
 	async function download(row: LibraryRow) {
@@ -484,6 +488,7 @@
 				>Name<input
 					bind:this={addNameInput}
 					bind:value={addName}
+					oninput={(event) => (addNameEdited = event.currentTarget.value.trim() !== '')}
 					maxlength="120"
 					class="mt-1 min-h-11 w-full rounded-md border border-line bg-surface-canvas px-3 font-normal"
 				/></label
