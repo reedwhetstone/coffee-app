@@ -224,6 +224,9 @@ function mapPriceIndexHistoryItem(row: PriceIndexHistoryItem): PriceSnapshot {
 	};
 }
 
+/** How many history pages are read at once after the first. */
+const SNAPSHOT_PAGE_CONCURRENCY = 6;
+
 export async function _loadPriceSnapshotsPaginated({
 	client,
 	windowDays
@@ -231,9 +234,7 @@ export async function _loadPriceSnapshotsPaginated({
 	client: ParchmentClient;
 	windowDays: 90 | 365;
 }): Promise<PriceSnapshot[]> {
-	const snapshots: PriceSnapshot[] = [];
-
-	for (let page = 1; ; page += 1) {
+	const readPage = async (page: number) => {
 		const { data, error } = await client.priceIndex.history({
 			windowDays,
 			page,
@@ -248,15 +249,36 @@ export async function _loadPriceSnapshotsPaginated({
 			);
 		}
 
-		const pageRows = data?.data ?? [];
-		snapshots.push(...pageRows.map(mapPriceIndexHistoryItem));
+		return { rows: data?.data ?? [], pagination: data?.pagination };
+	};
 
-		if (!data?.pagination.hasNext) break;
-		if (pageRows.length === 0) {
+	const first = await readPage(1);
+	const snapshots: PriceSnapshot[] = first.rows.map(mapPriceIndexHistoryItem);
+	const totalPages = first.pagination?.totalPages;
+
+	// The first page says how many there are, so the rest are read side by side
+	// instead of one after another: a year of history is about ten pages.
+	if (typeof totalPages === 'number' && Number.isInteger(totalPages)) {
+		const remaining = Array.from({ length: Math.max(0, totalPages - 1) }, (_, index) => index + 2);
+		for (let start = 0; start < remaining.length; start += SNAPSHOT_PAGE_CONCURRENCY) {
+			const batch = await Promise.all(
+				remaining.slice(start, start + SNAPSHOT_PAGE_CONCURRENCY).map(readPage)
+			);
+			for (const page of batch) snapshots.push(...page.rows.map(mapPriceIndexHistoryItem));
+		}
+		return snapshots;
+	}
+
+	// No page count in the response: follow hasNext one page at a time.
+	let previous = first;
+	for (let page = 2; previous.pagination?.hasNext; page += 1) {
+		if (previous.rows.length === 0) {
 			throw new Error(
-				`Failed to load analytics price snapshots page ${page}: upstream returned an empty page with hasNext=true`
+				`Failed to load analytics price snapshots page ${page - 1}: upstream returned an empty page with hasNext=true`
 			);
 		}
+		previous = await readPage(page);
+		snapshots.push(...previous.rows.map(mapPriceIndexHistoryItem));
 	}
 
 	return snapshots;

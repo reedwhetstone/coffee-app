@@ -390,6 +390,56 @@ describe('loadPriceSnapshotsPaginated', () => {
 		]);
 	});
 
+	it('reads the remaining pages side by side once the first page gives the page count', async () => {
+		const pageRows = (page: number, count: number) =>
+			Array.from({ length: count }, (_, index) => makeHistoryRow((page - 1) * 1000 + index));
+		let inFlight = 0;
+		let mostInFlight = 0;
+		const history = vi.fn(async (query: { page: number }) => {
+			inFlight += 1;
+			mostInFlight = Math.max(mostInFlight, inFlight);
+			// Later pages answer first, so the result must not depend on arrival order.
+			await new Promise((resolve) => setTimeout(resolve, (11 - query.page) * 2));
+			inFlight -= 1;
+			return {
+				data: {
+					data: pageRows(query.page, query.page === 10 ? 40 : 1000),
+					pagination: { page: query.page, totalPages: 10, hasNext: query.page < 10 }
+				}
+			};
+		});
+		const client = { priceIndex: { history } } as unknown as Parameters<
+			typeof _loadPriceSnapshotsPaginated
+		>[0]['client'];
+
+		const snapshots = await _loadPriceSnapshotsPaginated({ client, windowDays: 365 });
+
+		expect(history).toHaveBeenCalledTimes(10);
+		expect(history.mock.calls.map(([query]) => query.page).sort((a, b) => a - b)).toEqual([
+			1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+		]);
+		expect(mostInFlight).toBeGreaterThan(1);
+		expect(mostInFlight).toBeLessThanOrEqual(6);
+		expect(snapshots).toHaveLength(9040);
+		expect(snapshots[1000]).toEqual(mapExpectedSnapshot(makeHistoryRow(1000)));
+		expect(snapshots.at(-1)).toEqual(mapExpectedSnapshot(makeHistoryRow(9039)));
+	});
+
+	it('throws when a page read side by side fails instead of returning partial data', async () => {
+		const history = vi.fn(async (query: { page: number }) =>
+			query.page === 3
+				? { error: { error: { message: 'API blew up' } } }
+				: { data: { data: [makeHistoryRow(query.page)], pagination: { totalPages: 4 } } }
+		);
+		const client = { priceIndex: { history } } as unknown as Parameters<
+			typeof _loadPriceSnapshotsPaginated
+		>[0]['client'];
+
+		await expect(_loadPriceSnapshotsPaginated({ client, windowDays: 365 })).rejects.toThrow(
+			'Failed to load analytics price snapshots page 3: API blew up'
+		);
+	});
+
 	it('throws when an intermediate page fails instead of returning partial data', async () => {
 		const setup = createAnalyticsClient({
 			historyPages: [

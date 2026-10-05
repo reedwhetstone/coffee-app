@@ -176,15 +176,45 @@
 	let detailsLoading = $state(false);
 	let detailsError = $state(false);
 	let detailsRetry = $state(0);
+	// Resting on a card, or focusing it, starts loading its full detail so the
+	// panel has it by the time it opens. The card itself keeps showing the
+	// listing row until the panel has been opened.
+	let detailsPrefetch = $state(false);
+	let detailsShown = $state(false);
+	let detailsWanted = $derived(detailsOpen || detailsPrefetch);
 	let coffee = $derived(
-		hydratedSource === initialCoffee && hydratedCoffee ? hydratedCoffee : initialCoffee
+		(detailsShown || detailsOpen) && hydratedSource === initialCoffee && hydratedCoffee
+			? hydratedCoffee
+			: initialCoffee
 	);
+
+	const DETAIL_PREFETCH_DWELL_MS = 120;
+	let prefetchTimer: ReturnType<typeof setTimeout> | null = null;
+	function cancelDetailPrefetch() {
+		if (prefetchTimer) clearTimeout(prefetchTimer);
+		prefetchTimer = null;
+	}
+	function scheduleDetailPrefetch(event: PointerEvent) {
+		// A touch reports pointerenter with the tap itself, which opens the panel anyway.
+		if (event.pointerType !== 'mouse' || detailsPrefetch || !loadDetails) return;
+		cancelDetailPrefetch();
+		prefetchTimer = setTimeout(() => {
+			prefetchTimer = null;
+			detailsPrefetch = true;
+		}, DETAIL_PREFETCH_DWELL_MS);
+	}
+	$effect(() => cancelDetailPrefetch);
 
 	$effect(() => {
 		// Only catalog summary rows opt in. Other CoffeeCard consumers stay unchanged.
 		const summary = initialCoffee as CoffeeCatalog & { summarySignals?: unknown };
 		void detailsRetry;
-		if (!detailsOpen || !loadDetails || !summary.summarySignals || hydratedSource === initialCoffee)
+		if (
+			!detailsWanted ||
+			!loadDetails ||
+			!summary.summarySignals ||
+			hydratedSource === initialCoffee
+		)
 			return;
 		const source = initialCoffee;
 		const controller = new AbortController();
@@ -388,6 +418,9 @@
 	function openDetails(tab: DetailTab = 'overview') {
 		onDetailOpen?.();
 		activeTab = tab;
+		// A detail that failed to load while the pointer rested here is tried again.
+		if (detailsError) detailsRetry += 1;
+		detailsShown = true;
 		detailsOpen = true;
 		coffeeDetailFocus.claim(detailOwner);
 	}
@@ -395,6 +428,8 @@
 	function closeDetails() {
 		coffeeDetailFocus.release(detailOwner);
 		detailsOpen = false;
+		// Closing cancels a detail that is still loading, however it was started.
+		detailsPrefetch = false;
 		activeTab = 'overview';
 		onDetailClose?.();
 	}
@@ -421,6 +456,12 @@
 				aria-label={`View details for ${coffee.name}`}
 				onclick={() => openDetails()}
 				onkeydown={handleCardKeydown}
+				onpointerenter={scheduleDetailPrefetch}
+				onpointerleave={cancelDetailPrefetch}
+				onfocus={(event) => {
+					// Keyboard focus only: a click focuses the card and opens it anyway.
+					if (loadDetails && event.currentTarget.matches(':focus-visible')) detailsPrefetch = true;
+				}}
 			></button>
 		{/if}
 

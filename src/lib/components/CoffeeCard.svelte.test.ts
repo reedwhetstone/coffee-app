@@ -394,6 +394,50 @@ describe('catalog summary detail hydration', () => {
 		await fireEvent.click(screen.getByRole('button', { name: /view details for process lot/i }));
 		expect(loadDetails).toHaveBeenCalledTimes(1);
 	});
+	it('starts loading the detail when the pointer rests on the card, so opening does not wait', async () => {
+		vi.useFakeTimers();
+		try {
+			const summary = {
+				...createCoffee(),
+				summarySignals: {
+					farmNotes: true,
+					roastRecommendations: true,
+					descriptions: true,
+					cuppingNotes: true
+				}
+			};
+			const loadDetails = vi
+				.fn()
+				.mockResolvedValue(createCoffee({ ai_description: 'Full demand-loaded detail' }));
+			render(CoffeeCard, { coffee: summary, parseTastingNotes, loadDetails });
+			const opener = screen.getByRole('button', { name: /view details for process lot/i });
+
+			// Passing over the card is not enough.
+			await fireEvent.pointerEnter(opener, { pointerType: 'mouse' });
+			await vi.advanceTimersByTimeAsync(60);
+			await fireEvent.pointerLeave(opener, { pointerType: 'mouse' });
+			await vi.advanceTimersByTimeAsync(500);
+			expect(loadDetails).not.toHaveBeenCalled();
+
+			// A touch opens the panel with the same tap, so it does not load early.
+			await fireEvent.pointerEnter(opener, { pointerType: 'touch' });
+			await vi.advanceTimersByTimeAsync(500);
+			expect(loadDetails).not.toHaveBeenCalled();
+
+			await fireEvent.pointerEnter(opener, { pointerType: 'mouse' });
+			await vi.advanceTimersByTimeAsync(150);
+			expect(loadDetails).toHaveBeenCalledTimes(1);
+			// The card keeps showing the listing row until the panel is opened.
+			expect(screen.queryByText('Full demand-loaded detail')).toBeNull();
+
+			await fireEvent.click(opener);
+			await vi.advanceTimersByTimeAsync(0);
+			expect(screen.getAllByText('Full demand-loaded detail')).not.toHaveLength(0);
+			expect(loadDetails).toHaveBeenCalledTimes(1);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
 	it('loads initial deep links, exposes retry on failure, and leaves the card usable', async () => {
 		const summary = {
 			...createCoffee(),
