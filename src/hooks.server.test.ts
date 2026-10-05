@@ -261,7 +261,7 @@ describe('hooks auth guard integration', () => {
 		expect(mockGetSession).not.toHaveBeenCalled();
 	});
 
-	describe('locked roast page: the exact path /roast for an account without Mallard Studio', () => {
+	describe('locked roast page: the roast list page for an account without Mallard Studio', () => {
 		const signedIn = (role: 'viewer' | 'member', ppiAccess = false) => ({
 			isAuthenticated: true,
 			authKind: 'session',
@@ -288,11 +288,15 @@ describe('hooks auth guard integration', () => {
 			{ account: 'a Parchment Intelligence-only account', principal: signedIn('viewer', true) }
 		];
 		// SvelteKit hands the hook `/roast` for the page and for its `__data.json` request.
+		// It hands it `/roast/` for the data request behind an in-app link to `/roast/`; a
+		// page request for `/roast/` is redirected to `/roast` before the hook runs.
 		const lockedPagePaths = [
 			'/roast',
 			'/roast?roast=123',
 			'/roast?profileId=123',
-			'/roast?modal=new&beanId=7&beanName=Wush%20Wush'
+			'/roast?modal=new&beanId=7&beanName=Wush%20Wush',
+			'/roast/',
+			'/roast/?roast=123'
 		];
 		const childPaths = [
 			'/roast/compare',
@@ -301,10 +305,11 @@ describe('hooks auth guard integration', () => {
 			'/roast/plan?from=roast:4531',
 			'/roast/saved',
 			'/roast/4531',
-			// Not the exact path. SvelteKit redirects a trailing slash to `/roast` and strips
-			// the data suffix before the hook runs, so these only arrive if that changes.
-			'/roast/',
+			// Not the roast list page. SvelteKit strips the data suffix before the hook runs,
+			// so `/roast/__data.json` only arrives if that changes.
 			'/roast/__data.json',
+			'/roast//',
+			'/roast%2F',
 			'/roast%2Fcompare',
 			'/roasts'
 		];
@@ -324,14 +329,17 @@ describe('hooks auth guard integration', () => {
 			}
 		);
 
-		it.each(lockedAccounts)('lets $account send HEAD to /roast', async ({ principal }) => {
-			mockResolvePrincipal.mockResolvedValue(principal);
-			const resolve = vi.fn(() => new Response(null));
+		it.each(each(lockedAccounts, ['/roast', '/roast/']))(
+			'lets $account send HEAD to $path',
+			async ({ principal, path }) => {
+				mockResolvePrincipal.mockResolvedValue(principal);
+				const resolve = vi.fn(() => new Response(null));
 
-			await handle({ event: makeEvent('/roast', {}, 'HEAD'), resolve });
+				await handle({ event: makeEvent(path, {}, 'HEAD'), resolve });
 
-			expect(resolve).toHaveBeenCalledOnce();
-		});
+				expect(resolve).toHaveBeenCalledOnce();
+			}
+		);
 
 		it.each(each(lockedAccounts, childPaths))(
 			'sends $account from $path to the dashboard',
@@ -347,14 +355,18 @@ describe('hooks auth guard integration', () => {
 			}
 		);
 
-		it.each(each(lockedAccounts, ['POST', 'PUT', 'PATCH', 'DELETE']))(
-			'sends $account to the dashboard for a $path to /roast',
-			async ({ principal, path: method }) => {
+		it.each(
+			each(lockedAccounts, ['POST', 'PUT', 'PATCH', 'DELETE']).flatMap((entry) =>
+				['/roast', '/roast/'].map((target) => ({ ...entry, method: entry.path, target }))
+			)
+		)(
+			'sends $account to the dashboard for a $method to $target',
+			async ({ principal, method, target }) => {
 				mockResolvePrincipal.mockResolvedValue(principal);
 				const resolve = vi.fn();
 
 				await expect(
-					handle({ event: makeEvent('/roast', {}, method), resolve })
+					handle({ event: makeEvent(target, {}, method), resolve })
 				).rejects.toMatchObject({ status: 303, location: '/dashboard' });
 				expect(resolve).not.toHaveBeenCalled();
 			}

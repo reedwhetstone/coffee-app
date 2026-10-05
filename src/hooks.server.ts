@@ -96,12 +96,16 @@ const authGuard: Handle = async ({ event, resolve }) => {
 		const isChatRoute = currentPath.startsWith('/chat');
 		const isPortfolioRoute = currentPath.startsWith('/beans');
 		const hasParchmentAccess = principal.ppiAccess || principalHasRole(principal, 'member');
-		// A signed-in account without Mallard Studio may read the exact path `/roast`. That
-		// page draws a locked page and its server load makes no roast request for the account
-		// (routes/roast/+page.server.ts). Child paths, writes, and `/profit` stay member-only,
-		// and the roast and reference API routes run their own checks.
+		// A signed-in account without Mallard Studio may read the roast list page, and only
+		// that page. It draws a locked page and its server load makes no roast request for the
+		// account (routes/roast/+page.server.ts). Child paths, writes, and `/profit` stay
+		// member-only, and the roast and reference API routes run their own checks.
+		//
+		// `/roast/` is the same page. SvelteKit redirects a page request for it to `/roast`
+		// before this hook runs, but the data request made when an in-app link points at
+		// `/roast/` arrives here with the slash kept.
 		const isLockedRoastPageRead =
-			currentPath === '/roast' &&
+			(currentPath === '/roast' || currentPath === '/roast/') &&
 			(event.request.method === 'GET' || event.request.method === 'HEAD');
 
 		if (isChatRoute || isPortfolioRoute) {

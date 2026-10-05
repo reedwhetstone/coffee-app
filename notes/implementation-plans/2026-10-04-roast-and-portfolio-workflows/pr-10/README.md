@@ -12,12 +12,15 @@ Rendered locally at 1440×900 and 390×844 behind a stand-in backend seeded with
 | `/roast?roast=4531`, `/roast?profileId=4531`               | Locked page, no roast loaded   | Locked page, no roast loaded   | That roast       | Sent to `/catalog` |
 | `/roast/__data.json`, with or without a roast in the query | The lock flag and nothing else | The lock flag and nothing else | Roast list       | Sent to `/catalog` |
 | `/roast/` (trailing slash)                                 | Sent to `/roast` by SvelteKit  | Sent to `/roast` by SvelteKit  | Same             | Same               |
+| `/roast/` followed from a link inside the app              | Locked page                    | Locked page                    | Roast list       | Sent to `/catalog` |
 | `/roast/compare`, `/roast/plan`, `/roast/saved`            | Sent to `/dashboard`           | Sent to `/dashboard`           | Passes the guard | Sent to `/catalog` |
 | `/roast/compare/__data.json`                               | Sent to `/dashboard`           | Sent to `/dashboard`           | Passes the guard | Sent to `/catalog` |
 | `POST /roast`                                              | Sent to `/dashboard`           | Sent to `/dashboard`           | Passes the guard | Sent to `/catalog` |
 | `/profit`                                                  | Sent to `/dashboard`           | Sent to `/dashboard`           | Opens            | Sent to `/catalog` |
 
 The child pages are built in their own PRs. For a member this change leaves the guard as it was.
+
+A page request for `/roast/` never reaches the guard, because SvelteKit redirects it to `/roast` first. A link to `/roast/` followed inside the app is different: its data request reaches the guard with the slash kept. The guard reads `/roast/` as the same page, so a locked account gets the locked page there too, and the address bar ends on `/roast`. The app has no such link today. This was checked in a browser for all three signed-in accounts: before the correction the viewer and the Parchment Intelligence-only account landed on the dashboard, and after it they land on the locked page with no roast request received by the stand-in backend.
 
 ## No roast data for a locked account
 
