@@ -5,15 +5,14 @@
 	// import RoastChart from './RoastChart.svelte';
 	import RoastProfileForm from './RoastProfileForm.svelte';
 	import FormShell from '$lib/components/FormShell.svelte';
-	import MetricTile from '$lib/components/ui/MetricTile.svelte';
 	import ProfileStudio from '$lib/components/roast/ProfileStudio.svelte';
-	import OperationsHero from '$lib/components/ui/OperationsHero.svelte';
 	import { canUseMallardControls } from '$lib/services/portfolioAccess';
 
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { roastData, roastEvents, temperatureEntries, eventEntries, msToSeconds } from './stores';
 	import { createRoastTimer } from '$lib/roast';
+	import { roastCountLine } from '$lib/roast/roast-summary';
 	import {
 		clearRoastCreateOperation,
 		readRoastCreateOperation,
@@ -75,8 +74,8 @@
 
 	// Roast profile state management (removed unused sort variables)
 
-	// Profile grouping and sorting state
-	let expandedBatches = $state<Set<string>>(new Set());
+	// Profile grouping and sorting state. Batches are open unless the roaster closes them.
+	let collapsedBatches = $state<Set<string>>(new Set());
 	let currentProfileIndex = $state<number>(0);
 
 	// Client-side data state
@@ -94,7 +93,6 @@
 		lastSelectedId: null as number | null,
 		selectionInProgress: false
 	});
-	let initialLoadComplete = $state(false);
 	let pendingProfileCreatePayload = $state<string | null>(null);
 
 	// Available coffees for form
@@ -259,28 +257,21 @@
 	let roastSummary = $derived.by(() => {
 		const profiles = typedFilteredData ?? [];
 		const batches = sortedBatchNames();
-		const completedProfiles = profiles.filter(
-			(profile) =>
-				(profile.weight_loss_percent ?? 0) > 0 ||
-				(profile.oz_in ?? 0) > 0 ||
-				(profile.oz_out ?? 0) > 0
-		);
 		const profilesWithLossData = profiles.filter(
 			(profile) => profile.weight_loss_percent !== null && profile.weight_loss_percent !== undefined
 		);
-		const avgLoss =
+		const averageLoss =
 			profilesWithLossData.length > 0
 				? profilesWithLossData.reduce(
 						(sum, profile) => sum + (Number(profile.weight_loss_percent) || 0),
 						0
 					) / profilesWithLossData.length
-				: 0;
+				: null;
 
 		return {
-			profiles: profiles.length,
+			roasts: profiles.length,
 			batches: batches.length,
-			completedProfiles: completedProfiles.length,
-			avgLoss
+			averageLoss
 		};
 	});
 
@@ -290,23 +281,6 @@
 		const visible = isLoading ? [] : (typedFilteredData ?? []);
 		pageChatContext.set(buildRoastPageContext(visible, currentRoastProfile, isLoading));
 		return () => pageChatContext.clear();
-	});
-
-	// Effect to handle first-time expansion of batches
-	$effect(() => {
-		const batchNames = sortedBatchNames();
-
-		// Only auto-expand if no profile is currently selected and this is truly the first load
-		if (
-			batchNames.length > 0 &&
-			expandedBatches.size === 0 &&
-			!initialLoadComplete &&
-			!currentRoastProfile &&
-			!selectionState.selectionInProgress
-		) {
-			expandedBatches.add(batchNames[0]);
-			initialLoadComplete = true;
-		}
 	});
 
 	// Update selectedBean when currentRoastProfile changes
@@ -539,40 +513,16 @@
 
 	// Function to toggle batch expansion
 	function toggleBatch(batchName: string) {
-		//console.log('Toggling batch:', batchName);
-		//console.log('Current expanded batches:', Array.from(expandedBatches));
+		if (!sortedGroupedProfiles()[batchName]) return;
 
-		// Validate batch name
-		if (!batchName || typeof batchName !== 'string') {
-			//console.error('Invalid batch name:', batchName);
-			return;
-		}
-
-		// Ensure the batch exists in the sorted grouped profiles
-		if (!sortedGroupedProfiles()[batchName]) {
-			//console.error('Batch not found in sorted grouped profiles:', batchName);
-			//console.log('Available batches:', Object.keys(sortedGroupedProfiles()));
-			return;
-		}
-
-		// Create a new Set to ensure reactivity
-		const newExpandedBatches = new Set(expandedBatches);
-
-		// Toggle the batch expansion
-		if (newExpandedBatches.has(batchName)) {
-			//console.log('Collapsing batch:', batchName);
-			newExpandedBatches.delete(batchName);
+		// A new Set, so the change is seen
+		const next = new Set(collapsedBatches);
+		if (next.has(batchName)) {
+			next.delete(batchName);
 		} else {
-			//console.log('Expanding batch:', batchName);
-			newExpandedBatches.add(batchName);
+			next.add(batchName);
 		}
-
-		// Update the state with the new Set
-		expandedBatches = newExpandedBatches;
-		//console.log('Updated expanded batches:', Array.from(expandedBatches));
-
-		// Force reactivity by reassigning the Set
-		expandedBatches = new Set(expandedBatches);
+		collapsedBatches = next;
 	}
 
 	// Function to select a profile
@@ -626,23 +576,18 @@
 				name: profile.coffee_name ?? 'Unknown Coffee'
 			};
 
-			// Ensure the batch is expanded
-			if (batchKey && !expandedBatches.has(batchKey)) {
-				expandedBatches.add(batchKey);
-				// Force reactivity by reassigning the Set
-				expandedBatches = new Set(expandedBatches);
-			}
-
 			// Reset roasting state
 			timer.reset();
 
-			// Update URL to reflect the selected profile
+			// Update URL to reflect the selected profile. Opening a roast lands at the top
+			// of the page; reloading the one already open keeps the reader's place.
 			const currentUrl = new URL(window.location.href);
+			const alreadyOpen = currentUrl.searchParams.get('profileId') === profile.roast_id.toString();
 			currentUrl.searchParams.set('profileId', profile.roast_id.toString());
 			goto(currentUrl.pathname + '?' + currentUrl.searchParams.toString(), {
 				replaceState: true,
 				keepFocus: true,
-				noScroll: true
+				noScroll: alreadyOpen
 			});
 
 			// Clear live roasting data when switching to saved profile
@@ -975,67 +920,24 @@
 		</div>
 	</div>
 {:else}
-	<!-- New Tab-Based Interface -->
-	<div class="mb-6 space-y-4">
-		<OperationsHero
-			kicker="Mallard Studio"
-			title="Roast studio"
-			description="Run profile logging, batch review, and live roast capture from one focused workspace that keeps production decisions tied to the coffees in portfolio."
-			contextLabel="Selected coffee"
-			contextValue={currentRoastProfile?.coffee_name ?? selectedBean.name}
-			primaryLabel={canCreateRoastProfiles ? 'New roast profile' : ''}
-			primaryHref={canCreateRoastProfiles ? '/roast?modal=new' : ''}
-			secondaryLabel="Portfolio"
-			secondaryHref="/beans"
-		/>
-
-		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-			<MetricTile
-				label="Roast profiles"
-				value={roastSummary.profiles}
-				detail="Profiles in the current filter set"
-				tone="accent"
-			/>
-			<MetricTile
-				label="Batches"
-				value={roastSummary.batches}
-				detail="Grouped by batch name and roast date"
-			/>
-			<MetricTile
-				label="Logged roasts"
-				value={roastSummary.completedProfiles}
-				detail="Profiles with recorded roast data"
-				tone="success"
-			/>
-			<MetricTile
-				label="Average loss"
-				value={`${roastSummary.avgLoss.toFixed(1)}%`}
-				detail="Across profiles with weight loss data"
-				tone="warning"
-			/>
-		</div>
-	</div>
-
-	<ProfileStudio
-		roasts={clientData}
-		enabled={canCreateRoastProfiles}
-		ownerId={data.auth?.user?.id ?? null}
-	/>
-
 	<RoastProfileTabs
 		sortedBatchNames={sortedBatchNames()}
 		sortedGroupedProfiles={sortedGroupedProfiles()}
-		{expandedBatches}
+		{collapsedBatches}
 		{currentRoastProfile}
 		{currentProfileIndex}
 		{chartComponentLoading}
 		{RoastChartInterface}
+		countLine={roastCountLine(roastSummary)}
+		totalRoasts={clientData.length}
+		canCreateRoast={canCreateRoastProfiles}
 		onToggleBatch={toggleBatch}
 		onSelectProfile={selectProfile}
 		onProfileUpdate={handleProfileUpdate}
 		onProfileDelete={handleProfileDelete}
 		onBatchDelete={handleBatchDelete}
 		onClearProfile={handleClearProfile}
+		onClearFilters={() => filterStore.clearFilters()}
 		onProfileRefresh={refreshProfileAfterArtisanImport}
 		{selectedBean}
 		{timer}
@@ -1048,9 +950,11 @@
 		clearRoastData={() => handleClearRoastData()}
 	/>
 
-	{#if !$filteredData || $filteredData.length === 0}
-		<p class="p-4 text-ink">
-			No roast profiles available ({data?.data?.length || 0} items in raw data)
-		</p>
-	{/if}
+	<div class="mt-8">
+		<ProfileStudio
+			roasts={clientData}
+			enabled={canCreateRoastProfiles}
+			ownerId={data.auth?.user?.id ?? null}
+		/>
+	</div>
 {/if}

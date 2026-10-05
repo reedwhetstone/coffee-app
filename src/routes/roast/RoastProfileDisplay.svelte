@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { formatDateForDisplay } from '$lib/utils/dates';
+	import { formatDay } from '$lib/roast/profile-picker-model';
 	import { ROAST_PROFILES_COLUMNS, pickColumns } from '$lib/utils/dbColumns.js';
 	import type { RoastProfile } from '$lib/types/component.types';
 
@@ -135,12 +135,12 @@
 	<div class="mb-4">
 		<div class="flex flex-col items-center justify-between gap-2 sm:flex-row sm:gap-0">
 			<div class="flex-1 text-center sm:text-left">
-				<h1 class="break-words text-lg font-bold text-ink sm:text-xl">
+				<h2 class="break-words text-lg font-bold text-ink sm:text-xl">
 					{profile.coffee_name}
-				</h1>
+				</h2>
 				{#if profile.roast_id}
 					<div class="mt-1 text-sm text-muted">
-						Roast ID: {profile.roast_id} • {formatDateForDisplay(profile.roast_date)}
+						Roast ID: {profile.roast_id} • {formatDay(profile.roast_date) ?? ''}
 					</div>
 				{/if}
 			</div>
