@@ -4,13 +4,79 @@
  * Uses the Supabase service role key to cascade-delete everything:
  *   sales → roast_temperatures → roast_events → roast_profiles → green_coffee_inv
  *
+ * Then removes the roast batches the run left empty, through the app's own routes. A roast
+ * belongs to a batch, and deleting the roast keeps the batch, so each roast a spec creates
+ * would otherwise leave one behind.
+ *
  * This runs after ALL test suites complete (even on failure), catching orphaned
  * data that per-suite afterAll hooks miss when tests crash mid-run.
  */
 
+import { existsSync, readFileSync } from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { request } from '@playwright/test';
 import { createClient } from '@supabase/supabase-js';
+import { removeEmptyBatches, storageStateEmail } from './batch-cleanup';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const authFile = path.join(__dirname, '.auth/user.json');
 
 export default async function globalTeardown() {
+	await wipeTestUserRows();
+	// Runs whether or not the account still has inventory: the batch of a roast that a spec
+	// already deleted is empty, and nothing above reaches it.
+	await removeLeftoverBatches();
+}
+
+/**
+ * Delete the roast batches the test account holds with no roasts in them.
+ *
+ * By default only the batches created since this run started are removed. Set
+ * `E2E_EMPTY_BATCH_CLEANUP=all` to also remove the empty batches earlier runs left behind.
+ */
+async function removeLeftoverBatches() {
+	const supabaseUrl = process.env.PUBLIC_SUPABASE_URL;
+	const testEmail = process.env.E2E_TEST_EMAIL;
+	if (!supabaseUrl || !testEmail) {
+		console.warn('[teardown] Missing env vars, skipping roast batch cleanup');
+		return;
+	}
+	if (!existsSync(authFile)) {
+		console.warn('[teardown] No saved session, skipping roast batch cleanup');
+		return;
+	}
+
+	// The cleanup acts as whoever the saved session is. Refuse unless that is the test account.
+	let signedInAs: string | null = null;
+	try {
+		signedInAs = storageStateEmail(JSON.parse(readFileSync(authFile, 'utf8')), supabaseUrl);
+	} catch {
+		signedInAs = null;
+	}
+	if (signedInAs !== testEmail.toLowerCase()) {
+		console.warn('[teardown] Saved session is not the test account, skipping roast batch cleanup');
+		return;
+	}
+
+	const context = await request.newContext({
+		baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:5173',
+		storageState: authFile
+	});
+	try {
+		await removeEmptyBatches(context, {
+			scope: process.env.E2E_EMPTY_BATCH_CLEANUP === 'all' ? 'all' : 'this-run',
+			startedAt: process.env.E2E_RUN_STARTED_AT,
+			log: (message) => console.log(message)
+		});
+	} catch (error) {
+		console.warn('[teardown] Roast batch cleanup failed:', error);
+	} finally {
+		await context.dispose();
+	}
+}
+
+async function wipeTestUserRows() {
 	const supabaseUrl = process.env.PUBLIC_SUPABASE_URL;
 	const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 	const testEmail = process.env.E2E_TEST_EMAIL;
