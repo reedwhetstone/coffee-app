@@ -2311,7 +2311,7 @@ const docsPages: DocsPage[] = [
 			'The Purveyors CLI brings your coffee catalog, inventory, roasting, sales, and market data to the terminal, to scripts, and to AI agents.',
 		eyebrow: '@purveyors/cli',
 		intro: [
-			'purvey gives you terminal access to the same coffee data as the web app: catalog search and ranking, inventory, roast profiles and Artisan imports, sales, tasting notes, Market Index signals, the Parchment Price Index, sourcing briefs, and Studio reference profiles.',
+			'purvey gives you terminal access to the same coffee data as the web app: catalog search and ranking, inventory, roasts and Artisan imports, sales, tasting notes, Market Index signals, the Parchment Price Index, sourcing briefs, and saved references and plans.',
 			`This reference matches @purveyors/cli ${CLI_REFERENCE.version}. Run purvey --version to check your version, and purvey manifest for the exact contract of the version you have installed.`
 		],
 		sections: [
@@ -2508,7 +2508,7 @@ const docsPages: DocsPage[] = [
 					'Find coffees: search and rank the catalog by origin, process, price, score, and freshness, compare suppliers, and find similar lots.',
 					'Keep records: add inventory, import Artisan roasts, record sales, and log cupping scores.',
 					'Watch the market: check value signals, price movement, and Price Index comparisons.',
-					'Plan roasts: compare roasts with Studio reference profiles and export the next plan to Artisan.'
+					'Plan roasts: compare roasts with your saved references and export the next plan to Artisan.'
 				]
 			},
 			{
