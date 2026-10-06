@@ -73,8 +73,8 @@ importers:
         specifier: ^1.58.1
         version: 1.58.1
       '@purveyors/cli':
-        specifier: 0.42.0
-        version: 0.42.0
+        specifier: 0.43.0
+        version: 0.43.0
       '@sveltejs/adapter-vercel':
         specifier: ^5.6.3
         version: 5.10.3(@sveltejs/kit@2.50.1(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@4.0.4(svelte@5.48.0)(vite@5.4.21(@types/node@22.19.7)))(svelte@5.48.0)(typescript@5.9.3)(vite@5.4.21(@types/node@22.19.7)))(rollup@4.56.0)
@@ -852,13 +852,10 @@ packages:
   '@polka/url@1.0.0-next.29':
     resolution: {integrity: sha512-wwQAWhWSuHaag8c4q/KN/vCoeOJYshAIvMQwD4GpSb3OiZklFfvAgmj0VCBBImRpuF/aFgIRzllXlVX93Jevww==}
 
-  '@purveyors/cli@0.42.0':
-    resolution: {integrity: sha512-E7OIg32j1bhprjxUD1mfHPdBwJqpDbX43KIcuSQKU4vuUwF7SdDoO/oZuzNY2i/EDhGD4koEzfZn0pfyHHkEbw==}
+  '@purveyors/cli@0.43.0':
+    resolution: {integrity: sha512-DQsA92Ib3kvcmRLZOgBL/M1eki2XVK0APxqL4C4U+JgH7k+wrR7CIJHXzkGAIv+v5yqcFeacYJdShS1Dp0KCfw==}
     engines: {node: '>=20'}
     hasBin: true
-
-  '@purveyors/sdk@0.61.0':
-    resolution: {integrity: sha512-P9JfeQSZXejI6jGa6Z5jytQLOeMyXwpRq8KB4H3ZehGjbr++c2w8gfMxdolqv0IEUhUfrFH2J93vuZfDhxs1Qw==}
 
   '@purveyors/sdk@0.62.0':
     resolution: {integrity: sha512-NLiXvE2XZOf12yzDDrob0ytL3f081zxnQaJuNgN2fsLMS6ip7QmFTGLuZFx3MSqSrsYBxoGy7Z6qs4/xmz3/2A==}
@@ -3638,18 +3635,14 @@ snapshots:
 
   '@polka/url@1.0.0-next.29': {}
 
-  '@purveyors/cli@0.42.0':
+  '@purveyors/cli@0.43.0':
     dependencies:
       '@clack/prompts': 1.8.1
-      '@purveyors/sdk': 0.61.0
+      '@purveyors/sdk': 0.62.0
       chalk: 5.6.2
       commander: 13.1.0
       ora: 8.2.0
       zod: 4.3.6
-
-  '@purveyors/sdk@0.61.0':
-    dependencies:
-      openapi-fetch: 0.13.8
 
   '@purveyors/sdk@0.62.0':
     dependencies:

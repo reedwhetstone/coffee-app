@@ -26,6 +26,7 @@ import * as roastBatches from '../../routes/api/roast-batches/+server';
 import * as roastBatch from '../../routes/api/roast-batches/[id]/+server';
 import * as roastChartData from '../../routes/api/roast-chart-data/+server';
 import * as roastChartSettings from '../../routes/api/roast-chart-settings/+server';
+import * as roastCoffees from '../../routes/api/roast-coffees/+server';
 import * as roastProfiles from '../../routes/api/roast-profiles/+server';
 import * as roastArtisanFile from '../../routes/api/roast-profiles/[id]/artisan-file/+server';
 
@@ -102,6 +103,12 @@ const ROUTES: RouteCase[] = [
 		method: 'GET',
 		path: '/api/roast-chart-settings?roastId=42',
 		handler: roastChartSettings.GET as Handler
+	},
+	{
+		name: "the roast list's coffee choices",
+		method: 'GET',
+		path: '/api/roast-coffees',
+		handler: roastCoffees.GET as Handler
 	},
 	{
 		name: 'import an Artisan file',
