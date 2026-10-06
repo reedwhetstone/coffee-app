@@ -31,6 +31,7 @@
 		isMoistureMax
 	} from '$lib/catalog/urlState';
 	import { formatSourceName } from '$lib/utils/formatters';
+	import { DISCLOSURE_LABELS } from '$lib/styles/chartColors';
 	import FilterChips from './FilterChips.svelte';
 	import SearchableChecklist from './SearchableChecklist.svelte';
 	import LockedNotice from './LockedNotice.svelte';
@@ -240,6 +241,27 @@
 		filterStore.setFilter('moisture_max', typed === '' ? '' : next);
 	}
 
+	// ── Transparency ──────────────────────────────────────────────────────────
+	let transparencyLock = $derived(catalogFilterLock(access, 'transparency'));
+	let disclosure = $derived(selectedOne(filters.processing_disclosure_level));
+	// Most disclosed first, however many coffees each has.
+	const DISCLOSURE_ORDER = ['high_detail', 'structured', 'narrative', 'label_only', 'none'];
+	let disclosureOptions = $derived(
+		countedOptions({
+			values: values.processing_disclosure_level,
+			counts: counts.processing_disclosure_level,
+			selected: disclosure,
+			label: (level) => DISCLOSURE_LABELS[level] ?? formatProcessDisplayValue(level),
+			sort: 'given'
+		}).sort((a, b) => {
+			const rank = (level: string) => {
+				const index = DISCLOSURE_ORDER.indexOf(level);
+				return index === -1 ? DISCLOSURE_ORDER.length : index;
+			};
+			return rank(a.value) - rank(b.value);
+		})
+	);
+
 	let sections = $state(
 		untrack(() => {
 			const active = get(filterStore).filters;
@@ -253,6 +275,7 @@
 				process: catalogFilterLock(access, 'process') === null,
 				variety: has('variety_code', 'species_code', 'cultivar_detail'),
 				freshness: has('stocked_days', 'arrival_date'),
+				transparency: has('processing_disclosure_level'),
 				grading: has(
 					'grade_code',
 					'peaberry',
@@ -727,9 +750,34 @@
 				</div>
 			</div>
 		</details>
+
+		<details bind:open={sections.transparency} class={sectionClass} data-catalog-transparency>
+			<summary class={summaryClass}>Transparency</summary>
+			<div class="mt-4 space-y-5">
+				{#if transparencyLock}
+					<LockedNotice lock={transparencyLock} />
+				{:else}
+					<div>
+						<FilterChips
+							legend="Process disclosure"
+							options={disclosureOptions}
+							selected={disclosure}
+							emptyText={optionsNote}
+							onChange={(next) =>
+								filterStore.setFilter('processing_disclosure_level', next[0] ?? '')}
+						/>
+						<p class="mt-2 text-xs text-muted">
+							How much the supplier says about how the coffee was processed.
+						</p>
+					</div>
+				{/if}
+			</div>
+		</details>
 	</div>
 
-	<footer class="flex items-center justify-between gap-3 border-t border-line px-5 py-3">
+	<footer
+		class="flex items-center justify-between gap-3 border-t border-line px-5 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3"
+	>
 		<button
 			type="button"
 			onclick={() => filterStore.clearFilters()}

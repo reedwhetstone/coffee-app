@@ -6,6 +6,8 @@
 	import type { CoffeeCatalog } from '$lib/types/component.types';
 	import type { TastingNotes } from '$lib/types/coffee.types';
 	import type { LotPriceContext, OriginPriceStats } from '$lib/catalog/priceContext';
+	import CatalogEmptyState from '$lib/components/catalog/filters/CatalogEmptyState.svelte';
+	import type { ActiveCatalogFilter, CatalogFilterSnapshot } from '$lib/catalog/filterModel';
 
 	interface Pagination {
 		page: number;
@@ -40,6 +42,12 @@
 		onToggleTrack: (catalogId: number) => Promise<void>;
 		compareIds?: Set<number>;
 		onToggleCompare?: (coffee: CoffeeCatalog) => void;
+		/** The active filters, for the empty state's "remove this filter" suggestions. */
+		activeFilters?: ActiveCatalogFilter[];
+		filterSnapshot?: CatalogFilterSnapshot;
+		/** True while the rows for those filters are still being read. */
+		resultsPending?: boolean;
+		onRemoveFilter?: (filter: ActiveCatalogFilter) => void;
 	}
 
 	let {
@@ -65,7 +73,16 @@
 		catalogCoffeeCardKey,
 		onToggleTrack,
 		compareIds = new Set<number>(),
-		onToggleCompare = undefined
+		onToggleCompare = undefined,
+		activeFilters = [],
+		filterSnapshot = {
+			filters: {},
+			showWholesale: true,
+			wholesaleOnly: false,
+			includeUnstocked: false
+		},
+		resultsPending = false,
+		onRemoveFilter = undefined
 	}: Props = $props();
 </script>
 
@@ -108,26 +125,13 @@
 							Show full catalog
 						</a>
 					{:else}
-						<h2 class="text-lg font-semibold text-ink">No catalog rows match this supply query</h2>
-						<p class="mx-auto mt-2 max-w-2xl text-sm text-muted">
-							Clear or broaden the filters to inspect named coffees, or use the Parchment Market
-							Index to review broader origin, supplier, and pricing evidence before returning to
-							row-level catalog inspection.
-						</p>
-						<div class="mt-4 flex flex-col items-center justify-center gap-3 sm:flex-row">
-							<button
-								onclick={filterStore.clearFilters}
-								class="rounded-md border border-line px-4 py-2 text-sm font-medium text-ink transition-colors hover:border-accent hover:text-accent"
-							>
-								Clear catalog filters
-							</button>
-							<a
-								href="/analytics"
-								class="rounded-md bg-accent px-4 py-2 text-sm font-medium text-ink transition-all duration-200 hover:bg-opacity-90"
-							>
-								Review broader Market Index
-							</a>
-						</div>
+						<CatalogEmptyState
+							filters={activeFilters}
+							snapshot={filterSnapshot}
+							pending={resultsPending}
+							onRemove={(filter) => onRemoveFilter?.(filter)}
+							onClearAll={filterStore.clearFilters}
+						/>
 					{/if}
 				</div>
 			{:else}

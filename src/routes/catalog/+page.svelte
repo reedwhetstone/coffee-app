@@ -34,8 +34,14 @@
 	import {
 		describeActiveCatalogFilters,
 		type ActiveCatalogFilter,
-		type CatalogFilterAccess
+		type CatalogFilterAccess,
+		type CatalogFilterSnapshot
 	} from '$lib/catalog/filterModel';
+	import {
+		changedFilterControls,
+		filterControl,
+		trackCatalogFilterEvent
+	} from '$lib/catalog/filterAnalytics';
 	import UpsellBannerSection from '$lib/components/catalog/sections/UpsellBannerSection.svelte';
 	import WatchlistBannerSection from '$lib/components/catalog/sections/WatchlistBannerSection.svelte';
 	import BriefMatchSection from '$lib/components/catalog/sections/BriefMatchSection.svelte';
@@ -223,6 +229,12 @@
 	// visible and surface a quiet refetch state instead of blanking the page.
 	let showInitialSkeleton = $derived($filterStore.isLoading && !$filterStore.hasLoadedOnce);
 	let isRefetching = $derived($filterStore.isRefetching);
+	// Whether the rows and total are the answer to the filters now selected, or
+	// a read for them is still on its way.
+	let resultsAnswered = $derived($filterStore.resultsStatus === 'current');
+	let resultsPending = $derived(
+		!trackedOnlyView && (!hydratedCatalogState || $filterStore.resultsStatus === 'pending')
+	);
 
 	let activePagination = $derived(hydratedCatalogState ? $filterStore.pagination : data.pagination);
 	let catalogMapState = $state(parseCatalogMapUrlState(page.url.searchParams));
@@ -337,19 +349,75 @@
 		canUseWholesaleOnly: hasRequiredRole('member')
 	});
 
+	let filterSnapshot = $derived<CatalogFilterSnapshot>({
+		filters: $filterStore.filters,
+		showWholesale: $filterStore.showWholesale,
+		wholesaleOnly: $filterStore.wholesaleOnly,
+		includeUnstocked: $filterStore.includeUnstocked
+	});
 	let activeFilters = $derived(
-		describeActiveCatalogFilters(
-			{
-				filters: $filterStore.filters,
-				showWholesale: $filterStore.showWholesale,
-				wholesaleOnly: $filterStore.wholesaleOnly,
-				includeUnstocked: $filterStore.includeUnstocked
-			},
-			$filterStore.vocabulary,
-			$filterStore.grades
-		)
+		describeActiveCatalogFilters(filterSnapshot, $filterStore.vocabulary, $filterStore.grades)
 	);
 	let panelFilterCount = $derived(activeFilters.filter((filter) => filter.inPanel).length);
+
+	// Which filters and sorts get used, by control name only. What the page
+	// opened with (a shared link) is the baseline, not a change.
+	let catalogReady = $derived($filterStore.initialized && $filterStore.routeId === '/catalog');
+	let trackedFilterIds: string[] | null = null;
+	$effect(() => {
+		const ids = activeFilters.map((filter) => filter.id);
+		if (!catalogReady) return;
+		untrack(() => {
+			if (trackedFilterIds !== null) {
+				if (ids.length === 0 && trackedFilterIds.length > 1) {
+					trackCatalogFilterEvent('catalog_filters_cleared', { count: trackedFilterIds.length });
+				} else {
+					const { added, removed } = changedFilterControls(trackedFilterIds, ids);
+					for (const control of added) trackCatalogFilterEvent('catalog_filter_added', { control });
+					for (const control of removed) {
+						trackCatalogFilterEvent('catalog_filter_removed', { control });
+					}
+				}
+			}
+			trackedFilterIds = ids;
+		});
+	});
+	let trackedSort: string | null = null;
+	$effect(() => {
+		const sort = `${$filterStore.sortField ?? 'default'}:${$filterStore.sortDirection ?? 'default'}`;
+		if (!catalogReady) return;
+		untrack(() => {
+			if (trackedSort !== null && trackedSort !== sort) {
+				trackCatalogFilterEvent('catalog_sort_changed', {
+					sort: $filterStore.sortField ?? 'default',
+					direction: $filterStore.sortDirection ?? 'default'
+				});
+			}
+			trackedSort = sort;
+		});
+	});
+	$effect(() => {
+		if (catalogFilterPanel.open) trackCatalogFilterEvent('catalog_filter_panel_opened');
+	});
+	// A set of filters that matched nothing is counted once, when the read for
+	// it has answered. Until then the total on screen belongs to the filters
+	// before the change, and after a failed read it still does.
+	let trackedEmptyFilters: string | null = null;
+	$effect(() => {
+		const ids = activeFilters.map((filter) => filter.id).sort();
+		const answered = catalogReady && !trackedOnlyView && resultsAnswered;
+		const count = catalogResultCount;
+		untrack(() => {
+			if (!answered) return;
+			const emptyFilters = ids.length > 0 && count === 0 ? ids.join('|') : null;
+			if (emptyFilters !== null && emptyFilters !== trackedEmptyFilters) {
+				trackCatalogFilterEvent('catalog_no_results', {
+					controls: [...new Set(ids.map(filterControl))].sort().join(',')
+				});
+			}
+			trackedEmptyFilters = emptyFilters;
+		});
+	});
 
 	function removeActiveFilter(filter: ActiveCatalogFilter) {
 		if (filter.remove.kind === 'filter') {
@@ -702,6 +770,10 @@
 		onToggleTrack={handleToggleTrack}
 		{compareIds}
 		onToggleCompare={handleToggleCompare}
+		{activeFilters}
+		{filterSnapshot}
+		{resultsPending}
+		onRemoveFilter={removeActiveFilter}
 	/>
 {/snippet}
 
@@ -868,7 +940,7 @@
 {#if !trackedOnlyView}
 	<MobileOverlayShell
 		open={catalogFilterPanel.open}
-		variant="drawer"
+		variant="sheet-drawer"
 		hideOnDesktop={false}
 		onClose={() => (catalogFilterPanel.open = false)}
 		labelledBy="catalog-filters-title"

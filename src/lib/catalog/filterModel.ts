@@ -2,6 +2,7 @@ import type { CatalogFilterValue } from '$lib/catalog/urlState';
 import type { CatalogFilterVocabulary, CatalogGradeEntry } from '$lib/catalog/filterOptions';
 import { formatProcessDisplayValue } from '$lib/catalog/processDisplay';
 import { formatSourceName } from '$lib/utils/formatters';
+import { DISCLOSURE_LABELS } from '$lib/styles/chartColors';
 
 /**
  * One description of the catalog's filters and sorts, shared by the primary
@@ -35,6 +36,7 @@ export function catalogFilterLock(
 		| 'process'
 		| 'variety'
 		| 'freshness'
+		| 'transparency'
 		| 'grading'
 		| 'elevation'
 		| 'score'
@@ -61,6 +63,13 @@ export function catalogFilterLock(
 			return access.canUseAdvancedFilters
 				? null
 				: { reason: 'Members filter by how recently a coffee was stocked.', ...MEMBER_LOCK };
+		case 'transparency':
+			return access.canUseProcessFacets
+				? null
+				: {
+						reason: 'Members filter by how much a supplier discloses about its process.',
+						...MEMBER_LOCK
+					};
 		case 'grading':
 			return access.canUseAdvancedFilters
 				? null
@@ -336,7 +345,12 @@ const TEXT_FILTERS: ReadonlyArray<
 	['processing_base_method', 'Process', false, formatProcessDisplayValue],
 	['fermentation_type', 'Fermentation', true, formatProcessDisplayValue],
 	['process_additive', 'Additive', true, formatProcessDisplayValue],
-	['processing_disclosure_level', 'Process disclosure', true, formatProcessDisplayValue],
+	[
+		'processing_disclosure_level',
+		'Process disclosure',
+		true,
+		(level) => DISCLOSURE_LABELS[level] ?? formatProcessDisplayValue(level)
+	],
 	['cultivar_detail', 'Variety name', true],
 	['type', 'Importer type', true],
 	['grade', 'Grade text', true],

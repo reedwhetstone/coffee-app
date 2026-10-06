@@ -71,6 +71,7 @@ const SELECTION_FACETS: ReadonlyArray<{
 	{ params: ['fermentation_type'], facets: ['fermentation_type'] },
 	{ params: ['process_additive'], facets: ['process_additives'] },
 	{ params: ['arrivalDate'], facets: ['arrivalDates'] },
+	{ params: ['processing_disclosure_level'], facets: ['processing_disclosure_level'] },
 	{ params: ['varietyCode'], facets: ['varieties'], include: 'taxonomy' },
 	{ params: ['speciesCode'], facets: ['species_codes'], include: 'taxonomy' },
 	{ params: ['dryingMethodCode'], facets: ['drying_methods'], include: 'taxonomy' },

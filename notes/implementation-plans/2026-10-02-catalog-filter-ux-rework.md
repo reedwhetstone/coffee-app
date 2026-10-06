@@ -1,6 +1,6 @@
 # Catalog filter and sort UX rework
 
-**Status:** Accepted (Reed, #purveyors; open questions answered 2026-10-02 and 2026-10-04, see Decisions)
+**Status:** Accepted and delivered (Reed, #purveyors; open questions answered 2026-10-02 and 2026-10-04, see Decisions; slices 1 to 3 shipped 2026-10-04 and 2026-10-05, see the "as built" notes)
 **Date:** 2026-10-02
 **Related:** ADR-005 (access levels), ADR-016 (green coffee grading), ADR-018 (variety, species and drying taxonomy), backlog entry "Finish the green coffee grading rollout"
 
@@ -143,6 +143,22 @@ The Grade and quality section follows the description above. It replaces the ele
 - **Peaberry, lab analyzed and moisture have no counts.** The facets do not report them.
 - **The section is locked as a whole** for accounts without the grading filters: it shows the reason and none of its controls.
 - **Not added:** water activity and density, which the API accepts but this plan does not list.
+
+### Slice 3 as built (2026-10-05)
+
+The last slice. With it the plan is delivered, apart from the items listed at the end.
+
+- **Transparency section.** Process disclosure as single-select chips with counts, ordered from most to least disclosed, under the same lock as the Process section. Proof filters are not in the catalog contract yet, so none are offered. Processing confidence has no control; a link carrying it still applies and shows as a chip.
+- **Phone layout.** The panel is a bottom sheet on a phone (88% of the screen height, title and "Show N coffees" pinned, respecting the home-indicator inset) and stays a side drawer on wider screens. Tapping outside closes it. That tap did nothing before, for every overlay built on the shared shell, because the layout wrapper covered the backdrop; the fix is in the shell.
+- **Empty state.** When nothing matches, the page tries each active filter removed on its own (up to eight, one listing total each) and offers the ones that bring coffees back, with the count: "Remove Origin: Kenya, 101 coffees". When no single filter is the cause it says so. The Market Index link stays as the one other way out. The totals are read once per set of filters, and only after the listing for that set has answered empty: while a changed filter is still being read, the page shows the previous result and looks nothing up for it.
+- **Filter use.** Events go to Vercel Analytics, which the app already uses: a filter added or removed, filters cleared, the sort changed, the panel opened, and a filter set that matched nothing. That last one is counted once per set, when the listing for it has answered; a result still on screen from the filters before a change, or left there by a failed read, is not counted. Each names the control only (`country`, `grade_code`), never the value chosen or typed, and the filters a shared link arrives with are not counted as use.
+
+Still open after this plan:
+
+- **Cup score protocols** on coffees, which the protocol choice and cup score sort wait on (slice 2).
+- **Proof filters**, when the catalog contract has them.
+- **Counts** for peaberry, lab analyzed and moisture, which need facets upstream.
+- **A combined search** across name, supplier and origin was decided against (decision 5).
 
 ## Decisions
 

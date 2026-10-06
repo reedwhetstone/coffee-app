@@ -132,6 +132,13 @@ type FilterState = {
 	isLoading: boolean; // First-mount pending state for server requests (drives full skeleton)
 	isRefetching: boolean; // Refetch pending state while stale rows stay visible (drives overlay)
 	hasLoadedOnce: boolean; // True once server rows have been provided or fetched at least once
+	/**
+	 * Catalog only: whether the rows and total answer the filters, sort and page
+	 * now selected. `pending` from the moment a read for them is scheduled until
+	 * it answers; `failed` when it could not be read, so the rows on screen are
+	 * still from an earlier query.
+	 */
+	resultsStatus: 'current' | 'pending' | 'failed';
 	catalogResponseMeta: Record<string, unknown> | null;
 	catalogNotices: unknown[];
 	initialized: boolean;
@@ -185,6 +192,7 @@ const initialState: FilterState = {
 	isLoading: false,
 	isRefetching: false,
 	hasLoadedOnce: false,
+	resultsStatus: 'current',
 	catalogResponseMeta: null,
 	catalogNotices: [],
 	initialized: false,
@@ -286,6 +294,11 @@ function createFilterStore() {
 		activeAbortController = null;
 		const requestId = ++requestSequence;
 
+		// The rows on screen stop answering the selection now, not 150ms from
+		// now: anything that reads them as the result for these filters (an empty
+		// result, most of all) has to wait for this request.
+		update((s) => ({ ...s, resultsStatus: 'pending' }));
+
 		// Debounce server requests for better performance
 		serverFetchTimeout = setTimeout(async () => {
 			const controller = new AbortController();
@@ -359,6 +372,7 @@ function createFilterStore() {
 						isLoading: false,
 						isRefetching: false,
 						hasLoadedOnce: true,
+						resultsStatus: 'current',
 						changeCounter: s.changeCounter + 1
 					};
 				});
@@ -388,7 +402,12 @@ function createFilterStore() {
 				console.error('Error fetching server data:', error);
 				// Preserve the currently visible rows on error (stale-while-revalidate)
 				// and only clear the pending flags.
-				update((s) => ({ ...s, isLoading: false, isRefetching: false }));
+				update((s) => ({
+					...s,
+					isLoading: false,
+					isRefetching: false,
+					resultsStatus: 'failed'
+				}));
 			}
 		}, 150); // Debounce server requests by 150ms
 	}
@@ -508,6 +527,8 @@ function createFilterStore() {
 				// Server rows provided at init (SSR hydration) count as a first load,
 				// so later interactions revalidate in place instead of re-skeletoning.
 				state.hasLoadedOnce = options.serverData !== undefined || data.length > 0;
+				// Without rows from the server, the read scheduled below supplies them.
+				state.resultsStatus = state.hasLoadedOnce ? 'current' : 'pending';
 			} else {
 				// For other routes, use client-side processing
 				state.serverData = [];
@@ -522,6 +543,7 @@ function createFilterStore() {
 				state.catalogResponseMeta = null;
 				state.catalogNotices = [];
 				state.hasLoadedOnce = false;
+				state.resultsStatus = 'current';
 			}
 
 			state.initialized = true;

@@ -630,6 +630,78 @@ describe('filterStore stale-while-revalidate catalog interactions', () => {
 		expect(settled.isRefetching).toBe(false);
 	});
 
+	it('says the rows are waiting on a read from the moment a filter changes until it answers', async () => {
+		const deferred: Array<{ resolve: (response: Response) => void }> = [];
+		const fetchSpy = vi.fn(async (input: RequestInfo | URL) => {
+			const url = input.toString();
+			if (url.startsWith('/api/catalog/filters?')) return emptyFiltersResponse();
+			if (url.startsWith('/api/catalog?')) {
+				return new Promise<Response>((resolve) => {
+					deferred.push({ resolve });
+				});
+			}
+			throw new Error(`Unexpected fetch: ${url}`);
+		});
+		vi.stubGlobal('fetch', fetchSpy);
+
+		const { filterStore } = await loadFilterStore();
+		hydratedInit(filterStore);
+		await vi.runOnlyPendingTimersAsync();
+		expect(get(filterStore).resultsStatus).toBe('current');
+
+		// Before the debounce fires, so before any request or refetch flag: the
+		// rows already belong to the filters before the change.
+		filterStore.setFilter('country', ['Ethiopia']);
+		expect(get(filterStore).resultsStatus).toBe('pending');
+		expect(get(filterStore).isRefetching).toBe(false);
+		expect(deferred).toHaveLength(0);
+
+		await vi.advanceTimersByTimeAsync(150);
+		expect(deferred).toHaveLength(1);
+
+		// A newer change takes over; the earlier answer does not settle it.
+		filterStore.setFilter('country', ['Kenya']);
+		deferred[0].resolve(catalogDataResponse([99], {}, 99));
+		await vi.advanceTimersByTimeAsync(0);
+		expect(get(filterStore).resultsStatus).toBe('pending');
+
+		await vi.advanceTimersByTimeAsync(150);
+		deferred[1].resolve(catalogDataResponse([2], {}, 2));
+		await vi.runOnlyPendingTimersAsync();
+		expect(get(filterStore).resultsStatus).toBe('current');
+
+		// Sorting and paging ask again for the same filters.
+		filterStore.setSort('price_per_lb', 'asc');
+		expect(get(filterStore).resultsStatus).toBe('pending');
+		await vi.advanceTimersByTimeAsync(150);
+		deferred[2].resolve(catalogDataResponse([2], {}, 2));
+		await vi.runOnlyPendingTimersAsync();
+		expect(get(filterStore).resultsStatus).toBe('current');
+	});
+
+	it('waits on the first read when the page arrives without rows', async () => {
+		const deferred = createDeferredResponse();
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async (input: RequestInfo | URL) => {
+				const url = input.toString();
+				if (url.startsWith('/api/catalog/filters?')) return emptyFiltersResponse();
+				if (url.startsWith('/api/catalog?')) return deferred.promise;
+				throw new Error(`Unexpected fetch: ${url}`);
+			})
+		);
+
+		const { filterStore } = await loadFilterStore();
+		filterStore.initializeForRoute('/catalog', []);
+		expect(get(filterStore).resultsStatus).toBe('pending');
+
+		await vi.advanceTimersByTimeAsync(150);
+		expect(get(filterStore).resultsStatus).toBe('pending');
+		deferred.resolve(catalogDataResponse([2]));
+		await vi.runOnlyPendingTimersAsync();
+		expect(get(filterStore).resultsStatus).toBe('current');
+	});
+
 	it('keeps stale rows visible and clears pending flags when a refetch fails', async () => {
 		const fetchSpy = vi.fn(async (input: RequestInfo | URL) => {
 			const url = input.toString();
@@ -657,6 +729,8 @@ describe('filterStore stale-while-revalidate catalog interactions', () => {
 		expect(state.isRefetching).toBe(false);
 		expect(state.isLoading).toBe(false);
 		expect(state.serverData.map((row) => row.id)).toEqual([1]);
+		// The rows left on screen are not the answer for the filters now selected.
+		expect(state.resultsStatus).toBe('failed');
 	});
 
 	it('drops a stripped filter from local state after the API reports it stripped', async () => {
