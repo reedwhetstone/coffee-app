@@ -37,7 +37,11 @@
 		type CatalogFilterAccess,
 		type CatalogFilterSnapshot
 	} from '$lib/catalog/filterModel';
-	import { changedFilterControls, trackCatalogFilterEvent } from '$lib/catalog/filterAnalytics';
+	import {
+		changedFilterControls,
+		filterControl,
+		trackCatalogFilterEvent
+	} from '$lib/catalog/filterAnalytics';
 	import UpsellBannerSection from '$lib/components/catalog/sections/UpsellBannerSection.svelte';
 	import WatchlistBannerSection from '$lib/components/catalog/sections/WatchlistBannerSection.svelte';
 	import BriefMatchSection from '$lib/components/catalog/sections/BriefMatchSection.svelte';
@@ -225,6 +229,12 @@
 	// visible and surface a quiet refetch state instead of blanking the page.
 	let showInitialSkeleton = $derived($filterStore.isLoading && !$filterStore.hasLoadedOnce);
 	let isRefetching = $derived($filterStore.isRefetching);
+	// Whether the rows and total are the answer to the filters now selected, or
+	// a read for them is still on its way.
+	let resultsAnswered = $derived($filterStore.resultsStatus === 'current');
+	let resultsPending = $derived(
+		!trackedOnlyView && (!hydratedCatalogState || $filterStore.resultsStatus === 'pending')
+	);
 
 	let activePagination = $derived(hydratedCatalogState ? $filterStore.pagination : data.pagination);
 	let catalogMapState = $state(parseCatalogMapUrlState(page.url.searchParams));
@@ -389,21 +399,23 @@
 	$effect(() => {
 		if (catalogFilterPanel.open) trackCatalogFilterEvent('catalog_filter_panel_opened');
 	});
-	let trackedEmptyResult: string | null = null;
+	// A set of filters that matched nothing is counted once, when the read for
+	// it has answered. Until then the total on screen belongs to the filters
+	// before the change, and after a failed read it still does.
+	let trackedEmptyFilters: string | null = null;
 	$effect(() => {
-		const controls = [...new Set(activeFilters.map((filter) => filter.id.split(':')[0]))].sort();
-		const empty =
-			catalogReady &&
-			!trackedOnlyView &&
-			!isRefetching &&
-			controls.length > 0 &&
-			catalogResultCount === 0;
+		const ids = activeFilters.map((filter) => filter.id).sort();
+		const answered = catalogReady && !trackedOnlyView && resultsAnswered;
+		const count = catalogResultCount;
 		untrack(() => {
-			const key = empty ? controls.join(',') : null;
-			if (key !== null && key !== trackedEmptyResult) {
-				trackCatalogFilterEvent('catalog_no_results', { controls: key });
+			if (!answered) return;
+			const emptyFilters = ids.length > 0 && count === 0 ? ids.join('|') : null;
+			if (emptyFilters !== null && emptyFilters !== trackedEmptyFilters) {
+				trackCatalogFilterEvent('catalog_no_results', {
+					controls: [...new Set(ids.map(filterControl))].sort().join(',')
+				});
 			}
-			trackedEmptyResult = key;
+			trackedEmptyFilters = emptyFilters;
 		});
 	});
 
@@ -760,6 +772,7 @@
 		onToggleCompare={handleToggleCompare}
 		{activeFilters}
 		{filterSnapshot}
+		{resultsPending}
 		onRemoveFilter={removeActiveFilter}
 	/>
 {/snippet}

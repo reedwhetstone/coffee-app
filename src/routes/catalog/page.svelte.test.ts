@@ -1219,6 +1219,158 @@ describe('/catalog filters', () => {
 		expect(get(filterStore).filters).toEqual({ grade_code: ['GT:SHB'] });
 	});
 
+	describe('an empty result and the filters it belongs to', () => {
+		const json = (body: unknown, status = 200) =>
+			new Response(JSON.stringify(body), {
+				status,
+				headers: { 'Content-Type': 'application/json' }
+			});
+		const isTotalRead = (url: string) =>
+			url.startsWith('/api/catalog?') && url.includes('limit=1&');
+		const isListing = (url: string) => url.startsWith('/api/catalog?') && !isTotalRead(url);
+		const noResultsEvents = () =>
+			track.mock.calls.filter(([event]) => event === 'catalog_no_results');
+		const totalReads = () =>
+			vi
+				.mocked(fetch)
+				.mock.calls.map(([input]) => String(input))
+				.filter(isTotalRead);
+		const noCoffees = {
+			data: [],
+			pagination: { page: 1, limit: 15, total: 0, totalPages: 0, hasNext: false, hasPrev: false }
+		};
+
+		function renderEmptyCatalog() {
+			renderCatalog(
+				createData({
+					session: { access_token: 'member-token' },
+					role: 'member',
+					catalogAccess: memberAccess,
+					data: [],
+					initialCatalogState: {
+						...createData().initialCatalogState,
+						showWholesale: true,
+						filters: { country: ['Kenya'], grade_code: ['GT:SHB'] }
+					},
+					pagination: noCoffees.pagination
+				} as unknown as Partial<PageData>)
+			);
+		}
+
+		it('does not count or explain an empty result the next read replaces', async () => {
+			const baseFetch = vi.mocked(fetch).getMockImplementation()!;
+			vi.mocked(fetch).mockImplementation(async (input, init) => {
+				const url = String(input);
+				if (isTotalRead(url)) {
+					const total = !url.includes('country=') ? 85 : !url.includes('grade_code=') ? 101 : 0;
+					return json({ data: [], pagination: { total } });
+				}
+				if (isListing(url) && !url.includes('country=')) {
+					return json({
+						data: [{ id: 7, name: 'Huehuetenango SHB', source: 'Example Importer' }],
+						pagination: {
+							page: 1,
+							limit: 15,
+							total: 85,
+							totalPages: 6,
+							hasNext: true,
+							hasPrev: false
+						}
+					});
+				}
+				return baseFetch(input, init);
+			});
+			renderEmptyCatalog();
+
+			const empty = document.querySelector('[data-catalog-empty-state]') as HTMLElement;
+			const suggestions = await within(empty).findByRole('list', { name: 'Suggestions' });
+			expect(noResultsEvents()).toEqual([
+				['catalog_no_results', { surface: 'catalog', controls: 'country,grade_code' }]
+			]);
+
+			await fireEvent.click(
+				within(suggestions).getByRole('button', { name: /Remove Origin: Kenya/ })
+			);
+			await waitFor(() => expect(get(filterStore).pagination.total).toBe(85));
+			await tick();
+
+			// The grade alone matches 85 coffees, so it never came up empty.
+			expect(noResultsEvents()).toHaveLength(1);
+			// Nor was a suggestion read for it: no total is asked for with both removed.
+			expect(totalReads().filter((url) => !/country=|grade_code=/.test(url))).toEqual([]);
+		});
+
+		it('waits for the read before counting, and does not count one that failed', async () => {
+			let answerListing: ((response: Response) => void) | null = null;
+			let failListing = false;
+			const baseFetch = vi.mocked(fetch).getMockImplementation()!;
+			vi.mocked(fetch).mockImplementation(async (input, init) => {
+				const url = String(input);
+				if (isTotalRead(url)) return json({ data: [], pagination: { total: 0 } });
+				if (isListing(url)) {
+					if (failListing) return json({ error: 'unavailable' }, 500);
+					return new Promise<Response>((resolve) => (answerListing = resolve));
+				}
+				return baseFetch(input, init);
+			});
+			vi.spyOn(console, 'error').mockImplementation(() => {});
+			renderEmptyCatalog();
+			await waitFor(() => expect(noResultsEvents()).toHaveLength(1));
+			await waitFor(() => expect(totalReads()).toHaveLength(2));
+
+			// Another filter is added. Until its read answers, the page still shows
+			// the previous empty result: nothing is counted or looked up for it.
+			filterStore.setFilter('peaberry', true);
+			await waitFor(() => expect(answerListing).not.toBeNull());
+			expect(noResultsEvents()).toHaveLength(1);
+			expect(totalReads()).toHaveLength(2);
+
+			answerListing!(json(noCoffees));
+			await waitFor(() =>
+				expect(noResultsEvents()).toEqual([
+					['catalog_no_results', { surface: 'catalog', controls: 'country,grade_code' }],
+					['catalog_no_results', { surface: 'catalog', controls: 'country,grade_code,peaberry' }]
+				])
+			);
+			await waitFor(() => expect(totalReads()).toHaveLength(5));
+
+			// A read that fails leaves the old rows up; they say nothing about the
+			// filters now selected.
+			failListing = true;
+			filterStore.setFilter('peaberry', '');
+			await waitFor(() => expect(get(filterStore).resultsStatus).toBe('failed'));
+			await tick();
+			expect(noResultsEvents()).toHaveLength(2);
+		});
+
+		it('counts a set of filters once however often it is read again', async () => {
+			const baseFetch = vi.mocked(fetch).getMockImplementation()!;
+			vi.mocked(fetch).mockImplementation(async (input, init) => {
+				const url = String(input);
+				if (isTotalRead(url)) return json({ data: [], pagination: { total: 0 } });
+				if (isListing(url)) return json(noCoffees);
+				return baseFetch(input, init);
+			});
+			renderEmptyCatalog();
+			await waitFor(() => expect(noResultsEvents()).toHaveLength(1));
+
+			// A new order asks for the same filters again.
+			filterStore.setSort('price_per_lb', 'asc');
+			await waitFor(() => expect(get(filterStore).resultsStatus).toBe('pending'));
+			await waitFor(() => expect(get(filterStore).resultsStatus).toBe('current'));
+			await tick();
+			expect(noResultsEvents()).toHaveLength(1);
+
+			// A different origin is a different set, though the controls are the same.
+			filterStore.setFilter('country', ['Peru']);
+			await waitFor(() => expect(noResultsEvents()).toHaveLength(2));
+			expect(noResultsEvents()[1]).toEqual([
+				'catalog_no_results',
+				{ surface: 'catalog', controls: 'country,grade_code' }
+			]);
+		});
+	});
+
 	it('records which controls are used, never what was chosen, and not what a link arrived with', async () => {
 		renderCatalog(
 			createData({

@@ -1,5 +1,7 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import {
+		catalogTotalRequest,
 		suggestFilterRemovals,
 		type FilterRemovalSuggestion
 	} from '$lib/catalog/emptyStateSuggestions';
@@ -12,25 +14,46 @@
 	interface Props {
 		filters: ActiveCatalogFilter[];
 		snapshot: CatalogFilterSnapshot;
+		/**
+		 * True while the rows for these filters are still being read: the empty
+		 * result on screen is the previous one, so nothing is looked up for it.
+		 */
+		pending?: boolean;
 		onRemove: (filter: ActiveCatalogFilter) => void;
 		onClearAll: () => void;
 	}
 
-	let { filters, snapshot, onRemove, onClearAll }: Props = $props();
+	let { filters, snapshot, pending = false, onRemove, onClearAll }: Props = $props();
 
-	let suggestions = $state.raw<FilterRemovalSuggestion[] | null>(null);
+	let found = $state.raw<FilterRemovalSuggestion[] | null>(null);
+
+	// What is looked up: these filters, once the page has their (empty) answer.
+	// The page hands over new objects whenever anything in the catalog state
+	// changes, so the lookup follows what they select, not which objects they are.
+	let lookup = $derived(
+		pending || filters.length === 0
+			? null
+			: [catalogTotalRequest(snapshot), ...filters.map((filter) => filter.id)].join(' ')
+	);
 
 	$effect(() => {
-		const current = filters;
-		const state = snapshot;
-		suggestions = null;
-		if (current.length === 0) return;
+		found = null;
+		if (lookup === null) return;
 		const controller = new AbortController();
-		suggestFilterRemovals(state, current, controller.signal).then((found) => {
-			if (!controller.signal.aborted) suggestions = found;
+		untrack(() => suggestFilterRemovals(snapshot, filters, controller.signal)).then((totals) => {
+			if (!controller.signal.aborted) found = totals;
 		});
 		return () => controller.abort();
 	});
+
+	// Shown with the filters as they are labelled now: the names of grades and
+	// varieties can arrive after the totals do.
+	let suggestions = $derived(
+		found?.flatMap(({ filter, total }) => {
+			const current = filters.find((candidate) => candidate.id === filter.id);
+			return current ? [{ filter: current, total }] : [];
+		}) ?? null
+	);
 </script>
 
 <div data-catalog-empty-state>

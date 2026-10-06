@@ -45,6 +45,8 @@
 		/** The active filters, for the empty state's "remove this filter" suggestions. */
 		activeFilters?: ActiveCatalogFilter[];
 		filterSnapshot?: CatalogFilterSnapshot;
+		/** True while the rows for those filters are still being read. */
+		resultsPending?: boolean;
 		onRemoveFilter?: (filter: ActiveCatalogFilter) => void;
 	}
 
@@ -79,6 +81,7 @@
 			wholesaleOnly: false,
 			includeUnstocked: false
 		},
+		resultsPending = false,
 		onRemoveFilter = undefined
 	}: Props = $props();
 </script>
@@ -125,6 +128,7 @@
 						<CatalogEmptyState
 							filters={activeFilters}
 							snapshot={filterSnapshot}
+							pending={resultsPending}
 							onRemove={(filter) => onRemoveFilter?.(filter)}
 							onClearAll={filterStore.clearFilters}
 						/>
