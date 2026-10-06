@@ -9,7 +9,15 @@ import {
 	updateParchmentRoast,
 	type LegacyRoastCreateInput
 } from '$lib/server/parchmentRoastMutations';
-import { fetchParchmentRoasts } from '$lib/server/parchmentRoasts';
+import {
+	fetchParchmentRoastList,
+	fetchParchmentRoastPage,
+	ParchmentRoastListError,
+	ROAST_PAGE_LIMIT,
+	type RoastListFilter
+} from '$lib/server/parchmentRoasts';
+import { parseBatchId } from '$lib/roast/roast-batches';
+import { parseRoastDay } from '$lib/roast/roast-list-filters';
 import { isCookieSessionPrincipal, isTrustedMutationRequest } from '$lib/server/principal';
 
 function mutationAuthFailure(event: RequestEvent) {
@@ -59,7 +67,92 @@ function configFailure() {
 	return json({ error: 'Roast mutations are temporarily unavailable' }, { status: 503 });
 }
 
+// Roast and inventory IDs are 32-bit integers in Parchment.
+const MAX_ROW_ID = 2_147_483_647;
+
+function parseRowId(value: string): number | null {
+	const id = parsePositiveInteger(value);
+	return id !== null && id <= MAX_ROW_ID ? id : null;
+}
+
+function invalid(message: string) {
+	return json({ error: message }, { status: 400 });
+}
+
+/**
+ * Read the roast list filters from the query. Each is optional and they narrow together.
+ * Returns a 400 response for a value that cannot be read, so nothing malformed is sent on.
+ */
+function readRoastListFilter(params: URLSearchParams): RoastListFilter | Response {
+	const filter: RoastListFilter = {};
+
+	// `?coffee_id=<inventory id>` narrows the list to one portfolio coffee's roasts.
+	const coffeeParam = params.get('coffee_id');
+	if (coffeeParam !== null) {
+		const coffeeId = parseRowId(coffeeParam);
+		if (coffeeId === null) return invalid('Invalid coffee id');
+		filter.coffeeId = coffeeId;
+	}
+
+	const roastParam = params.get('roast_id');
+	if (roastParam !== null) {
+		const roastId = parseRowId(roastParam);
+		if (roastId === null) return invalid('Invalid roast id');
+		filter.roastId = roastId;
+	}
+
+	const batchParam = params.get('batch_id');
+	if (batchParam !== null) {
+		const batchId = parseBatchId(batchParam);
+		if (batchId === null) return invalid('Invalid batch id');
+		filter.batchId = batchId;
+	}
+
+	for (const [name, key] of [
+		['date_start', 'dateStart'],
+		['date_end', 'dateEnd']
+	] as const) {
+		const param = params.get(name);
+		if (param === null) continue;
+		const day = parseRoastDay(param);
+		if (day === null) return invalid('Invalid date');
+		filter[key] = day;
+	}
+
+	// One search term. Parchment owns the rules for what a term may hold.
+	const q = params.get('q')?.trim();
+	if (q) filter.q = q;
+
+	const wholesale = params.get('is_wholesale');
+	if (wholesale !== null) {
+		if (wholesale !== 'true' && wholesale !== 'false') return invalid('Invalid wholesale filter');
+		filter.isWholesale = wholesale === 'true';
+	}
+
+	return filter;
+}
+
+/** `limit` and `offset` name one page. With neither, every roast the filters match is returned. */
+function readRoastListPage(
+	params: URLSearchParams
+): { limit: number; offset: number } | null | Response {
+	const limitParam = params.get('limit');
+	const offsetParam = params.get('offset');
+	if (limitParam === null) {
+		return offsetParam === null ? null : invalid('An offset needs a limit');
+	}
+
+	const limit = parsePositiveInteger(limitParam);
+	if (limit === null || limit > ROAST_PAGE_LIMIT) return invalid('Invalid limit');
+	if (offsetParam === null) return { limit, offset: 0 };
+	if (!/^\d+$/.test(offsetParam) || !Number.isSafeInteger(Number(offsetParam))) {
+		return invalid('Invalid offset');
+	}
+	return { limit, offset: Number(offsetParam) };
+}
+
 export const GET: RequestHandler = async (event) => {
+	let searched = false;
 	try {
 		if (!isCookieSessionPrincipal(event.locals.principal)) {
 			return json({ error: 'Unauthorized' }, { status: 401 });
@@ -67,20 +160,30 @@ export const GET: RequestHandler = async (event) => {
 		const studioFailure = roastStudioFailure(event.locals.principal);
 		if (studioFailure) return studioFailure;
 
-		// `?coffee_id=<inventory id>` narrows the list to one portfolio coffee's roasts.
-		const coffeeParam = event.url.searchParams.get('coffee_id');
-		const coffeeId = parsePositiveInteger(coffeeParam);
-		if (coffeeParam !== null && coffeeId === null) {
-			return json({ error: 'Invalid coffee id' }, { status: 400 });
-		}
+		const filter = readRoastListFilter(event.url.searchParams);
+		if (filter instanceof Response) return filter;
+		const page = readRoastListPage(event.url.searchParams);
+		if (page instanceof Response) return page;
+		searched = filter.q !== undefined;
 
 		const client = await createParchmentServerClient(event, { mode: 'session' });
-		const data =
-			coffeeId === null
-				? await fetchParchmentRoasts(client)
-				: await fetchParchmentRoasts(client, { coffeeId });
-		return json({ data });
+		// The roast list asks for a page at a time. A caller that needs a whole set, such as
+		// one batch or one coffee's roasts, leaves the page out.
+		const list =
+			page === null
+				? await fetchParchmentRoastList(client, filter)
+				: await fetchParchmentRoastPage(client, filter, page);
+		return json({ data: list.data, totals: list.totals });
 	} catch (error) {
+		// Every other value is checked above, so a query Parchment turns down is the search term.
+		if (
+			searched &&
+			error instanceof ParchmentRoastListError &&
+			error.status === 400 &&
+			error.code === 'invalid_query'
+		) {
+			return json({ error: 'Invalid search term', code: 'invalid_search' }, { status: 400 });
+		}
 		console.error('Error fetching roast profiles:', error);
 		return json({ error: 'Failed to fetch roast profiles' }, { status: 500 });
 	}

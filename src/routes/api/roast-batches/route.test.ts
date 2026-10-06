@@ -97,6 +97,34 @@ describe('GET /api/roast-batches', () => {
 		expect((await response.json()).data[0].id).toBe(LEFTOVER);
 	});
 
+	it('lists the batches dated in a span of days', async () => {
+		const list = vi.fn().mockResolvedValue({ data: { data: [batch(WEDNESDAY)] } });
+		parchmentMocks.createParchmentServerClient.mockResolvedValue({ roastBatches: { list } });
+
+		const response = await GET(
+			event('GET', '/api/roast-batches?date_start=2026-09-10&date_end=2026-10-04') as never
+		);
+
+		expect(response.status).toBe(200);
+		expect(list).toHaveBeenCalledWith({
+			date_start: '2026-09-10',
+			date_end: '2026-10-04',
+			limit: 200,
+			offset: 0
+		});
+		expect((await response.json()).data[0].roast_ids).toEqual([4531, 4530]);
+	});
+
+	it.each(['date_start=last-week', 'date_end=2026-02-30', 'date_start='])(
+		'refuses %s, which is not a date',
+		async (query) => {
+			const response = await GET(event('GET', `/api/roast-batches?${query}`) as never);
+
+			expect(response.status).toBe(400);
+			expect(parchmentMocks.createParchmentServerClient).not.toHaveBeenCalled();
+		}
+	);
+
 	it('refuses an include_empty value it does not know', async () => {
 		const response = await GET(event('GET', '/api/roast-batches?include_empty=yes') as never);
 

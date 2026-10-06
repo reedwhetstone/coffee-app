@@ -49,10 +49,10 @@
 		preloadCache.add(route);
 
 		try {
+			// The roast list loads one page for the filters in its address, so there is no
+			// single request to warm for it.
 			if (route === '/beans') {
 				await fetch('/api/beans');
-			} else if (route === '/roast') {
-				await fetch('/api/roast-profiles');
 			}
 		} catch (error) {
 			console.log('Preload failed for', route, ':', error);
@@ -63,7 +63,7 @@
 	function handleMouseEnter(item: NavItem) {
 		// A locked item's data is not available to the account, so there is nothing to warm.
 		if (item.locked) return;
-		if (item.href === '/beans' || item.href === '/roast') {
+		if (item.href === '/beans') {
 			void preloadRouteData(item.href);
 		}
 	}

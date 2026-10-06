@@ -12,6 +12,7 @@
 	import RoastProfileDisplay from './RoastProfileDisplay.svelte';
 	import RoastActionBar from './RoastActionBar.svelte';
 	import RoastSegments from './RoastSegments.svelte';
+	import RoastListControls from './RoastListControls.svelte';
 	import ArtisanImportDialog from '$lib/components/roast/ArtisanImportDialog.svelte';
 	import ChartSkeleton from '$lib/components/ChartSkeleton.svelte';
 	import { compareHref } from '$lib/roast/compare-sides';
@@ -23,6 +24,8 @@
 		roastSaleHref,
 		type RoastBatchGroup
 	} from '$lib/roast/roast-batches';
+	import type { RoastCoffeeOption } from '$lib/roast/roast-coffee-options';
+	import { NO_ROAST_LIST_FILTERS, type RoastListFilters } from '$lib/roast/roast-list-filters';
 	import { hasRecordedCurve, roastDetailLine, roastMilestones } from '$lib/roast/roast-summary';
 	import type { RoastProfile } from '$lib/types/component.types';
 	import type { ComponentType } from 'svelte';
@@ -30,13 +33,27 @@
 
 	let {
 		batches,
+		openBatchRoasts = [],
 		collapsedBatches,
 		currentRoastProfile,
 		currentProfileIndex,
 		chartComponentLoading,
 		RoastChartInterface,
 		countLine,
-		totalRoasts,
+		filters = NO_ROAST_LIST_FILTERS,
+		coffeeOptions = [],
+		onFiltersChange = undefined,
+		emptyDetail = '',
+		loadedRoasts = 0,
+		matchingRoasts = 0,
+		hasMore = false,
+		isRefreshing = false,
+		isLoadingMore = false,
+		loadMoreFailed = false,
+		listFailed = false,
+		searchInvalid = false,
+		onLoadMore = undefined,
+		onRetryList = undefined,
 		canCreateRoast,
 		actionNotice = null,
 		actionInProgress = false,
@@ -49,7 +66,6 @@
 		onDeleteBatch,
 		onClearProfile,
 		onClearFilters,
-		listBatches = undefined,
 		coffeeFilter = null,
 		onClearCoffeeFilter = undefined,
 		batchFilter = null,
@@ -65,15 +81,39 @@
 		saveRoastProfile,
 		clearRoastData
 	} = $props<{
-		/** Every batch, newest first, keyed by batch ID. */
+		/** The batches the list shows, newest first, keyed by batch ID. */
 		batches: RoastBatchGroup<RoastProfile>[];
+		/** Every roast in the open roast's batch, the open roast included. */
+		openBatchRoasts?: RoastProfile[];
 		collapsedBatches: Set<string>;
 		currentRoastProfile: RoastProfile | null;
 		currentProfileIndex: number;
 		chartComponentLoading: boolean;
 		RoastChartInterface: ComponentType | null;
+		/** Roasts, batches, and average loss for everything the filters match. Empty when nothing does. */
 		countLine: string;
-		totalRoasts: number;
+		/** The filters in the address, shown in the list's controls. */
+		filters?: RoastListFilters;
+		/** The member's portfolio coffees, for the coffee control. */
+		coffeeOptions?: RoastCoffeeOption[];
+		onFiltersChange?: (filters: RoastListFilters) => void;
+		/** What the filters in force left out, said under "No roasts match." */
+		emptyDetail?: string;
+		/** Roasts on screen, and roasts the filters match. */
+		loadedRoasts?: number;
+		matchingRoasts?: number;
+		/** Whether the filters match more roasts than are loaded. */
+		hasMore?: boolean;
+		/** A change of filters is loading; the roasts on screen stay until it arrives. */
+		isRefreshing?: boolean;
+		isLoadingMore?: boolean;
+		loadMoreFailed?: boolean;
+		/** The list could not be loaded. */
+		listFailed?: boolean;
+		/** The search term cannot be used. */
+		searchInvalid?: boolean;
+		onLoadMore?: () => void;
+		onRetryList?: () => void;
 		canCreateRoast: boolean;
 		/** What an action from the More menu did, shown under the actions. */
 		actionNotice?: RoastActionNotice | null;
@@ -89,8 +129,6 @@
 		onDeleteBatch: (batchKey: string) => void;
 		onClearProfile: () => Promise<boolean>;
 		onClearFilters: () => void;
-		/** The batches the list shows when it is narrowed; every batch otherwise. */
-		listBatches?: RoastBatchGroup<RoastProfile>[];
 		/** The portfolio coffee the list is narrowed to by `?coffee=`. */
 		coffeeFilter?: { id: number; name: string | null } | null;
 		onClearCoffeeFilter?: () => void;
@@ -109,22 +147,8 @@
 		clearRoastData: () => void;
 	}>();
 
-	let visibleBatches = $derived<RoastBatchGroup<RoastProfile>[]>(listBatches ?? batches);
-	// "← Roasts" returns to the list as it was narrowed.
-	let listHref = $derived(roastListHref({ coffee: coffeeFilter?.id, batch: batchFilter?.id }));
-
-	// What the filters in force left out, said under "No roasts match."
-	let emptyDetail = $derived.by(() => {
-		const coffee = coffeeFilter ? (coffeeFilter.name ?? 'this coffee') : null;
-		if (batchFilter) {
-			const batch = batchFilter.label ?? 'that batch';
-			if (coffee) return `Nothing was roasted for ${coffee} in ${batch}.`;
-			return batchFilter.label
-				? `No roasts in ${batch} match.`
-				: 'That batch has no roasts. It may have been deleted.';
-		}
-		return coffee ? `Nothing was roasted for ${coffee}.` : '';
-	});
+	// "← Roasts" returns to the list with every filter it was narrowed by.
+	let listHref = $derived(roastListHref(filters));
 
 	let detailPanel = $state<RoastProfileDisplay>();
 	let detailSection = $state<HTMLDivElement>();
@@ -169,11 +193,8 @@
 
 <div class="mx-auto w-full max-w-[100vw] overflow-x-hidden">
 	{#if currentRoastProfile}
-		{@const openBatch = batches.find((batch: RoastBatchGroup<RoastProfile>) =>
-			batch.roasts.some((p: RoastProfile) => p.roast_id === currentRoastProfile.roast_id)
-		)}
 		{@const openBatchId = parseBatchId(currentRoastProfile.batch_id)}
-		{@const otherBatchRoasts = (openBatch?.roasts ?? []).filter(
+		{@const otherBatchRoasts = openBatchRoasts.filter(
 			(p: RoastProfile) => p.roast_id !== currentRoastProfile.roast_id
 		)}
 		<div class="mb-4">
@@ -307,8 +328,8 @@
 		<div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 			<div>
 				<h1 class="text-2xl font-bold text-ink">Roasts</h1>
-				{#if visibleBatches.length > 0}
-					<p class="mt-1 text-muted">{countLine}</p>
+				{#if countLine}
+					<p class="mt-1 text-muted" aria-live="polite">{countLine}</p>
 				{/if}
 				{#if coffeeFilter || batchFilter}
 					<p class="mt-3 flex flex-wrap gap-2">
@@ -355,16 +376,36 @@
 
 		<RoastSegments current="roasts" />
 
+		{#if onFiltersChange}
+			<RoastListControls
+				{filters}
+				{coffeeOptions}
+				coffeeName={coffeeFilter?.name ?? null}
+				onChange={onFiltersChange}
+			/>
+		{/if}
+
 		<RoastHistoryTable
-			batches={visibleBatches}
+			{batches}
 			{collapsedBatches}
 			{currentRoastProfile}
-			{totalRoasts}
+			{filters}
 			{emptyDetail}
+			{loadedRoasts}
+			{matchingRoasts}
+			{hasMore}
+			{isRefreshing}
+			{isLoadingMore}
+			{loadMoreFailed}
+			{listFailed}
+			{searchInvalid}
 			showLogSale={canCreateRoast}
 			{onToggleBatch}
 			{onSelectProfile}
 			{onClearFilters}
+			onClearSearch={onFiltersChange ? () => onFiltersChange({ ...filters, q: '' }) : undefined}
+			{onLoadMore}
+			{onRetryList}
 		/>
 	{/if}
 </div>

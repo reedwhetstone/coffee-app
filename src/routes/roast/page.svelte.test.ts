@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BeforeNavigate } from '@sveltejs/kit';
 import type { RoastProfile } from '$lib/types/component.types';
 import RoastPage from './+page.svelte';
+import { roastListResponse } from './__test-fixtures__/roastListBackend';
 import { eventEntries, roastData, roastEvents, temperatureEntries } from './stores';
 
 const { goto, replaceState, pageState, navigationGuards } = vi.hoisted(() => ({
@@ -28,6 +29,7 @@ const EDITED_AT = '2026-10-01T12:05:00.000Z';
 function roast(overrides: Partial<RoastProfile>): RoastProfile {
 	return {
 		roast_id: 1,
+		batch_id: 'aaaaaaaa-0000-4000-8000-000000000001',
 		batch_name: 'Morning batch',
 		coffee_id: 7,
 		coffee_name: 'Ethiopia',
@@ -86,7 +88,7 @@ const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => 
 			listedRoasts = [...roasts, created];
 			return json({ profiles: [created], roast_ids: [3] });
 		}
-		return json({ data: listedRoasts });
+		return roastListResponse(listedRoasts, url);
 	}
 	return json({ data: [] });
 });
@@ -143,8 +145,7 @@ async function openRoast(search = '?profileId=1', listed = roasts) {
 				user: { id: 'member-1', email: 'member@example.com' },
 				role: 'member',
 				ppiAccess: false
-			},
-			initialRoasts: Promise.resolve({ data: { data: listed }, error: null })
+			}
 		}
 	} as never);
 
@@ -690,6 +691,7 @@ describe('roast page live roast guard', () => {
 		await startRoast();
 		await logEvent('Charge');
 		const logged = loggedEvents();
+		const readsBeforeEdit = sent('GET').length;
 
 		await fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
 		await fireEvent.click(screen.getByRole('button', { name: 'Save' }));
@@ -700,7 +702,7 @@ describe('roast page live roast guard', () => {
 		expect(timerButton()).toHaveTextContent('Stop');
 		expect(loggedEvents()).toEqual(logged);
 		// No reload of the roast list, which would unmount the logger.
-		expect(sent('GET')).toEqual([]);
+		expect(sent('GET')).toHaveLength(readsBeforeEdit);
 
 		// The later save carries the version the edit produced.
 		await pauseRoast();

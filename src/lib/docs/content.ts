@@ -1460,14 +1460,21 @@ const docsPages: DocsPage[] = [
 							'GET POST PUT DELETE',
 							'Session + Mallard Studio',
 							'Internal product route',
-							'CRUD for roast profiles. GET accepts coffee_id, a portfolio inventory id, to list one coffee’s roasts. POST supports single and batch creation. DELETE accepts a roast id. Every roast carries batch_id, the ID of its batch.'
+							'CRUD for roast profiles. GET lists roasts newest first and accepts coffee_id (a portfolio inventory id), roast_id, batch_id, date_start, date_end, q (one search term across coffee name, batch name, and roast number), and is_wholesale; limit and offset return one page, and totals counts everything the filters match. POST supports single and batch creation. DELETE accepts a roast id. Every roast carries batch_id, the ID of its batch.'
+						],
+						[
+							'/api/roast-coffees',
+							'GET',
+							'Session + Mallard Studio',
+							'Internal product route',
+							'Lists the member’s portfolio coffees by ID, name, purchase date, and stocked state: the choices the roast list can be narrowed to. It reads the portfolio only.'
 						],
 						[
 							'/api/roast-batches',
 							'GET',
 							'Session + Mallard Studio',
 							'Internal product route',
-							'Lists the member’s roast batches, newest batch date first, each with its ID, name, date, and roast IDs. Batch names can repeat, so a batch is identified by its ID. include_empty=true also lists batches that hold no roasts.'
+							'Lists the member’s roast batches, newest batch date first, each with its ID, name, date, and roast IDs. Batch names can repeat, so a batch is identified by its ID. include_empty=true also lists batches that hold no roasts. date_start and date_end (YYYY-MM-DD) keep the batches dated in that span.'
 						],
 						[
 							'/api/roast-batches/[id]',
@@ -1882,6 +1889,12 @@ const docsPages: DocsPage[] = [
 							'List, create, update, or delete roast profiles'
 						],
 						[
+							'/api/roast-coffees',
+							'GET',
+							'Session + Mallard Studio',
+							'List the portfolio coffees the roast list can be narrowed to'
+						],
+						[
 							'/api/artisan-import',
 							'POST',
 							'Session + Mallard Studio + ownership',
@@ -1911,6 +1924,7 @@ const docsPages: DocsPage[] = [
 			{
 				title: 'Key behaviors',
 				bullets: [
+					'GET /api/roast-profiles lists the signed-in owner’s roasts, newest first. Optional filters narrow together: coffee_id, roast_id, batch_id, date_start and date_end (YYYY-MM-DD, inclusive), q (one search term across coffee name, batch name, and roast number, at most 100 characters), and is_wholesale (true or false). With limit (up to 200) and offset it returns one page; without them it returns every matching roast. Every response carries totals for everything the filters match: roasts, batches, and average_loss_percent.',
 					'POST /api/roast-profiles supports both single and batch creation. Batch callers retain one Idempotency-Key for the same payload until the result is definitive. The Parchment-owned database trigger recalculates stocked state in the same transaction as each roast change.',
 					'PUT /api/roast-profiles requires an id query parameter and forwards optional If-Match concurrency checks. Live curve writes replace only live temperatures plus the current event set. DELETE requires a roast id query parameter. A batch is deleted by its own ID with DELETE /api/roast-batches/[id], which removes that batch and its roasts and keeps the sales recorded against it.',
 					'POST /api/artisan-import expects multipart form-data with file and roastId. Supported file extensions are .alog, .alog.json, and .json.',

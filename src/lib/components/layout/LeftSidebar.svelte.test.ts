@@ -142,24 +142,18 @@ describe('LeftSidebar', () => {
 		expect(document.getElementById('desktop-shell-panel')).toBeNull();
 	});
 
-	it('shows roast filters to a member and none beside the locked roast page', () => {
+	it('offers no filter panel on the roast page, which carries its own filters', () => {
 		pageState.url = new URL('http://localhost/roast');
-		pageState.data = { roastsLocked: false };
-		const { unmount } = render(LeftSidebar, { data: memberData });
-		expect(
-			within(screen.getByLabelText('Desktop action bar')).getByRole('button', {
-				name: 'Open filters'
-			})
-		).toBeTruthy();
-		unmount();
-
-		pageState.data = { roastsLocked: true };
-		render(LeftSidebar, { data: memberData });
-		expect(
-			within(screen.getByLabelText('Desktop action bar')).queryByRole('button', {
-				name: 'Open filters'
-			})
-		).toBeNull();
+		for (const roastsLocked of [false, true]) {
+			pageState.data = { roastsLocked };
+			const { unmount } = render(LeftSidebar, { data: memberData });
+			expect(
+				within(screen.getByLabelText('Desktop action bar')).queryByRole('button', {
+					name: 'Open filters'
+				})
+			).toBeNull();
+			unmount();
+		}
 	});
 
 	it('opens one overlay filters panel without changing the action-bar width', async () => {
