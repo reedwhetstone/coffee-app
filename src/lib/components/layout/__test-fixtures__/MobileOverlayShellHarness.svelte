@@ -5,15 +5,17 @@
 	let {
 		open = true,
 		disclosure = false,
+		variant = 'sheet',
 		onClose = () => {}
 	} = $props<{
 		open?: boolean;
 		disclosure?: boolean;
+		variant?: 'sheet' | 'sheet-drawer';
 		onClose?: () => void;
 	}>();
 </script>
 
-<MobileOverlayShell {open} variant="sheet" {onClose} label="App menu" labelledBy="dialog-title">
+<MobileOverlayShell {open} {variant} {onClose} label="App menu" labelledBy="dialog-title">
 	<div class="p-4">
 		<h2 id="dialog-title">App menu</h2>
 		{#if disclosure}

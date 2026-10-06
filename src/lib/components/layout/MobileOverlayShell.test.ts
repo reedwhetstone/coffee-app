@@ -80,4 +80,27 @@ describe('MobileOverlayShell', () => {
 		expect(scrollRegion).toHaveClass('overscroll-contain');
 		expect(scrollRegion).toHaveClass('flex-1');
 	});
+
+	it('is a bottom sheet on a phone and a side drawer on wider screens for the sheet-drawer variant', async () => {
+		render(MobileOverlayShellHarness, { open: true, variant: 'sheet-drawer', onClose: vi.fn() });
+		await tick();
+
+		const dialog = screen.getByRole('dialog', { name: 'App menu' });
+		expect(dialog).toHaveClass('h-[88dvh]', 'rounded-t-[1.75rem]');
+		expect(dialog).toHaveClass('md:h-full', 'md:w-[32rem]', 'md:rounded-none');
+		expect(dialog.parentElement).toHaveClass('items-end', 'md:items-stretch', 'md:justify-end');
+	});
+
+	it('lets a tap beside the dialog reach the backdrop, which closes it', async () => {
+		const onClose = vi.fn();
+		render(MobileOverlayShellHarness, { open: true, variant: 'sheet-drawer', onClose });
+		await tick();
+
+		const dialog = screen.getByRole('dialog', { name: 'App menu' });
+		// The layout wrapper covers the backdrop, so it must not take the tap itself.
+		expect(dialog.parentElement).toHaveClass('pointer-events-none');
+		expect(dialog).toHaveClass('pointer-events-auto');
+		await fireEvent.click(screen.getByRole('button', { name: 'Close overlay' }));
+		expect(onClose).toHaveBeenCalledOnce();
+	});
 });

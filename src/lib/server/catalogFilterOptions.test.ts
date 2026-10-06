@@ -521,4 +521,36 @@ describe('loadCatalogFilterOptions', () => {
 			expect(result.facets.grade_size).toEqual([{ value: 'KE:AA', count: 39 }]);
 		});
 	});
+
+	it('counts disclosure levels, and its other levels with the selection removed', async () => {
+		const { client, facets } = makeClient({
+			facets: (query) =>
+				'processing_disclosure_level' in query
+					? {
+							values: {},
+							facets: { processing_disclosure_level: [{ value: 'high_detail', count: 291 }] }
+						}
+					: {
+							values: {},
+							facets: {
+								processing_disclosure_level: [
+									{ value: 'structured', count: 2033 },
+									{ value: 'high_detail', count: 291 }
+								]
+							}
+						}
+		});
+
+		const result = await loadCatalogFilterOptions(
+			client,
+			url('processing_disclosure_level=high_detail'),
+			member
+		);
+
+		expect(facets).toHaveBeenCalledTimes(2);
+		expect(result.facets.processing_disclosure_level).toEqual([
+			{ value: 'structured', count: 2033 },
+			{ value: 'high_detail', count: 291 }
+		]);
+	});
 });

@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/sve
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 import { get } from 'svelte/store';
+import { tick } from 'svelte';
 import CatalogPage from './+page.svelte';
 import type { PageData } from './$types';
 import { createCatalogProofSummary } from '$lib/catalog/proofSummary';
@@ -9,11 +10,14 @@ import { filterStore } from '$lib/stores/filterStore';
 import { catalogFilterPanel } from '$lib/stores/catalogFilterPanel.svelte';
 import type { UserRole } from '$lib/types/auth.types';
 
-const { goto, replaceState, pageState } = vi.hoisted(() => ({
+const { goto, replaceState, pageState, track } = vi.hoisted(() => ({
 	goto: vi.fn(),
 	replaceState: vi.fn(),
-	pageState: { url: new URL('https://app.test/catalog'), state: {} }
+	pageState: { url: new URL('https://app.test/catalog'), state: {} },
+	track: vi.fn()
 }));
+
+vi.mock('@vercel/analytics/sveltekit', () => ({ track }));
 
 vi.mock('$app/navigation', () => ({ goto, replaceState }));
 vi.mock('$app/state', () => ({ page: pageState }));
@@ -171,7 +175,11 @@ beforeEach(() => {
 								{ value: '1800-1999', count: 288 },
 								{ value: '1200-1399', count: 558 }
 							],
-							score_protocols: [{ value: 'supplier_unspecified', count: 443 }]
+							score_protocols: [{ value: 'supplier_unspecified', count: 443 }],
+							processing_disclosure_level: [
+								{ value: 'structured', count: 2033 },
+								{ value: 'high_detail', count: 291 }
+							]
 						},
 						grades: [
 							{
@@ -376,10 +384,7 @@ describe('/catalog intelligence connective tissue', () => {
 			} as unknown as Partial<PageData>)
 		);
 
-		expect(screen.getByText('No catalog rows match this supply query')).toBeInTheDocument();
-		expect(
-			screen.getByText(/review broader origin, supplier, and pricing evidence/i)
-		).toBeInTheDocument();
+		expect(screen.getByText('No coffees match these filters')).toBeInTheDocument();
 		expect(screen.getByRole('link', { name: 'Review broader Market Index' })).toHaveAttribute(
 			'href',
 			'/analytics'
@@ -1049,8 +1054,15 @@ describe('/catalog filters', () => {
 		let panel = document.querySelector('[data-catalog-filter-panel]') as HTMLElement;
 		expect(
 			[...panel.querySelectorAll('summary')].map((summary) => summary.textContent?.trim())
-		).toEqual(['Origin and supplier', 'Process', 'Grade and quality', 'Variety', 'Freshness']);
-		expect(panel.querySelectorAll('[data-catalog-lock]')).toHaveLength(5);
+		).toEqual([
+			'Origin and supplier',
+			'Process',
+			'Grade and quality',
+			'Variety',
+			'Freshness',
+			'Transparency'
+		]);
+		expect(panel.querySelectorAll('[data-catalog-lock]')).toHaveLength(6);
 		expect(within(panel).getByLabelText('Hobbyist suppliers only')).toBeEnabled();
 		expect(within(panel).getByLabelText('Wholesale suppliers only')).toBeDisabled();
 		// A locked section shows its reason and none of its controls.
@@ -1131,6 +1143,120 @@ describe('/catalog filters', () => {
 				{ name: 'Cup score, high to low' }
 			)
 		).not.toBeInTheDocument();
+	});
+
+	it('lets members filter by how much a supplier discloses, most disclosed first', async () => {
+		Object.defineProperty(HTMLElement.prototype, 'animate', {
+			configurable: true,
+			value: vi.fn(() => ({ finished: Promise.resolve(), cancel: vi.fn(), play: vi.fn() }))
+		});
+		renderCatalog(
+			createData({
+				session: { access_token: 'member-token' },
+				role: 'member',
+				catalogAccess: memberAccess
+			} as unknown as Partial<PageData>)
+		);
+		await fireEvent.click(screen.getByRole('button', { name: /^All filters/ }));
+		const section = document.querySelector('[data-catalog-transparency]') as HTMLElement;
+
+		const group = await within(section).findByRole('group', { name: 'Process disclosure' });
+		await waitFor(() =>
+			expect(
+				within(group)
+					.getAllByRole('button')
+					.map((button) => button.textContent?.replace(/\s+/g, ' ').trim())
+			).toEqual(['High detail 291', 'Structured 2,033'])
+		);
+
+		await fireEvent.click(within(group).getByRole('button', { name: 'High detail 291' }));
+		expect(get(filterStore).filters.processing_disclosure_level).toBe('high_detail');
+		expect(
+			screen.getByRole('button', { name: 'Remove filter: Process disclosure: High detail' })
+		).toBeInTheDocument();
+	});
+
+	it('says which filter to remove when nothing matches, and how many coffees that shows', async () => {
+		const baseFetch = vi.mocked(fetch).getMockImplementation()!;
+		vi.mocked(fetch).mockImplementation(async (input, init) => {
+			const url = String(input);
+			if (url.startsWith('/api/catalog?') && url.includes('limit=1&')) {
+				const total = !url.includes('country=') ? 101 : !url.includes('grade_code=') ? 85 : 0;
+				return new Response(JSON.stringify({ data: [], pagination: { total } }), {
+					status: 200,
+					headers: { 'Content-Type': 'application/json' }
+				});
+			}
+			return baseFetch(input, init);
+		});
+		renderCatalog(
+			createData({
+				session: { access_token: 'member-token' },
+				role: 'member',
+				catalogAccess: memberAccess,
+				data: [],
+				initialCatalogState: {
+					...createData().initialCatalogState,
+					showWholesale: true,
+					filters: { country: ['Kenya'], grade_code: ['GT:SHB'] }
+				},
+				pagination: { page: 1, limit: 15, total: 0, totalPages: 0, hasNext: false, hasPrev: false }
+			} as unknown as Partial<PageData>)
+		);
+
+		const empty = document.querySelector('[data-catalog-empty-state]') as HTMLElement;
+		expect(within(empty).getByText('No coffees match these filters')).toBeInTheDocument();
+		const suggestions = await within(empty).findByRole('list', { name: 'Suggestions' });
+		expect(
+			within(suggestions)
+				.getAllByRole('button')
+				.map((button) => button.textContent?.replace(/\s+/g, ' ').trim())
+		).toEqual(['Remove Origin: Kenya 101 coffees', 'Remove Grade: GT:SHB 85 coffees']);
+
+		await fireEvent.click(
+			within(suggestions).getByRole('button', { name: /Remove Origin: Kenya/ })
+		);
+		expect(get(filterStore).filters).toEqual({ grade_code: ['GT:SHB'] });
+	});
+
+	it('records which controls are used, never what was chosen, and not what a link arrived with', async () => {
+		renderCatalog(
+			createData({
+				session: { access_token: 'member-token' },
+				role: 'member',
+				catalogAccess: memberAccess,
+				initialCatalogState: {
+					...createData().initialCatalogState,
+					showWholesale: true,
+					filters: { country: ['Kenya'], name: 'private search' }
+				}
+			} as unknown as Partial<PageData>)
+		);
+		await waitFor(() => expect(get(filterStore).routeId).toBe('/catalog'));
+		await tick();
+		// The filters the page opened with are the starting point, not a change.
+		expect(track).not.toHaveBeenCalled();
+
+		filterStore.setFilter('country', ['Kenya', 'Peru', 'Brazil']);
+		filterStore.setFilter('peaberry', true);
+		await tick();
+		filterStore.setFilter('name', '');
+		await tick();
+		filterStore.setSort('price_per_lb', 'asc');
+		await tick();
+
+		expect(track.mock.calls).toEqual([
+			['catalog_filter_added', { surface: 'catalog', control: 'country' }],
+			['catalog_filter_added', { surface: 'catalog', control: 'peaberry' }],
+			['catalog_filter_removed', { surface: 'catalog', control: 'name' }],
+			['catalog_sort_changed', { surface: 'catalog', sort: 'price_per_lb', direction: 'asc' }]
+		]);
+		expect(JSON.stringify(track.mock.calls)).not.toMatch(/Kenya|Peru|private search/);
+
+		track.mockClear();
+		filterStore.clearFilters();
+		await tick();
+		expect(track).toHaveBeenCalledWith('catalog_filters_cleared', { surface: 'catalog', count: 4 });
 	});
 
 	it('keeps a section the viewer opened open when the filters or counts change', async () => {
@@ -1234,7 +1360,7 @@ describe('/catalog filters', () => {
 			'href',
 			'/catalog'
 		);
-		expect(screen.queryByRole('button', { name: 'Clear catalog filters' })).toBeNull();
+		expect(screen.queryByRole('button', { name: 'Clear all filters' })).toBeNull();
 	});
 
 	it('does not claim an empty watchlist when tracked-only state is unknown', () => {

@@ -14,7 +14,8 @@
 		children
 	} = $props<{
 		open?: boolean;
-		variant?: 'full' | 'sheet' | 'drawer';
+		/** `sheet-drawer` is a bottom sheet on a phone and a side drawer on wider screens. */
+		variant?: 'full' | 'sheet' | 'drawer' | 'sheet-drawer';
 		onClose?: () => void;
 		label?: string;
 		labelledBy?: string;
@@ -22,6 +23,13 @@
 		keepMounted?: boolean;
 		children: Snippet;
 	}>();
+
+	// Matches the `md` breakpoint the layout classes switch on.
+	function isWide(): boolean {
+		return (
+			typeof window !== 'undefined' && window.matchMedia?.('(min-width: 768px)').matches === true
+		);
+	}
 
 	let dialogElement = $state<HTMLDivElement | null>(null);
 	let previouslyFocusedElement = $state<HTMLElement | null>(null);
@@ -117,20 +125,24 @@
 		></button>
 
 		<div
-			class="relative flex h-full w-full {variant === 'sheet'
+			class="pointer-events-none relative flex h-full w-full {variant === 'sheet'
 				? 'items-end'
 				: variant === 'drawer'
 					? 'items-stretch justify-end'
-					: 'items-stretch'}"
+					: variant === 'sheet-drawer'
+						? 'items-end md:items-stretch md:justify-end'
+						: 'items-stretch'}"
 		>
 			<div
 				bind:this={dialogElement}
-				class="relative flex w-full flex-col overflow-hidden bg-surface-canvas shadow-2xl ring-1 ring-line/70 {variant ===
+				class="pointer-events-auto relative flex w-full flex-col overflow-hidden bg-surface-canvas shadow-2xl ring-1 ring-line/70 {variant ===
 				'full'
 					? 'h-full'
 					: variant === 'drawer'
 						? 'h-full md:w-[32rem]'
-						: 'max-h-[85dvh] rounded-t-[1.75rem]'}"
+						: variant === 'sheet-drawer'
+							? 'h-[88dvh] rounded-t-[1.75rem] md:h-full md:w-[32rem] md:rounded-none'
+							: 'max-h-[85dvh] rounded-t-[1.75rem]'}"
 				role="dialog"
 				aria-modal="true"
 				aria-label={label}
@@ -138,11 +150,17 @@
 				tabindex="-1"
 				onkeydown={handleKeydown}
 				transition:fly={{
-					x: variant === 'drawer' ? 28 : 0,
-					y: variant === 'sheet' ? 28 : 0,
+					x: variant === 'drawer' || (variant === 'sheet-drawer' && isWide()) ? 28 : 0,
+					y: variant === 'sheet' || (variant === 'sheet-drawer' && !isWide()) ? 28 : 0,
 					duration: 200
 				}}
 			>
+				{#if variant === 'sheet-drawer'}
+					<div
+						class="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-line md:hidden"
+						aria-hidden="true"
+					></div>
+				{/if}
 				<div
 					class="min-h-0 flex-1 overflow-y-auto overscroll-contain"
 					data-mobile-overlay-scroll-region

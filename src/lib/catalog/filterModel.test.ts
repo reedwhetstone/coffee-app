@@ -33,6 +33,7 @@ const CONTROLS = [
 	'process',
 	'variety',
 	'freshness',
+	'transparency',
 	'grading',
 	'elevation',
 	'score',
@@ -382,5 +383,22 @@ describe('catalogSortAfterFilterChange', () => {
 
 		expect(catalogSortAfterFilterChange(price, { score_protocol: 'sca_2004' }, {})).toEqual(price);
 		expect(catalogSortAfterFilterChange(cupScore, { country: ['Kenya'] }, {})).toEqual(cupScore);
+	});
+});
+
+describe('transparency', () => {
+	it('is a member filter, and its chip uses the plain disclosure names', () => {
+		expect(catalogFilterLock(freeAccount, 'transparency')).toMatchObject({
+			reason: 'Members filter by how much a supplier discloses about its process.'
+		});
+		expect(catalogFilterLock(member, 'transparency')).toBeNull();
+		expect(
+			describeActiveCatalogFilters({
+				filters: { processing_disclosure_level: 'high_detail' },
+				showWholesale: true,
+				wholesaleOnly: false,
+				includeUnstocked: false
+			}).map((chip) => chip.label)
+		).toEqual(['Process disclosure: High detail']);
 	});
 });
