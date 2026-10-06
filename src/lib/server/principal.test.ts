@@ -10,6 +10,7 @@ vi.mock('$lib/server/parchmentClient', () => ({
 
 const {
 	getPrimaryUserRole,
+	isCookieSessionPrincipal,
 	isTrustedMutationRequest,
 	principalHasApiPlan,
 	principalHasRole,
@@ -323,6 +324,36 @@ describe('principal helpers', () => {
 			subjectType: 'anonymous',
 			isAuthenticated: false
 		});
+	});
+
+	it('resolves a request carrying both a session cookie and an API key as the key alone', async () => {
+		successfulMe({
+			authenticated: true,
+			authKind: 'api-key',
+			userId: 'api-user',
+			appRoles: ['viewer'],
+			primaryAppRole: 'viewer',
+			apiPlan: 'viewer',
+			ppiAccess: false,
+			apiScopes: ['catalog:read']
+		});
+		// The cookie holds a session; the header holds a key. The cookie is never read.
+		const event = makeCookieSessionEvent();
+		event.request = new Request('https://app.test/api/roast-profiles', {
+			headers: { Authorization: 'Bearer pk_live_valid-key' }
+		});
+
+		const principal = await resolvePrincipal(event);
+
+		expect(principal).toMatchObject({
+			subjectType: 'api-key',
+			source: 'api-key',
+			userId: 'api-user',
+			appRoles: ['viewer']
+		});
+		expect(isCookieSessionPrincipal(principal)).toBe(false);
+		expect(event.locals.supabase.auth.getSession).not.toHaveBeenCalled();
+		expect(event.locals.safeGetIdentity).not.toHaveBeenCalled();
 	});
 
 	it('does not fall back to a cookie when an Authorization header is malformed', async () => {

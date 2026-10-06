@@ -31,7 +31,7 @@ async function rawFetch(path: string, options?: RequestInit) {
 // IDs for test data created during this run — cleaned up in afterAll
 let testBeanId: number | null = null;
 let testRoastId: number | null = null;
-// The batch the test roast was created in. Deleting the roast keeps its batch.
+// The batch the test roast was created in. Deleting the roast may leave its batch behind.
 let testBatchId: string | null = null;
 let testSaleId: number | null = null;
 
@@ -311,7 +311,7 @@ test.describe('DELETE endpoints return success', () => {
 		testRoastId = null;
 	});
 
-	test('DELETE /api/roast-batches/X deletes the batch the test roast left behind', async ({
+	test('DELETE /api/roast-batches/X leaves no batch behind for the test roast', async ({
 		request
 	}) => {
 		if (!testBatchId) {
@@ -319,10 +319,18 @@ test.describe('DELETE endpoints return success', () => {
 			return;
 		}
 		const resp = await request.delete(`/api/roast-batches/${testBatchId}`);
-		expect(resp.status()).toBeLessThan(400);
-		const body = await resp.json();
-		expect(body).toHaveProperty('success', true);
-		expect(body).toHaveProperty('id', testBatchId);
+		// Parchment may already have removed the batch along with its last roast. Then there is
+		// nothing to delete and the answer is 404; otherwise the delete succeeds.
+		if (resp.status() !== 404) {
+			expect(resp.status()).toBeLessThan(400);
+			const body = await resp.json();
+			expect(body).toHaveProperty('success', true);
+			expect(body).toHaveProperty('id', testBatchId);
+		}
+		const after = await request.get('/api/roast-batches?include_empty=true');
+		expect(after.status()).toBe(200);
+		const { data } = (await after.json()) as { data: Array<{ id: string }> };
+		expect(data.map((batch) => batch.id)).not.toContain(testBatchId);
 		testBatchId = null;
 	});
 

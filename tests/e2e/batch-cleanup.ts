@@ -1,9 +1,10 @@
 /**
  * Roast batches the E2E specs leave on the test account.
  *
- * A roast belongs to a batch, and deleting the roast keeps the batch. A spec that creates a
- * roast therefore deletes its batch, and the global teardown removes any batch a run left
- * empty. Both go through the app's own routes, as a member would.
+ * A roast belongs to a batch, and deleting the roast may leave the batch behind. A spec that
+ * creates a roast therefore deletes its batch, treating an already-removed batch as done, and
+ * the global teardown removes any batch a run left empty. Both go through the app's own
+ * routes, as a member would.
  */
 
 export interface CleanupResponse {
