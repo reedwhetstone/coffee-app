@@ -2,8 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
 	activePricePresetId,
 	catalogFilterLock,
+	catalogSortAfterFilterChange,
 	catalogSortOptions,
 	describeActiveCatalogFilters,
+	isStatedScoreProtocol,
+	scoreProtocolLabel,
 	type CatalogFilterAccess
 } from './filterModel';
 
@@ -30,6 +33,7 @@ const CONTROLS = [
 	'process',
 	'variety',
 	'freshness',
+	'grading',
 	'elevation',
 	'score',
 	'wholesaleOnly',
@@ -233,5 +237,150 @@ describe('describeActiveCatalogFilters', () => {
 		expect(
 			describeActiveCatalogFilters({ ...none, wholesaleOnly: true }).map((chip) => chip.label)
 		).toEqual(['Wholesale suppliers only']);
+	});
+});
+
+describe('cup score sorting', () => {
+	const labels = (protocol: string | null, current = { field: null, direction: null } as const) =>
+		catalogSortOptions(member, current, protocol).options.map((option) => option.label);
+
+	it('is offered only while one stated protocol is selected', () => {
+		expect(labels(null)).not.toContain('Cup score, high to low');
+		expect(labels('supplier_unspecified')).not.toContain('Cup score, high to low');
+		expect(labels('made_up')).not.toContain('Cup score, high to low');
+		expect(labels('sca_2004')).toEqual([
+			'Recently stocked',
+			'Price, low to high',
+			'Price, high to low',
+			'Purveyor Score (listing completeness)',
+			'Cup score, high to low',
+			'Name, A to Z'
+		]);
+	});
+
+	it('is the active entry for a score sort under a stated protocol, and locked below member level', () => {
+		const sorted = { field: 'score_value', direction: 'desc' } as const;
+
+		expect(catalogSortOptions(member, sorted, 'q_arabica').activeId).toBe('cup_score');
+		expect(
+			catalogSortOptions(freeAccount, sorted, 'q_arabica').options.find(
+				(option) => option.id === 'cup_score'
+			)?.locked
+		).toBe(true);
+	});
+
+	it('keeps a score sort from an older link as its own entry when no stated protocol is selected', () => {
+		const { options, activeId } = catalogSortOptions(
+			member,
+			{ field: 'score_value', direction: 'desc' },
+			null
+		);
+
+		expect(activeId).toBe('custom:score_value:desc');
+		expect(options.at(-1)?.label).toBe('Cup score, descending');
+	});
+
+	it('names the protocols and tells stated ones apart', () => {
+		expect(scoreProtocolLabel('supplier_unspecified')).toBe('Protocol not stated');
+		expect(scoreProtocolLabel('coe')).toBe('Cup of Excellence');
+		expect(['sca_2004', 'cva_affective', 'q_arabica', 'coe'].every(isStatedScoreProtocol)).toBe(
+			true
+		);
+		expect([null, '', 'supplier_unspecified', 'made_up'].some(isStatedScoreProtocol)).toBe(false);
+	});
+});
+
+describe('grade and quality chips', () => {
+	const none = { filters: {}, showWholesale: true, wholesaleOnly: false, includeUnstocked: false };
+	const grades = [
+		{
+			code: 'KE:AA',
+			label: 'Kenya AA',
+			description: '',
+			dimensions: ['size'],
+			sort_order: 100
+		}
+	];
+
+	it('labels each filter, using the grade vocabulary where it has the code', () => {
+		const chips = describeActiveCatalogFilters(
+			{
+				...none,
+				filters: {
+					grade_code: ['KE:AA', 'XX:NEW'],
+					peaberry: true,
+					lab_analyzed: true,
+					screen_size: { min: '15', max: '', includeUnknown: true },
+					moisture_max: 11.5,
+					score_protocol: 'supplier_unspecified'
+				}
+			},
+			null,
+			grades
+		);
+
+		expect(chips.map((chip) => chip.label)).toEqual([
+			'Grade: Kenya AA',
+			'Grade: XX:NEW',
+			'Peaberry',
+			'Lab analyzed',
+			'Screen size: 15 and up, or not stated',
+			'Moisture: up to 11.5%',
+			'Cup score protocol: Protocol not stated'
+		]);
+		expect(chips.every((chip) => chip.inPanel)).toBe(true);
+	});
+
+	it('removes one grade and keeps the others', () => {
+		const chips = describeActiveCatalogFilters(
+			{ ...none, filters: { grade_code: ['KE:AA', 'ET:G1'] } },
+			null,
+			grades
+		);
+
+		expect(chips[0].remove).toEqual({ kind: 'filter', key: 'grade_code', value: ['ET:G1'] });
+	});
+
+	it('names the lock for the whole section', () => {
+		expect(catalogFilterLock(freeAccount, 'grading')).toMatchObject({
+			reason: 'Members filter by grade, screen size, moisture, growing elevation and cup score.',
+			href: '/subscription'
+		});
+		expect(catalogFilterLock(member, 'grading')).toBeNull();
+	});
+});
+
+describe('catalogSortAfterFilterChange', () => {
+	const cupScore = { sortField: 'score_value', sortDirection: 'desc' } as const;
+	const defaultSort = { sortField: null, sortDirection: null };
+
+	it('ends a cup score order when a change leaves its stated protocol', () => {
+		const before = { country: ['Kenya'], score_protocol: 'sca_2004' };
+
+		expect(catalogSortAfterFilterChange(cupScore, before, { country: ['Kenya'] })).toEqual(
+			defaultSort
+		);
+		expect(catalogSortAfterFilterChange(cupScore, before, {})).toEqual(defaultSort);
+		expect(
+			catalogSortAfterFilterChange(cupScore, before, { score_protocol: 'supplier_unspecified' })
+		).toEqual(defaultSort);
+	});
+
+	it('keeps a cup score order while a stated protocol stays selected', () => {
+		const before = { score_protocol: 'sca_2004' };
+
+		expect(
+			catalogSortAfterFilterChange(cupScore, before, { ...before, country: ['Kenya'] })
+		).toEqual(cupScore);
+		expect(catalogSortAfterFilterChange(cupScore, before, { score_protocol: 'coe' })).toEqual(
+			cupScore
+		);
+	});
+
+	it('leaves other sorts, and a cup score order that never had a protocol, as they are', () => {
+		const price = { sortField: 'price_per_lb', sortDirection: 'asc' } as const;
+
+		expect(catalogSortAfterFilterChange(price, { score_protocol: 'sca_2004' }, {})).toEqual(price);
+		expect(catalogSortAfterFilterChange(cupScore, { country: ['Kenya'] }, {})).toEqual(cupScore);
 	});
 });

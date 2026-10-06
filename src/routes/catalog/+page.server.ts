@@ -4,6 +4,7 @@ import { toCatalogResourceItem } from '$lib/catalog/catalogResourceItem';
 import { CatalogSchemaUnavailableError } from '$lib/data/catalog';
 import { resolveCatalogVisibility } from '$lib/server/catalogVisibility';
 import { PREMIUM_DISCOVERY_FILTER_KEYS } from '$lib/catalog/accessPolicy';
+import { catalogSortAfterFilterChange } from '$lib/catalog/filterModel';
 import {
 	PROCESS_FACET_FILTER_KEYS,
 	createCatalogAccessDeniedNotice,
@@ -61,6 +62,14 @@ type ParchmentCatalogListQuery = CatalogListQuery & {
 	drying_method_code?: string[];
 	variety_code?: string[];
 	species_code?: string[];
+	grade_code?: string[];
+	peaberry?: 'true';
+	lab_analyzed?: 'true';
+	screen_min?: number;
+	screen_max?: number;
+	include_unknown_screen?: 'true';
+	moisture_max?: number;
+	score_protocol?: string;
 	cultivar_detail?: string;
 	type?: string;
 	grade?: string;
@@ -185,6 +194,14 @@ function buildParchmentCatalogQuery(
 	appendStringArrayParam(query, 'drying_method_code', searchState.dryingMethodCodes);
 	appendStringArrayParam(query, 'variety_code', searchState.varietyCodes);
 	appendStringArrayParam(query, 'species_code', searchState.speciesCodes);
+	appendStringArrayParam(query, 'grade_code', searchState.gradeCodes);
+	if (searchState.peaberry) query.peaberry = 'true';
+	if (searchState.labAnalyzed) query.lab_analyzed = 'true';
+	appendNumberParam(query, 'screen_min', searchState.screenMin);
+	appendNumberParam(query, 'screen_max', searchState.screenMax);
+	if (searchState.includeUnknownScreen) query.include_unknown_screen = 'true';
+	appendNumberParam(query, 'moisture_max', searchState.moistureMax);
+	appendStringParam(query, 'score_protocol', searchState.scoreProtocol);
 	appendStringParam(query, 'cultivar_detail', searchState.cultivarDetail);
 	appendStringParam(query, 'type', searchState.type);
 	appendStringParam(query, 'grade', searchState.grade);
@@ -482,9 +499,18 @@ export const load: PageServerLoad = async (event) => {
 	const rangeAuthorizedCatalogState = catalogAccess.canUsePriceRanges
 		? scoreAuthorizedCatalogState
 		: stripPriceRangeFilter(scoreAuthorizedCatalogState);
-	const authorizedCatalogState = catalogAccess.canUseAdvancedSorts
+	const sortAuthorizedCatalogState = catalogAccess.canUseAdvancedSorts
 		? rangeAuthorizedCatalogState
 		: stripAdvancedSort(rangeAuthorizedCatalogState);
+	// A cup score order from a link ends with its protocol when that filter was stripped.
+	const authorizedCatalogState: CatalogUrlState = {
+		...sortAuthorizedCatalogState,
+		...catalogSortAfterFilterChange(
+			sortAuthorizedCatalogState,
+			requestedCatalogState.filters,
+			sortAuthorizedCatalogState.filters
+		)
+	};
 	const visibility = resolveCatalogVisibility({
 		principal: locals.principal,
 		showWholesaleRequested: authorizedCatalogState.showWholesale,

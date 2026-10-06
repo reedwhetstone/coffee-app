@@ -18,6 +18,16 @@ export interface CatalogFilterVocabulary {
 	drying_methods: CatalogVocabularyEntry[];
 }
 
+/** One grade designation from Parchment's vocabulary, such as "Kenya AA". */
+export interface CatalogGradeEntry {
+	code: string;
+	label: string;
+	description: string;
+	/** What the designation grades: size, altitude, defects, cup, preparation. One code can grade several. */
+	dimensions: string[];
+	sort_order: number;
+}
+
 export interface CatalogFilterOptions {
 	values: Record<string, string[]>;
 	facets: Record<string, CatalogFacetCount[]>;
@@ -28,4 +38,6 @@ export interface CatalogFilterOptions {
 	 * variety, so a variety choice can never match them. Null when unknown.
 	 */
 	unstandardizedVarietyCount?: number | null;
+	/** Grade designations. Present only for callers who may use the grading filters. */
+	grades?: CatalogGradeEntry[];
 }

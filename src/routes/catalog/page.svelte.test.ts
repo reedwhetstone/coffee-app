@@ -157,8 +157,38 @@ beforeEach(() => {
 						facets: {
 							countries: [{ value: 'Colombia', count: 344 }],
 							processing: [{ value: 'Washed', count: 1235 }],
-							processing_base_method: [{ value: 'Natural', count: 533 }]
-						}
+							processing_base_method: [{ value: 'Natural', count: 533 }],
+							grade_size: [
+								{ value: 'KE:AA', count: 39 },
+								{ value: 'ET:G1', count: 84 }
+							],
+							grade_cup: [{ value: 'ET:G1', count: 84 }],
+							screen_size_min: [
+								{ value: '17', count: 32 },
+								{ value: '15', count: 103 }
+							],
+							elevation_band: [
+								{ value: '1800-1999', count: 288 },
+								{ value: '1200-1399', count: 558 }
+							],
+							score_protocols: [{ value: 'supplier_unspecified', count: 443 }]
+						},
+						grades: [
+							{
+								code: 'KE:AA',
+								label: 'Kenya AA',
+								description: "Kenya's largest standard screen grade.",
+								dimensions: ['size'],
+								sort_order: 100
+							},
+							{
+								code: 'ET:G1',
+								label: 'Ethiopia Grade 1',
+								description: 'Ethiopia grade 1.',
+								dimensions: ['size', 'cup'],
+								sort_order: 200
+							}
+						]
 					}),
 					{ status: 200, headers: { 'Content-Type': 'application/json' } }
 				);
@@ -1019,18 +1049,18 @@ describe('/catalog filters', () => {
 		let panel = document.querySelector('[data-catalog-filter-panel]') as HTMLElement;
 		expect(
 			[...panel.querySelectorAll('summary')].map((summary) => summary.textContent?.trim())
-		).toEqual([
-			'Origin and supplier',
-			'Process',
-			'Variety',
-			'Freshness',
-			'Elevation and cup score'
-		]);
-		expect(panel.querySelectorAll('[data-catalog-lock]')).toHaveLength(6);
+		).toEqual(['Origin and supplier', 'Process', 'Grade and quality', 'Variety', 'Freshness']);
+		expect(panel.querySelectorAll('[data-catalog-lock]')).toHaveLength(5);
 		expect(within(panel).getByLabelText('Hobbyist suppliers only')).toBeEnabled();
 		expect(within(panel).getByLabelText('Wholesale suppliers only')).toBeDisabled();
-		expect(within(panel).getByLabelText('Lowest elevation')).toBeDisabled();
-		expect(within(panel).getByLabelText('Lowest score')).toBeDisabled();
+		// A locked section shows its reason and none of its controls.
+		expect(
+			within(panel).getByText(
+				'Members filter by grade, screen size, moisture, growing elevation and cup score.'
+			)
+		).toBeInTheDocument();
+		expect(within(panel).queryByLabelText('Lowest elevation')).not.toBeInTheDocument();
+		expect(within(panel).queryByLabelText('Lowest score')).not.toBeInTheDocument();
 		unmount();
 		catalogFilterPanel.open = false;
 
@@ -1048,6 +1078,59 @@ describe('/catalog filters', () => {
 		expect(within(panel).getByLabelText('Lowest elevation')).toBeEnabled();
 		expect(within(panel).getByRole('group', { name: 'Drying' })).toBeInTheDocument();
 		expect(within(panel).getByRole('searchbox', { name: 'Variety' })).toBeInTheDocument();
+	});
+
+	it('offers grade and quality filters to members, with one grade selection across every kind', async () => {
+		Object.defineProperty(HTMLElement.prototype, 'animate', {
+			configurable: true,
+			value: vi.fn(() => ({ finished: Promise.resolve(), cancel: vi.fn(), play: vi.fn() }))
+		});
+		renderCatalog(
+			createData({
+				session: { access_token: 'member-token' },
+				role: 'member',
+				catalogAccess: memberAccess
+			} as unknown as Partial<PageData>)
+		);
+		await fireEvent.click(screen.getByRole('button', { name: /^All filters/ }));
+		const section = document.querySelector('[data-catalog-grading]') as HTMLElement;
+
+		const size = await within(section).findByRole('group', { name: 'Size grade' });
+		const cup = within(section).getByRole('group', { name: 'Cup grade' });
+		const kenyaAa = within(size).getByRole('button', { name: 'Kenya AA 39' });
+		expect(kenyaAa).toHaveAttribute('title', "Kenya's largest standard screen grade.");
+		// A designation that grades two things is listed under both.
+		expect(within(size).getByRole('button', { name: 'Ethiopia Grade 1 84' })).toBeInTheDocument();
+
+		await fireEvent.click(kenyaAa);
+		await fireEvent.click(within(cup).getByRole('button', { name: 'Ethiopia Grade 1 84' }));
+		expect(get(filterStore).filters.grade_code).toEqual(['KE:AA', 'ET:G1']);
+		expect(within(size).getByRole('button', { name: 'Ethiopia Grade 1 84' })).toHaveAttribute(
+			'aria-pressed',
+			'true'
+		);
+		expect(
+			screen.getByRole('button', { name: 'Remove filter: Grade: Kenya AA' })
+		).toBeInTheDocument();
+
+		await fireEvent.click(within(section).getByRole('button', { name: 'Peaberry' }));
+		expect(get(filterStore).filters.peaberry).toBe(true);
+
+		await fireEvent.click(within(section).getByRole('button', { name: '1,800 to 1,999 m 288' }));
+		expect(get(filterStore).filters.elevation_masl).toEqual({ min: '1800', max: '1999' });
+
+		expect(
+			within(section).getByText(/Stated smallest screen: 15 \(103\), 17 \(32\)/)
+		).toBeInTheDocument();
+		// Every score here has no stated protocol, so there is nothing to choose or rank by.
+		expect(within(section).queryByLabelText('Scoring protocol')).not.toBeInTheDocument();
+		expect(within(section).getByText(/are not ranked against each other/)).toBeInTheDocument();
+		expect(
+			within(document.querySelector('[data-catalog-primary-row]') as HTMLElement).queryByRole(
+				'option',
+				{ name: 'Cup score, high to low' }
+			)
+		).not.toBeInTheDocument();
 	});
 
 	it('keeps a section the viewer opened open when the filters or counts change', async () => {

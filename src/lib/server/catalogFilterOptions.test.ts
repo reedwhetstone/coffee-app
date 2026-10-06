@@ -16,6 +16,38 @@ const TAXONOMIES = {
 	}
 };
 
+const GRADES = {
+	data: [
+		{
+			code: 'KE:AA',
+			system: 'KE',
+			label: 'Kenya AA',
+			description: "Kenya's largest standard screen grade.",
+			dimensions: ['size'],
+			sort_order: 100,
+			active: true
+		},
+		{
+			code: 'ET:G1',
+			system: 'ET',
+			label: 'Ethiopia Grade 1',
+			description: 'Ethiopia grade 1.',
+			dimensions: ['defects', 'cup'],
+			sort_order: 200,
+			active: true
+		},
+		{
+			code: 'OLD:X',
+			system: 'OLD',
+			label: 'Retired grade',
+			description: 'No longer assigned.',
+			dimensions: ['size'],
+			sort_order: 900,
+			active: false
+		}
+	]
+};
+
 /** A stand-in client whose facet counts depend on which filters the read carries. */
 function makeClient(
 	options: { facets?: (query: Query) => unknown; totals?: (query: Query) => number } = {}
@@ -29,13 +61,25 @@ function makeClient(
 		error: null
 	}));
 	const taxonomies = vi.fn(async () => ({ data: TAXONOMIES, error: null }));
-	const client = { catalog: { facets, list, taxonomies } } as unknown as ParchmentClient;
-	return { client, facets, list, taxonomies };
+	const grades = vi.fn(async () => ({ data: GRADES, error: null }));
+	const client = { catalog: { facets, list, taxonomies, grades } } as unknown as ParchmentClient;
+	return { client, facets, list, taxonomies, grades };
 }
 
 const url = (search: string) => new URL(`https://app.test/api/catalog/filters?counts=1&${search}`);
-const freeAccount = { canUseProcessFacets: false };
-const member = { canUseProcessFacets: true };
+const freeAccount = {
+	canUseProcessFacets: false,
+	canUseAdvancedFilters: false,
+	canUsePriceScoreRanges: false
+};
+// One capability at a time, so each case is about one set of reads.
+const member = { ...freeAccount, canUseProcessFacets: true };
+const gradingMember = {
+	...freeAccount,
+	canUseAdvancedFilters: true,
+	canUsePriceScoreRanges: true
+};
+const fullMember = { ...gradingMember, canUseProcessFacets: true };
 
 describe('toCatalogFilterQuery', () => {
 	it('maps the shareable link params onto Parchment filter params and drops paging, sort and view state', () => {
@@ -274,5 +318,207 @@ describe('loadCatalogFilterOptions', () => {
 		await expect(loadCatalogFilterOptions(client, url(''), freeAccount)).rejects.toThrow(
 			'Catalog facets request failed'
 		);
+	});
+
+	describe('grade and quality', () => {
+		const gradingFacets = {
+			values: {},
+			facets: {
+				countries: [{ value: 'Kenya', count: 85 }],
+				grade_size: [{ value: 'KE:AA', count: 39 }],
+				grade_defects: [{ value: 'ET:G1', count: 84 }],
+				grade_cup: [{ value: 'ET:G1', count: 84 }],
+				screen_size_min: [{ value: '17', count: 32 }],
+				elevation_band: [{ value: '1800-1999', count: 288 }]
+			}
+		};
+
+		it('reads nothing about grades for a caller who may not filter on them', async () => {
+			const { client, facets, grades, list } = makeClient({ facets: () => gradingFacets });
+
+			const result = await loadCatalogFilterOptions(
+				client,
+				url('grade_code=KE:AA&screen_min=15'),
+				freeAccount
+			);
+
+			expect(facets).toHaveBeenCalledTimes(1);
+			expect(facets).toHaveBeenCalledWith(
+				expect.not.objectContaining({ include: expect.anything() })
+			);
+			expect(grades).not.toHaveBeenCalled();
+			expect(list).not.toHaveBeenCalled();
+			expect(result).not.toHaveProperty('grades');
+			for (const facet of ['grade_size', 'grade_cup', 'screen_size_min', 'elevation_band']) {
+				expect(result.facets).not.toHaveProperty(facet);
+			}
+			expect(result.facets).not.toHaveProperty('score_protocols');
+		});
+
+		it('adds grade counts, screen sizes, elevation bands and the active grade vocabulary', async () => {
+			const { client, facets, grades } = makeClient({ facets: () => gradingFacets });
+
+			const result = await loadCatalogFilterOptions(client, url(''), gradingMember);
+
+			expect(facets).toHaveBeenCalledWith({
+				stocked: 'true',
+				showWholesale: 'true',
+				include: 'grading'
+			});
+			expect(grades).toHaveBeenCalledTimes(1);
+			expect(result.facets.grade_size).toEqual([{ value: 'KE:AA', count: 39 }]);
+			expect(result.facets.grade_altitude).toEqual([]);
+			expect(result.facets.screen_size_min).toEqual([{ value: '17', count: 32 }]);
+			expect(result.facets.elevation_band).toEqual([{ value: '1800-1999', count: 288 }]);
+			expect(result.grades).toEqual([
+				{
+					code: 'KE:AA',
+					label: 'Kenya AA',
+					description: "Kenya's largest standard screen grade.",
+					dimensions: ['size'],
+					sort_order: 100
+				},
+				{
+					code: 'ET:G1',
+					label: 'Ethiopia Grade 1',
+					description: 'Ethiopia grade 1.',
+					dimensions: ['defects', 'cup'],
+					sort_order: 200
+				}
+			]);
+			expect(result).not.toHaveProperty('vocabulary');
+		});
+
+		it('asks for both sets of counts for a caller who may use both', async () => {
+			const { client, facets } = makeClient();
+
+			await loadCatalogFilterOptions(client, url(''), fullMember);
+
+			expect(facets).toHaveBeenCalledWith({
+				stocked: 'true',
+				showWholesale: 'true',
+				include: 'taxonomy,grading'
+			});
+		});
+
+		it('counts every kind of grade with the grade selection removed, in one extra read', async () => {
+			const { client, facets } = makeClient({
+				facets: (query) =>
+					'gradeCode' in query
+						? { values: {}, facets: { grade_size: [{ value: 'KE:AA', count: 39 }] } }
+						: gradingFacets
+			});
+
+			const result = await loadCatalogFilterOptions(
+				client,
+				url('grade_code=KE:AA&grade_code=ET:G1&name=aa'),
+				gradingMember
+			);
+
+			expect(facets).toHaveBeenCalledTimes(2);
+			expect(facets).toHaveBeenCalledWith({
+				stocked: 'true',
+				showWholesale: 'true',
+				name: 'aa',
+				include: 'grading'
+			});
+			// All five grade groups come from the read without the grade selection.
+			expect(result.facets.grade_size).toEqual([{ value: 'KE:AA', count: 39 }]);
+			expect(result.facets.grade_cup).toEqual([{ value: 'ET:G1', count: 84 }]);
+			expect(result.facets.grade_defects).toEqual([{ value: 'ET:G1', count: 84 }]);
+			expect(result.facets.grade_altitude).toEqual([]);
+			// Other controls keep the counts under the selection.
+			expect(result.facets.countries).toEqual([]);
+		});
+
+		it('counts screen sizes and elevation bands with their own range removed', async () => {
+			const { client, facets } = makeClient();
+
+			await loadCatalogFilterOptions(
+				client,
+				url(
+					'screen_min=15&screen_max=18&include_unknown_screen=true&elevation_min_masl=1800&elevation_max_masl=1999&include_unknown_elevation=true'
+				),
+				gradingMember
+			);
+
+			const calls = facets.mock.calls.map(([query]) => Object.keys(query).sort().join(','));
+			expect(calls).toEqual([
+				'elevationMaxMasl,elevationMinMasl,include,includeUnknownElevation,includeUnknownScreen,screenMax,screenMin,showWholesale,stocked',
+				'elevationMaxMasl,elevationMinMasl,include,includeUnknownElevation,showWholesale,stocked',
+				'include,includeUnknownScreen,screenMax,screenMin,showWholesale,stocked'
+			]);
+		});
+
+		it('reports one protocol when no score states one, from two totals', async () => {
+			const { client, list } = makeClient({ totals: () => 443 });
+
+			const result = await loadCatalogFilterOptions(
+				client,
+				url('country=Kenya&score_value_min=86&score_protocol=sca_2004'),
+				gradingMember
+			);
+
+			expect(result.facets.score_protocols).toEqual([
+				{ value: 'supplier_unspecified', count: 443 }
+			]);
+			expect(list).toHaveBeenCalledTimes(2);
+			// The score filters themselves are left out, so the counts describe the choice.
+			const base = { stocked: 'true', showWholesale: 'true', country: 'Kenya' };
+			const page = { page: 1, limit: 1, projection: 'summary' };
+			expect(list).toHaveBeenCalledWith({ ...base, scoreValueMin: 0, ...page });
+			expect(list).toHaveBeenCalledWith({
+				...base,
+				scoreProtocol: 'supplier_unspecified',
+				...page
+			});
+		});
+
+		it('counts each stated protocol once some score states one, and lists those first', async () => {
+			const totals: Record<string, number> = {
+				supplier_unspecified: 400,
+				sca_2004: 30,
+				q_arabica: 13,
+				cva_affective: 0,
+				coe: 0
+			};
+			const { client, list } = makeClient({
+				totals: (query) =>
+					typeof query.scoreProtocol === 'string' ? totals[query.scoreProtocol] : 443
+			});
+
+			const result = await loadCatalogFilterOptions(client, url(''), gradingMember);
+
+			expect(list).toHaveBeenCalledTimes(6);
+			expect(result.facets.score_protocols).toEqual([
+				{ value: 'sca_2004', count: 30 },
+				{ value: 'q_arabica', count: 13 },
+				{ value: 'supplier_unspecified', count: 400 }
+			]);
+		});
+
+		it('offers no protocol when nothing is scored, and none when the totals cannot be read', async () => {
+			const unscored = makeClient({ totals: () => 0 });
+			expect(
+				(await loadCatalogFilterOptions(unscored.client, url(''), gradingMember)).facets
+					.score_protocols
+			).toEqual([]);
+
+			const failing = makeClient();
+			failing.list.mockResolvedValue({ data: undefined, error: { error: {} } } as never);
+			expect(
+				(await loadCatalogFilterOptions(failing.client, url(''), gradingMember)).facets
+			).not.toHaveProperty('score_protocols');
+		});
+
+		it('returns the options without grades when the vocabulary cannot be read', async () => {
+			const { client, grades } = makeClient({ facets: () => gradingFacets });
+			grades.mockRejectedValue(new Error('unavailable'));
+
+			const result = await loadCatalogFilterOptions(client, url(''), gradingMember);
+
+			expect(result).not.toHaveProperty('grades');
+			expect(result.facets.grade_size).toEqual([{ value: 'KE:AA', count: 39 }]);
+		});
 	});
 });

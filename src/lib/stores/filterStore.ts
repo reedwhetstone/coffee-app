@@ -7,10 +7,12 @@ import {
 	type CatalogUrlState
 } from '$lib/catalog/urlState';
 import { preserveCatalogExperienceParams } from '$lib/catalog/mapState';
+import { catalogSortAfterFilterChange } from '$lib/catalog/filterModel';
 import type {
 	CatalogFacetCount,
 	CatalogFilterOptions,
-	CatalogFilterVocabulary
+	CatalogFilterVocabulary,
+	CatalogGradeEntry
 } from '$lib/catalog/filterOptions';
 import {
 	isCatalogRoute,
@@ -55,7 +57,14 @@ const UPSTREAM_NOTICE_TO_APP_FILTER_KEY: Readonly<Record<string, string>> = {
 	variety: 'cultivar_detail',
 	varietyCode: 'variety_code',
 	speciesCode: 'species_code',
-	dryingMethodCode: 'drying_method_code'
+	dryingMethodCode: 'drying_method_code',
+	gradeCode: 'grade_code',
+	labAnalyzed: 'lab_analyzed',
+	screenMin: 'screen_size',
+	screenMax: 'screen_size',
+	includeUnknownScreen: 'screen_size',
+	moistureMax: 'moisture_max',
+	scoreProtocol: 'score_protocol'
 };
 
 /**
@@ -108,6 +117,8 @@ type FilterState = {
 	facetCounts: Record<string, CatalogFacetCount[]>;
 	/** Catalog only: variety, species and drying labels, for callers who may filter on them. */
 	vocabulary: CatalogFilterVocabulary | null;
+	/** Catalog only: grade designations, for callers who may filter on them. */
+	grades: CatalogGradeEntry[] | null;
 	/** Catalog only: coffees with no standardized variety under the other active filters. */
 	unstandardizedVarietyCount: number | null;
 	/** Catalog only: whether the option lists are being read, are current, or could not be read. */
@@ -162,6 +173,7 @@ const initialState: FilterState = {
 	uniqueValues: {},
 	facetCounts: {},
 	vocabulary: null,
+	grades: null,
 	unstandardizedVarietyCount: null,
 	optionsStatus: 'loading',
 	originalData: [],
@@ -181,6 +193,15 @@ const initialState: FilterState = {
 	lastProcessedCacheKey: null,
 	changeCounter: 0
 };
+
+/**
+ * Replaces the filters. Every filter change goes through here, so a sort that
+ * depends on a filter ends with it whichever control made the change.
+ */
+function applyFilters(state: FilterState, filters: Record<string, FilterValue>): void {
+	Object.assign(state, catalogSortAfterFilterChange(state, state.filters, filters));
+	state.filters = filters;
+}
 
 // Create the store
 function createFilterStore() {
@@ -322,11 +343,14 @@ function createFilterStore() {
 								) as Record<string, FilterValue>)
 							: s.filters;
 
+					const sort = sortWasStripped
+						? { sortField: null, sortDirection: null }
+						: catalogSortAfterFilterChange(s, s.filters, filters);
+
 					return {
 						...s,
 						filters,
-						sortField: sortWasStripped ? null : s.sortField,
-						sortDirection: sortWasStripped ? null : s.sortDirection,
+						...sort,
 						serverData: result.data || [],
 						pagination: result.pagination || s.pagination,
 						filteredData: result.data || [], // Keep filteredData in sync for backward compatibility
@@ -412,6 +436,7 @@ function createFilterStore() {
 				uniqueValues: options.values ?? {},
 				facetCounts: options.facets ?? {},
 				vocabulary: options.vocabulary ?? null,
+				grades: options.grades ?? null,
 				unstandardizedVarietyCount: options.unstandardizedVarietyCount ?? null,
 				optionsStatus: 'ready'
 			}));
@@ -596,7 +621,7 @@ function createFilterStore() {
 	 */
 	function setFilter(key: string, value: FilterValue) {
 		update((state) => {
-			state.filters = sanitizeFilters({ ...state.filters, [key]: value });
+			applyFilters(state, sanitizeFilters({ ...state.filters, [key]: value }));
 			// Reset to first page for server-side routes
 			if (isCatalogRoute(state.routeId)) {
 				state.pagination.page = 1;
@@ -620,7 +645,7 @@ function createFilterStore() {
 	 */
 	function setFilters(changes: Record<string, FilterValue>) {
 		update((state) => {
-			state.filters = sanitizeFilters({ ...state.filters, ...changes });
+			applyFilters(state, sanitizeFilters({ ...state.filters, ...changes }));
 			if (isCatalogRoute(state.routeId)) {
 				state.pagination.page = 1;
 			}
@@ -643,9 +668,12 @@ function createFilterStore() {
 	function clearFiltersByKeys(keys: string[]) {
 		const keySet = new Set(keys);
 		update((state) => {
-			state.filters = Object.fromEntries(
-				Object.entries(state.filters).filter(([key]) => !keySet.has(key))
-			) as Record<string, FilterValue>;
+			applyFilters(
+				state,
+				Object.fromEntries(
+					Object.entries(state.filters).filter(([key]) => !keySet.has(key))
+				) as Record<string, FilterValue>
+			);
 			if (isCatalogRoute(state.routeId)) {
 				state.pagination.page = 1;
 			}
@@ -784,7 +812,7 @@ function createFilterStore() {
 	// Clear active filters while preserving the current sort contract.
 	function clearFilters() {
 		update((state) => {
-			state.filters = {};
+			applyFilters(state, {});
 			state.showWholesale = true;
 			state.wholesaleOnly = false;
 			state.includeUnstocked = false;

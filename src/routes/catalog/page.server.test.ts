@@ -717,6 +717,96 @@ describe('/catalog page load', () => {
 		expect(mockCatalogList).toHaveBeenLastCalledWith(expect.objectContaining({ stocked: 'all' }));
 	});
 
+	it('strips the grade and quality filters for free accounts, says so, and passes them for members', async () => {
+		const url =
+			'https://app.test/catalog?grade_code=KE:AA&peaberry=true&lab_analyzed=true&screen_min=15&screen_max=18&include_unknown_screen=true&moisture_max=11.5&score_protocol=sca_2004&country=Kenya';
+
+		const viewer = (await load(
+			makeLoadInput('viewer', { access_token: 'cookie-token' } as Session | null, url)
+		)) as {
+			initialCatalogState: { filters: Record<string, unknown> };
+			catalogAccessNotice: { message: string; deniedParams: string[] } | null;
+		};
+		expect(viewer.initialCatalogState.filters).toEqual({ country: ['Kenya'] });
+		expect(viewer.catalogAccessNotice?.deniedParams).toEqual([
+			'grade_code',
+			'peaberry',
+			'lab_analyzed',
+			'screen_min',
+			'screen_max',
+			'include_unknown_screen',
+			'moisture_max',
+			'score_protocol'
+		]);
+		expect(viewer.catalogAccessNotice?.message).toBe(
+			'Grade, elevation, and other detail filters are available to members and customer API keys.'
+		);
+		expect(mockCatalogList).toHaveBeenLastCalledWith(
+			expect.not.objectContaining({ gradeCode: expect.anything() })
+		);
+		expect(mockCatalogList).toHaveBeenLastCalledWith(
+			expect.not.objectContaining({ peaberry: expect.anything() })
+		);
+
+		const member = (await load(
+			makeLoadInput('member', { access_token: 'cookie-token' } as Session | null, url)
+		)) as {
+			initialCatalogState: { filters: Record<string, unknown> };
+			catalogAccessNotice: unknown;
+		};
+		expect(member.catalogAccessNotice).toBeNull();
+		expect(member.initialCatalogState.filters).toEqual({
+			country: ['Kenya'],
+			grade_code: ['KE:AA'],
+			peaberry: true,
+			lab_analyzed: true,
+			screen_size: { min: '15', max: '18', includeUnknown: true },
+			moisture_max: 11.5,
+			score_protocol: 'sca_2004'
+		});
+		expect(mockCatalogList).toHaveBeenLastCalledWith(
+			expect.objectContaining({
+				gradeCode: ['KE:AA'],
+				peaberry: 'true',
+				labAnalyzed: 'true',
+				screenMin: 15,
+				screenMax: 18,
+				includeUnknownScreen: 'true',
+				moistureMax: 11.5,
+				scoreProtocol: 'sca_2004'
+			})
+		);
+	});
+
+	it('ends a cup score order from a link when its protocol was stripped', async () => {
+		type Loaded = {
+			initialCatalogState: { sortField: string | null; sortDirection: string | null };
+		};
+		const sorted = 'https://app.test/catalog?sortField=score_value&sortDirection=desc';
+		const session = { access_token: 'cookie-token' } as Session | null;
+
+		const viewer = (await load(
+			makeLoadInput('viewer', session, `${sorted}&score_protocol=sca_2004`)
+		)) as Loaded;
+		expect(viewer.initialCatalogState.sortField).toBeNull();
+		expect(viewer.initialCatalogState.sortDirection).toBeNull();
+		expect(mockCatalogList).toHaveBeenLastCalledWith(
+			expect.not.objectContaining({ sort: expect.anything() })
+		);
+
+		const member = (await load(
+			makeLoadInput('member', session, `${sorted}&score_protocol=sca_2004`)
+		)) as Loaded;
+		expect(member.initialCatalogState.sortField).toBe('score_value');
+		expect(mockCatalogList).toHaveBeenLastCalledWith(
+			expect.objectContaining({ sort: 'score_value', scoreProtocol: 'sca_2004' })
+		);
+
+		// An older link that never named a protocol keeps the order it asked for.
+		const older = (await load(makeLoadInput('viewer', session, sorted))) as Loaded;
+		expect(older.initialCatalogState.sortField).toBe('score_value');
+	});
+
 	it('strips premium discovery filters and sorts from viewer SSR state', async () => {
 		const result = (await load(
 			makeLoadInput(

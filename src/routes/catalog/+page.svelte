@@ -345,7 +345,8 @@
 				wholesaleOnly: $filterStore.wholesaleOnly,
 				includeUnstocked: $filterStore.includeUnstocked
 			},
-			$filterStore.vocabulary
+			$filterStore.vocabulary,
+			$filterStore.grades
 		)
 	);
 	let panelFilterCount = $derived(activeFilters.filter((filter) => filter.inPanel).length);

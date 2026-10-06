@@ -172,19 +172,16 @@
       grading comparison rows (Parchment #333, SDK 0.52.0), grading facets and
       Cherry grading tools (Parchment #334, SDK 0.53.0), and CLI grades and
       grading filters (purveyors-cli #153).
-      Remaining: coffee-app filters and display, in slice 2 of
-      `notes/implementation-plans/2026-10-02-catalog-filter-ux-rework.md`;
+      The catalog's Grade and quality filters shipped in slice 2 of
+      `notes/implementation-plans/2026-10-02-catalog-filter-ux-rework.md`.
+      Remaining: cup score protocols on coffees (every scored coffee had none
+      stated on 2026-10-05, so the protocol choice and cup score sort stay
+      hidden until the scraper records them);
       the coffee-app beans pages and `BeanForm` manual-bean write path,
       which still sends `grade` (move elevation-shaped input to the elevation
       fields and other text to `appearance`, per ADR-016 section 7); Purveyor
       Score provenance; Market Index like-for-like value; then `grade` removal,
       only after every writer and reader, including `BeanForm`, has migrated.
-      The catalog filter work is a full UI/UX rework, not new chips added to the
-      current page. Retire the on-page structured process filters, which add noise
-      and blur the line with the main filter bar. Rank the filters and sorts by
-      importance, and choose a selection method per field (fixed options for
-      bounded vocabularies such as process method, ranges for elevation and
-      screen, search only where values are open-ended).
       Decision: `notes/decisions/016-green-coffee-grading-and-elevation-schema.md`.
 
 - [ ] **Feat: close grading vocabulary gaps.** The grading extractor reports

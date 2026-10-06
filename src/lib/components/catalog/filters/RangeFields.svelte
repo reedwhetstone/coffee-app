@@ -1,9 +1,11 @@
 <script lang="ts">
 	/**
 	 * A minimum and maximum pair. The range is applied when a field is committed
-	 * (blur or Enter), and never while the two bounds are inverted. Inverted
-	 * bounds stay on screen with an error until the viewer fixes them or the
-	 * applied range changes, as it does when the filters are cleared.
+	 * (blur or Enter), and never while the two bounds are inverted or, for a
+	 * range with `outOfRangeText`, while a bound is outside `lowest` to `highest`
+	 * or off `step`. Bounds that cannot be applied stay on screen with an error
+	 * until the viewer fixes them or the applied range changes, as it does when
+	 * the filters are cleared.
 	 */
 	interface Props {
 		legend: string;
@@ -17,6 +19,11 @@
 		disabled?: boolean;
 		includeUnknown?: boolean;
 		includeUnknownLabel?: string;
+		/**
+		 * The error for a bound the catalog would not apply. Set it for a range
+		 * whose limits are a rule of the data, not only a hint to the browser.
+		 */
+		outOfRangeText?: string;
 		onChange: (range: { min: string; max: string; includeUnknown: boolean }) => void;
 	}
 
@@ -32,23 +39,25 @@
 		disabled = false,
 		includeUnknown = false,
 		includeUnknownLabel,
+		outOfRangeText,
 		onChange
 	}: Props = $props();
 
-	// Inverted bounds, held with the applied range they were typed against. One
-	// of the two is always an applied bound, so clearing the filter drops them.
+	// Bounds that cannot be applied, held with the applied range they were typed
+	// against, so they are dropped when that range changes.
 	let draft = $state.raw<{
 		min: string;
 		max: string;
 		appliedMin: string;
 		appliedMax: string;
+		error: string;
 	} | null>(null);
 	let appliedMin = $derived(String(min ?? ''));
 	let appliedMax = $derived(String(max ?? ''));
 	let pending = $derived(
 		draft && draft.appliedMin === appliedMin && draft.appliedMax === appliedMax ? draft : null
 	);
-	let error = $derived(pending ? `The lowest ${unit} cannot be above the highest.` : null);
+	let error = $derived(pending?.error ?? null);
 	// Forget bounds that no longer apply, so they cannot return with the range.
 	$effect(() => {
 		if (draft && !pending) draft = null;
@@ -65,9 +74,24 @@
 		return Number.isFinite(a) && Number.isFinite(b) && a > b;
 	}
 
+	function outOfRange(value: string): boolean {
+		if (value === '') return false;
+		const number = Number(value);
+		if (!Number.isFinite(number) || number < lowest) return true;
+		if (highest !== undefined && number > highest) return true;
+		const steps = (number - lowest) / step;
+		return Math.abs(steps - Math.round(steps)) > 1e-9;
+	}
+
 	function commit(nextMin: string, nextMax: string, nextIncludeUnknown = includeUnknown) {
-		if (inverted(nextMin, nextMax)) {
-			draft = { min: nextMin, max: nextMax, appliedMin, appliedMax };
+		const problem =
+			outOfRangeText && (outOfRange(nextMin) || outOfRange(nextMax))
+				? outOfRangeText
+				: inverted(nextMin, nextMax)
+					? `The lowest ${unit} cannot be above the highest.`
+					: null;
+		if (problem) {
+			draft = { min: nextMin, max: nextMax, appliedMin, appliedMax, error: problem };
 			return;
 		}
 		draft = null;

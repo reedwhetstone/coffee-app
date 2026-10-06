@@ -53,4 +53,49 @@ describe('RangeFields', () => {
 		expect(onChange).toHaveBeenCalledTimes(1);
 		expect(onChange).toHaveBeenCalledWith({ min: '', max: '1500', includeUnknown: false });
 	});
+
+	it('holds a bound outside a ruled range with an error instead of applying it', async () => {
+		const onChange = vi.fn();
+		render(RangeFields, {
+			legend: 'Screen size',
+			idPrefix: 'test-screen',
+			unit: 'screen size',
+			step: 1,
+			lowest: 8,
+			highest: 20,
+			min: '',
+			max: '',
+			outOfRangeText: 'Screen size is a whole number from 8 to 20.',
+			onChange
+		});
+		const low = screen.getByLabelText('Lowest screen size') as HTMLInputElement;
+		const high = screen.getByLabelText('Highest screen size') as HTMLInputElement;
+
+		for (const typed of ['7', '15.5', '21']) {
+			await fireEvent.change(low, { target: { value: typed } });
+			expect(onChange).not.toHaveBeenCalled();
+			expect(low.value).toBe(typed);
+			expect(screen.getByRole('alert')).toHaveTextContent(
+				'Screen size is a whole number from 8 to 20.'
+			);
+		}
+
+		await fireEvent.change(high, { target: { value: '18' } });
+		expect(onChange).not.toHaveBeenCalled();
+
+		await fireEvent.change(low, { target: { value: '15' } });
+		expect(onChange).toHaveBeenCalledTimes(1);
+		expect(onChange).toHaveBeenCalledWith({ min: '15', max: '18', includeUnknown: false });
+		expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+	});
+
+	it('applies any bound when the range has no ruled limits', async () => {
+		const onChange = vi.fn();
+		render(RangeFields, { ...baseProps, step: 50, highest: 3000, min: '', max: '', onChange });
+
+		await fireEvent.change(lowest(), { target: { value: '1234' } });
+
+		expect(onChange).toHaveBeenCalledWith({ min: '1234', max: '', includeUnknown: false });
+		expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+	});
 });

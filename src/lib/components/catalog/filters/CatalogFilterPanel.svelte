@@ -3,9 +3,13 @@
 	import { get } from 'svelte/store';
 	import { filterStore } from '$lib/stores/filterStore';
 	import {
+		GRADE_KINDS,
 		STOCKED_WINDOWS,
 		catalogFilterLock,
+		gradeLabel,
+		isStatedScoreProtocol,
 		readRange,
+		scoreProtocolLabel,
 		type CatalogFilterAccess
 	} from '$lib/catalog/filterModel';
 	import {
@@ -20,6 +24,12 @@
 		formatProcessDisplayValue,
 		isPublicProcessFacetOption
 	} from '$lib/catalog/processDisplay';
+	import {
+		MOISTURE_MAX_LIMIT,
+		SCREEN_SIZE_MAX,
+		SCREEN_SIZE_MIN,
+		isMoistureMax
+	} from '$lib/catalog/urlState';
 	import { formatSourceName } from '$lib/utils/formatters';
 	import FilterChips from './FilterChips.svelte';
 	import SearchableChecklist from './SearchableChecklist.svelte';
@@ -147,14 +157,89 @@
 		)
 	);
 
-	// ── Elevation and cup score ───────────────────────────────────────────────
-	let elevationLock = $derived(catalogFilterLock(access, 'elevation'));
-	let elevation = $derived(readRange(filters.elevation_masl));
+	// ── Grade and quality ─────────────────────────────────────────────────────
+	let gradingLock = $derived(catalogFilterLock(access, 'grading'));
 	let scoreLock = $derived(catalogFilterLock(access, 'score'));
+	let grades = $derived($filterStore.grades);
+	let gradeCodes = $derived(selectedList(filters.grade_code));
+	// One selection spans every kind of grade, so each group shows its own
+	// designations and writes the whole selection back.
+	let gradeGroups = $derived(
+		GRADE_KINDS.map((kind) => {
+			const ofKind = (code: string) => {
+				const known = grades?.find((grade) => grade.code === code);
+				return known
+					? known.dimensions.includes(kind.dimension)
+					: (counts[kind.facet] ?? []).some((entry) => entry.value === code);
+			};
+			return {
+				...kind,
+				options: countedOptions({
+					values: values[kind.facet],
+					counts: counts[kind.facet],
+					selected: gradeCodes.filter(ofKind),
+					label: (code) => gradeLabel(grades, code)
+				}).map((option) => ({
+					...option,
+					title: grades?.find((grade) => grade.code === option.value)?.description
+				}))
+			};
+		}).filter((group) => group.options.length > 0)
+	);
+	let lotFacts = $derived([
+		...(filters.peaberry === true ? ['peaberry'] : []),
+		...(filters.lab_analyzed === true ? ['lab_analyzed'] : [])
+	]);
+	let screen = $derived(readRange(filters.screen_size));
+	let screenSizes = $derived(
+		[...(counts.screen_size_min ?? [])].sort((a, b) => Number(a.value) - Number(b.value))
+	);
+	let elevation = $derived(readRange(filters.elevation_masl));
+	// Parchment counts stated elevations in 200 m bands, named "1200-1399".
+	let elevationBands = $derived(
+		[...(counts.elevation_band ?? [])]
+			.map((entry) => {
+				const [low, high] = entry.value.split('-').map(Number);
+				return { low, high, count: entry.count, value: entry.value };
+			})
+			.filter((band) => Number.isFinite(band.low) && Number.isFinite(band.high))
+			.sort((a, b) => a.low - b.low)
+	);
+	let elevationBand = $derived(
+		elevationBands.find(
+			(band) =>
+				String(elevation.min) === String(band.low) && String(elevation.max) === String(band.high)
+		)?.value
+	);
 	let score = $derived(readRange(filters.score_value));
+	let scoreProtocol = $derived(
+		typeof filters.score_protocol === 'string' ? filters.score_protocol : ''
+	);
+	// Absent while the counts are being read, and when they could not be read:
+	// only counts that arrived can say that no coffee states a protocol.
+	let scoreProtocolCounts = $derived(counts.score_protocols);
+	let scoreProtocols = $derived(scoreProtocolCounts ?? []);
+	// A choice is only worth offering when some coffee states its protocol.
+	let offerScoreProtocol = $derived(
+		scoreProtocol !== '' || scoreProtocols.some((entry) => isStatedScoreProtocol(entry.value))
+	);
 
-	// A section starts open when it already holds a filter. After that the
-	// viewer decides: a count refresh must not close what they opened.
+	// A moisture limit the catalog would not apply, held with the applied limit
+	// it was typed against, so the error goes when that limit changes.
+	let moistureApplied = $derived(String(filters.moisture_max ?? ''));
+	let moistureRejected = $state.raw<{ applied: string } | null>(null);
+	let moistureError = $derived(moistureRejected?.applied === moistureApplied);
+
+	function setMoistureMax(typed: string) {
+		const next = Number(typed);
+		if (typed !== '' && !isMoistureMax(next)) {
+			moistureRejected = { applied: moistureApplied };
+			return;
+		}
+		moistureRejected = null;
+		filterStore.setFilter('moisture_max', typed === '' ? '' : next);
+	}
+
 	let sections = $state(
 		untrack(() => {
 			const active = get(filterStore).filters;
@@ -168,7 +253,16 @@
 				process: catalogFilterLock(access, 'process') === null,
 				variety: has('variety_code', 'species_code', 'cultivar_detail'),
 				freshness: has('stocked_days', 'arrival_date'),
-				ranges: has('elevation_masl', 'score_value')
+				grading: has(
+					'grade_code',
+					'peaberry',
+					'lab_analyzed',
+					'screen_size',
+					'moisture_max',
+					'elevation_masl',
+					'score_value',
+					'score_protocol'
+				)
 			};
 		})
 	);
@@ -332,6 +426,208 @@
 			</div>
 		</details>
 
+		<details bind:open={sections.grading} class={sectionClass} data-catalog-grading>
+			<summary class={summaryClass}>Grade and quality</summary>
+			<div class="mt-4 space-y-5">
+				{#if gradingLock}
+					<LockedNotice lock={gradingLock} />
+				{:else}
+					<div class="space-y-4">
+						{#each gradeGroups as group (group.dimension)}
+							<FilterChips
+								legend={`${group.label} grade`}
+								multiple
+								options={group.options}
+								selected={gradeCodes}
+								onChange={(next) => filterStore.setFilter('grade_code', next)}
+							/>
+						{:else}
+							<p class="text-sm text-muted">
+								<span class="block text-xs font-semibold text-ink">Grade</span>
+								{optionsNote}
+							</p>
+						{/each}
+						{#if gradeGroups.length > 0}
+							<p class="text-xs text-muted">
+								Matches coffees carrying any grade you select, across all groups.
+							</p>
+						{/if}
+					</div>
+					<FilterChips
+						legend="Lot facts"
+						multiple
+						options={[
+							{ value: 'peaberry', label: 'Peaberry' },
+							{ value: 'lab_analyzed', label: 'Lab analyzed' }
+						]}
+						selected={lotFacts}
+						onChange={(next) =>
+							filterStore.setFilters({
+								peaberry: next.includes('peaberry') ? true : '',
+								lab_analyzed: next.includes('lab_analyzed') ? true : ''
+							})}
+					/>
+					<div>
+						<RangeFields
+							legend="Screen size (64ths of an inch)"
+							idPrefix="catalog-panel-screen"
+							unit="screen size"
+							step={1}
+							lowest={SCREEN_SIZE_MIN}
+							highest={SCREEN_SIZE_MAX}
+							min={screen.min}
+							max={screen.max}
+							includeUnknown={screen.includeUnknown === true}
+							includeUnknownLabel="Include coffees with no stated screen size"
+							outOfRangeText={`Screen size is a whole number from ${SCREEN_SIZE_MIN} to ${SCREEN_SIZE_MAX}.`}
+							onChange={(range) =>
+								filterStore.setFilter('screen_size', {
+									min: range.min,
+									max: range.max,
+									...(range.includeUnknown ? { includeUnknown: true } : {})
+								})}
+						/>
+						{#if screenSizes.length > 0}
+							<p class="mt-2 text-xs text-muted" data-screen-sizes>
+								Stated smallest screen:
+								{screenSizes
+									.map((entry) => `${entry.value} (${entry.count.toLocaleString()})`)
+									.join(', ')}
+							</p>
+						{/if}
+					</div>
+					<div>
+						<label for="catalog-panel-moisture" class="text-xs font-semibold text-ink"
+							>Moisture at most (%)</label
+						>
+						<input
+							id="catalog-panel-moisture"
+							type="number"
+							inputmode="decimal"
+							min="0"
+							max={MOISTURE_MAX_LIMIT}
+							step="0.1"
+							placeholder="For example 11"
+							value={filters.moisture_max ?? ''}
+							onchange={(event) => setMoistureMax(event.currentTarget.value)}
+							class="mt-1.5 w-full rounded-md border border-line bg-surface-canvas px-2 py-1.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-accent"
+						/>
+						{#if moistureError}
+							<p class="mt-1.5 text-xs text-danger" role="alert">
+								Moisture is a percentage above 0, up to {MOISTURE_MAX_LIMIT}.
+							</p>
+						{/if}
+						<p class="mt-2 text-xs text-muted">
+							Only coffees with a stated moisture reading match.
+						</p>
+					</div>
+					<div>
+						<RangeFields
+							legend="Growing elevation (meters above sea level)"
+							idPrefix="catalog-panel-elevation"
+							unit="elevation"
+							step={50}
+							min={elevation.min}
+							max={elevation.max}
+							includeUnknown={elevation.includeUnknown === true}
+							includeUnknownLabel="Include coffees with no stated elevation"
+							onChange={(range) =>
+								filterStore.setFilter('elevation_masl', {
+									min: range.min,
+									max: range.max,
+									...(range.includeUnknown ? { includeUnknown: true } : {})
+								})}
+						/>
+						{#if elevationBands.length > 0}
+							<div class="mt-3">
+								<FilterChips
+									legend="Elevation band"
+									hideLegend
+									options={elevationBands.map((band) => ({
+										value: band.value,
+										label: `${band.low.toLocaleString()} to ${band.high.toLocaleString()} m`,
+										count: band.count
+									}))}
+									selected={elevationBand ? [elevationBand] : []}
+									onChange={(next) => {
+										const band = elevationBands.find((entry) => entry.value === next[0]);
+										filterStore.setFilter(
+											'elevation_masl',
+											band
+												? {
+														min: String(band.low),
+														max: String(band.high),
+														...(elevation.includeUnknown ? { includeUnknown: true } : {})
+													}
+												: ''
+										);
+									}}
+								/>
+							</div>
+						{/if}
+						<p class="mt-2 text-xs text-muted">
+							Matches coffees whose stated elevation range overlaps yours.
+						</p>
+					</div>
+					<div>
+						<RangeFields
+							legend="Cup score"
+							idPrefix="catalog-panel-score"
+							unit="score"
+							step={0.5}
+							highest={100}
+							min={score.min}
+							max={score.max}
+							disabled={scoreLock !== null}
+							onChange={(range) =>
+								filterStore.setFilter('score_value', { min: range.min, max: range.max })}
+						/>
+						{#if scoreLock}
+							<div class="mt-2"><LockedNotice lock={scoreLock} compact /></div>
+						{:else if offerScoreProtocol}
+							<label
+								for="catalog-panel-score-protocol"
+								class="mt-3 block text-xs font-semibold text-ink">Scoring protocol</label
+							>
+							<select
+								id="catalog-panel-score-protocol"
+								value={scoreProtocol}
+								onchange={(event) =>
+									filterStore.setFilter('score_protocol', event.currentTarget.value)}
+								class="mt-1.5 w-full rounded-md border border-line bg-surface-canvas px-2 py-1.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-accent"
+							>
+								<option value="">Any protocol</option>
+								{#each scoreProtocols as entry (entry.value)}
+									<option value={entry.value}
+										>{scoreProtocolLabel(entry.value)} ({entry.count.toLocaleString()})</option
+									>
+								{/each}
+								{#if scoreProtocol !== '' && !scoreProtocols.some((entry) => entry.value === scoreProtocol)}
+									<option value={scoreProtocol}>{scoreProtocolLabel(scoreProtocol)}</option>
+								{/if}
+							</select>
+							<p class="mt-2 text-xs text-muted">
+								{isStatedScoreProtocol(scoreProtocol)
+									? 'These scores share one scale, so you can also sort by cup score.'
+									: 'Scores are only ranked against each other within one stated protocol.'}
+							</p>
+						{:else if scoreProtocolCounts === undefined}
+							<p class="mt-2 text-xs text-muted" data-score-protocol-unknown>
+								{optionsStatus === 'loading'
+									? 'Loading scoring protocols'
+									: 'Scoring protocols are unavailable right now.'}
+							</p>
+						{:else}
+							<p class="mt-2 text-xs text-muted" data-score-protocol-note>
+								No supplier in these results says which protocol its score follows, so scores are
+								each supplier's own and are not ranked against each other.
+							</p>
+						{/if}
+					</div>
+				{/if}
+			</div>
+		</details>
+
 		<details bind:open={sections.variety} class={sectionClass}>
 			<summary class={summaryClass}>Variety</summary>
 			<div class="mt-4 space-y-5">
@@ -428,59 +724,6 @@
 							>
 						{/each}
 					</select>
-				</div>
-			</div>
-		</details>
-
-		<details bind:open={sections.ranges} class={sectionClass}>
-			<summary class={summaryClass}>Elevation and cup score</summary>
-			<div class="mt-4 space-y-5">
-				<div>
-					<RangeFields
-						legend="Growing elevation (meters above sea level)"
-						idPrefix="catalog-panel-elevation"
-						unit="elevation"
-						step={50}
-						min={elevation.min}
-						max={elevation.max}
-						disabled={elevationLock !== null}
-						includeUnknown={elevation.includeUnknown === true}
-						includeUnknownLabel="Include coffees with no stated elevation"
-						onChange={(range) =>
-							filterStore.setFilter('elevation_masl', {
-								min: range.min,
-								max: range.max,
-								...(range.includeUnknown ? { includeUnknown: true } : {})
-							})}
-					/>
-					{#if elevationLock}
-						<div class="mt-2"><LockedNotice lock={elevationLock} compact /></div>
-					{:else}
-						<p class="mt-2 text-xs text-muted">
-							Matches coffees whose stated elevation range overlaps yours.
-						</p>
-					{/if}
-				</div>
-				<div>
-					<RangeFields
-						legend="Supplier cup score"
-						idPrefix="catalog-panel-score"
-						unit="score"
-						step={0.5}
-						highest={100}
-						min={score.min}
-						max={score.max}
-						disabled={scoreLock !== null}
-						onChange={(range) =>
-							filterStore.setFilter('score_value', { min: range.min, max: range.max })}
-					/>
-					{#if scoreLock}
-						<div class="mt-2"><LockedNotice lock={scoreLock} compact /></div>
-					{:else}
-						<p class="mt-2 text-xs text-muted">
-							Scores are each supplier's own and are not measured on one scale.
-						</p>
-					{/if}
 				</div>
 			</div>
 		</details>
