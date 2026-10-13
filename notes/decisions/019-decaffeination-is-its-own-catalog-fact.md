@@ -33,14 +33,14 @@ On `coffee_catalog`:
 
 `decaf_methods (code, label, description, active, sort_order)`, in Parchment, seeded with the methods suppliers name today:
 
-| Code                 | Label                   | Suppliers write                         |
-| -------------------- | ----------------------- | --------------------------------------- |
-| `swiss_water`        | Swiss Water             | Swiss Water, SWP, SWD                   |
-| `mountain_water`     | Mountain Water          | Mountain Water, MWP                     |
-| `water_process`      | Water process           | Water Process, with no brand            |
-| `ethyl_acetate`      | Ethyl acetate           | EA, sugarcane, sugar cane, natural EA   |
-| `methylene_chloride` | Methylene chloride      | MC, KVW, European process               |
-| `co2`                | Carbon dioxide          | CO2, supercritical CO2                  |
+| Code                 | Label              | Suppliers write                       |
+| -------------------- | ------------------ | ------------------------------------- |
+| `swiss_water`        | Swiss Water        | Swiss Water, SWP, SWD                 |
+| `mountain_water`     | Mountain Water     | Mountain Water, MWP                   |
+| `water_process`      | Water process      | Water Process, with no brand          |
+| `ethyl_acetate`      | Ethyl acetate      | EA, sugarcane, sugar cane, natural EA |
+| `methylene_chloride` | Methylene chloride | MC, KVW, European process             |
+| `co2`                | Carbon dioxide     | CO2, supercritical CO2                |
 
 The set is small and closed, so supplier wording is mapped in the scraper's normalizer, as grade codes are, and a new method is a reviewed row plus a mapping.
 
