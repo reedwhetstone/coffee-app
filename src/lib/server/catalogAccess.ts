@@ -44,6 +44,7 @@ export interface CatalogAccessDeniedNotice {
 }
 
 export const PROCESS_FACET_FILTER_KEYS = [
+	'decaf',
 	'processing_base_method',
 	'fermentation_type',
 	'process_additive',

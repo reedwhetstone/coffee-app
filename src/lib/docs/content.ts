@@ -469,7 +469,7 @@ const docsPages: DocsPage[] = [
 				title: 'Request and response',
 				body: [
 					'The canonical response includes data, pagination, and meta blocks. The meta block reports auth kind, role, plan, access scope, row-limit state, and cache metadata.',
-					'Full catalog rows include legacy structured processing fields, Purveyor Score fields, plus a nested process object. Null values stay null when the supplier has not disclosed structured metadata. process.evidence_available reports whether internal provenance exists without exposing raw evidence quotes in the public response.',
+					'Full catalog rows include decaffeinated and decafMethod separately from farm processing, along with Purveyor Score fields and a nested process object. decafMethod is null when the supplier does not name a method. Null values stay null when structured metadata is not disclosed. process.evidence_available reports whether internal provenance exists without exposing raw evidence quotes in the public response.',
 					'The example below shows an API-key response. Bearer-session responses keep the same top-level shape. API-key requests additionally emit X-RateLimit-Limit, X-RateLimit-Remaining, and X-RateLimit-Reset for the shared account allowance.',
 					`Green keys can use the same public-data query capabilities as Origin and Enterprise. Green is capped at up to 25 items per read collection response and 200 requests per account per UTC calendar month. Aggregate responses such as facets and statistics use their own documented bounds. Atomic inventory batch receipts remain complete, up to their documented 50-item transaction bound, so reconciliation is never truncated. Every API plan remains public-catalog scoped unless a separate owner-bound scope or data entitlement applies.`,
 					'Cookies are not part of the public API contract. Coffee-app can forward a resolved first-party session as a Bearer token.'
@@ -553,10 +553,16 @@ const docsPages: DocsPage[] = [
 						],
 						['name', 'string', 'none', 'Partial match on coffee name.'],
 						[
+							'decaf',
+							'true | false',
+							'none',
+							'true selects decaffeinated coffees; false excludes them. Omit for any coffee. Independent of farm processing and available to member/admin sessions and customer API keys across every API plan.'
+						],
+						[
 							'processing_base_method',
 							'string',
 							'none',
-							'Advanced process facet. Exact match on normalized base process, for example Washed, Natural, Honey, Wet-Hulled, Decaf, Other, or Unknown. Available to member/admin sessions and customer API keys across every API plan.'
+							'Advanced process facet. Exact match on normalized farm process, for example Washed, Natural, Honey, or Wet-Hulled. The legacy Decaf filter still selects decaf coffees for compatibility; prefer decaf=true. Available to member/admin sessions and customer API keys across every API plan.'
 						],
 						[
 							'fermentation_type',

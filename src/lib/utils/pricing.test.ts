@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import type { components } from '@purveyors/sdk';
 import type { Json } from '$lib/types/json.types';
 import {
 	parsePriceTiers,
@@ -170,6 +171,23 @@ describe('parsePriceTiers', () => {
 // ---------------------------------------------------------------------------
 
 describe('getCanonicalOneLbPrice', () => {
+	it('validates generated SDK unknown tier payloads before displaying prices', () => {
+		const pricing: components['schemas']['CatalogSimilarityResponse']['data']['target']['pricing'] =
+			{
+				price_per_lb: null,
+				price_tiers: [{ min_lbs: 1, price: 8 }],
+				cost_lb: null,
+				baseline_quantity_lbs: 1,
+				baseline_price_per_lb: null,
+				baseline_source: null
+			};
+		expect(formatCanonicalBaselinePrice(pricing)).toBe('$8.00/lb');
+		expect(formatPriceTierSummary(pricing.price_tiers)).toBe('Single 1+ lb tier at $8.00/lb');
+		pricing.price_tiers = { not_a_tier: true };
+		expect(formatCanonicalBaselinePrice(pricing)).toBe('Price unavailable');
+		expect(formatPriceTierSummary(pricing.price_tiers)).toBeNull();
+	});
+
 	it('prefers canonical price_per_lb over legacy cost_lb for comparison baselines', () => {
 		const coffee = makeCoffee({ cost_lb: 99, price_per_lb: 12, price_tiers: asJson(RETAIL_TIERS) });
 		expect(getCanonicalOneLbPrice(coffee)).toBe(12);

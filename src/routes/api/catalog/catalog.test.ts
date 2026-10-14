@@ -48,6 +48,26 @@ beforeEach(async () => {
 });
 
 describe('/api/catalog route', () => {
+	it.each(['true', 'false'])(
+		'forwards decaf=%s and retains structured facts in browser rows',
+		async (decaf) => {
+			const rows = [
+				{
+					id: 1,
+					decaffeinated: decaf === 'true',
+					decafMethod: decaf === 'true' ? { code: 'swiss_water', label: 'Swiss Water' } : null
+				}
+			];
+			mockCatalogList.mockResolvedValue({
+				data: { data: rows, pagination: { total: 1 } },
+				response: new Response(null, { status: 200 })
+			});
+			const response = await GET(makeEvent(`https://app.test/api/catalog?decaf=${decaf}`));
+			expect(mockCatalogList).toHaveBeenCalledWith(expect.objectContaining({ decaf }));
+			expect(await response.json()).toMatchObject({ data: rows });
+		}
+	);
+
 	it('proxies through the website credential lane to Parchment', async () => {
 		await GET(makeEvent('https://app.test/api/catalog?page=2&limit=10'));
 

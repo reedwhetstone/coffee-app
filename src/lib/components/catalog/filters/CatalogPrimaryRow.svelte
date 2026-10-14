@@ -9,14 +9,12 @@
 		type CatalogFilterAccess
 	} from '$lib/catalog/filterModel';
 	import { countedOptions, selectedList, selectedOne } from '$lib/catalog/filterOptionsView';
-	import {
-		formatProcessDisplayValue,
-		isPublicProcessFacetOption
-	} from '$lib/catalog/processDisplay';
+	import { formatProcessDisplayValue, isFarmProcessFacetOption } from '$lib/catalog/processDisplay';
 	import { dismissOnOutsidePointer } from '$lib/utils/dismissOnOutsidePointer';
 	import FilterChips from './FilterChips.svelte';
 	import SearchableChecklist from './SearchableChecklist.svelte';
 	import LockedNotice from './LockedNotice.svelte';
+	import DecafFilter from './DecafFilter.svelte';
 
 	interface Props {
 		access: CatalogFilterAccess;
@@ -47,7 +45,7 @@
 			counts: $filterStore.facetCounts.processing_base_method,
 			selected: baseMethod,
 			label: formatProcessDisplayValue,
-			keep: isPublicProcessFacetOption
+			keep: isFarmProcessFacetOption
 		})
 	);
 	let legacyProcessOptions = $derived(
@@ -55,6 +53,7 @@
 			values: $filterStore.uniqueValues.processing,
 			counts: $filterStore.facetCounts.processing,
 			selected: selectedOne($filterStore.filters.processing),
+			keep: isFarmProcessFacetOption,
 			sort: 'label'
 		})
 	);
@@ -228,6 +227,10 @@
 			/>
 			<span>In stock only</span>
 		</label>
+
+		<div class="rounded-md border border-line bg-surface-canvas px-3 py-1.5" data-catalog-decaf>
+			<DecafFilter {access} compact />
+		</div>
 
 		<label class="inline-flex min-w-0 max-w-full items-center gap-2 text-sm text-muted">
 			<span>Sort</span>

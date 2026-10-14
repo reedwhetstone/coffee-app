@@ -1056,13 +1056,15 @@ describe('/catalog filters', () => {
 			[...panel.querySelectorAll('summary')].map((summary) => summary.textContent?.trim())
 		).toEqual([
 			'Origin and supplier',
+			'Decaf',
 			'Process',
 			'Grade and quality',
 			'Variety',
 			'Freshness',
 			'Transparency'
 		]);
-		expect(panel.querySelectorAll('[data-catalog-lock]')).toHaveLength(6);
+		expect(panel.querySelectorAll('[data-catalog-lock]')).toHaveLength(7);
+		expect(within(panel).getByRole('button', { name: 'Decaf only' })).toBeDisabled();
 		expect(within(panel).getByLabelText('Hobbyist suppliers only')).toBeEnabled();
 		expect(within(panel).getByLabelText('Wholesale suppliers only')).toBeDisabled();
 		// A locked section shows its reason and none of its controls.
@@ -1086,6 +1088,7 @@ describe('/catalog filters', () => {
 		await fireEvent.click(screen.getByRole('button', { name: /^All filters/ }));
 		panel = document.querySelector('[data-catalog-filter-panel]') as HTMLElement;
 		expect(panel.querySelectorAll('[data-catalog-lock]')).toHaveLength(0);
+		expect(within(panel).getByRole('button', { name: 'Decaf only' })).toBeEnabled();
 		expect(within(panel).getByLabelText('Wholesale suppliers only')).toBeEnabled();
 		expect(within(panel).getByLabelText('Lowest elevation')).toBeEnabled();
 		expect(within(panel).getByRole('group', { name: 'Drying' })).toBeInTheDocument();

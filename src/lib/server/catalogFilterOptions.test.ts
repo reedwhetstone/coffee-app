@@ -118,6 +118,58 @@ describe('toCatalogFilterQuery', () => {
 });
 
 describe('loadCatalogFilterOptions', () => {
+	it.each(['true', 'false'])(
+		'keeps decaf alternatives counted under other filters for %s',
+		async (decaf) => {
+			const alternatives = [
+				{ value: 'true', count: 12 },
+				{ value: 'false', count: 88 }
+			];
+			const { client, facets } = makeClient({
+				facets: (query) => ({
+					values: { decaf: query.decaf ? [query.decaf] : ['true', 'false'] },
+					facets: {
+						decaf: query.decaf
+							? alternatives.filter((entry) => entry.value === query.decaf)
+							: alternatives
+					}
+				})
+			});
+			const result = await loadCatalogFilterOptions(
+				client,
+				url(`name=coffee&decaf=${decaf}`),
+				member
+			);
+			expect(result.facets.decaf).toEqual(alternatives);
+			expect(result.values.decaf).toEqual(['true', 'false']);
+			expect(facets).toHaveBeenCalledWith(expect.objectContaining({ name: 'coffee', decaf }));
+			expect(facets).toHaveBeenCalledWith({
+				stocked: 'true',
+				showWholesale: 'true',
+				name: 'coffee'
+			});
+		}
+	);
+
+	it('omits decaf metadata and its filter for an unentitled control, even if upstream supplies it', async () => {
+		const { client, facets } = makeClient({
+			facets: () => ({
+				values: { decaf: ['true', 'false'] },
+				facets: {
+					decaf: [
+						{ value: 'true', count: 12 },
+						{ value: 'false', count: 88 }
+					]
+				}
+			})
+		});
+		const result = await loadCatalogFilterOptions(client, url('decaf=false'), freeAccount);
+		expect(result.values).not.toHaveProperty('decaf');
+		expect(result.facets).not.toHaveProperty('decaf');
+		expect(facets).toHaveBeenCalledTimes(1);
+		expect(facets).toHaveBeenCalledWith({ stocked: 'true', showWholesale: 'true' });
+	});
+
 	it('reads one set of counts under the active filters for a caller without the standardized filters', async () => {
 		const { client, facets, list, taxonomies } = makeClient({
 			facets: () => ({

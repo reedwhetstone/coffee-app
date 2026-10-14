@@ -202,6 +202,64 @@ describe('filterStore catalog URL and filter clearing behavior', () => {
 		expect(requestUrl).toContain('processing_confidence_min=0.8');
 	});
 
+	it('preserves decaf false through hydration, refresh, share URL updates and reset', async () => {
+		const fetchSpy = vi.fn(async (input: RequestInfo | URL) => {
+			const url = input.toString();
+			if (url.startsWith('/api/catalog/filters?')) return emptyFiltersResponse();
+			if (url.startsWith('/api/catalog?')) return createCatalogResponse();
+			throw new Error(`Unexpected fetch: ${url}`);
+		});
+		vi.stubGlobal('fetch', fetchSpy);
+
+		const { filterStore } = await loadFilterStore();
+		filterStore.initializeForRoute('/catalog', [{ id: 1, wholesale: false }], {
+			catalogUrlState: {
+				filters: { decaf: false },
+				sortField: null,
+				sortDirection: null,
+				showWholesale: true,
+				wholesaleOnly: false,
+				pagination: { page: 2, limit: 15 }
+			},
+			serverData: [{ id: 1, wholesale: false }],
+			pagination: {
+				page: 2,
+				limit: 15,
+				total: 20,
+				totalPages: 2,
+				hasNext: false,
+				hasPrev: true
+			}
+		});
+
+		await vi.runOnlyPendingTimersAsync();
+		expect(get(filterStore).filters.decaf).toBe(false);
+		expect(window.location.search).toContain('decaf=false');
+		expect(get(filterStore).pagination.page).toBe(2);
+
+		filterStore.setFilter('decaf', false);
+		await vi.runOnlyPendingTimersAsync();
+		expect(
+			requestedUrls(fetchSpy, '/api/catalog?').some((url) => url.includes('decaf=false'))
+		).toBe(true);
+		expect(window.location.search).toContain('decaf=false');
+		expect(get(filterStore).pagination.page).toBe(1);
+
+		filterStore.setFilter('decaf', true);
+		await vi.runOnlyPendingTimersAsync();
+		expect(get(filterStore).filters.decaf).toBe(true);
+		expect(requestedUrls(fetchSpy, '/api/catalog?').some((url) => url.includes('decaf=true'))).toBe(
+			true
+		);
+		expect(window.location.search).toContain('decaf=true');
+		expect(get(filterStore).pagination.page).toBe(1);
+
+		filterStore.setFilter('decaf', '');
+		await vi.runOnlyPendingTimersAsync();
+		expect(get(filterStore).filters).not.toHaveProperty('decaf');
+		expect(window.location.search).not.toContain('decaf=');
+	});
+
 	it('clears process transparency filters without dropping simple catalog filters', async () => {
 		const fetchSpy = vi.fn(async (input: RequestInfo | URL) => {
 			const url = input.toString();

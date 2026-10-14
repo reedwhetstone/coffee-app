@@ -8,6 +8,8 @@
 		formatScore
 	} from '$lib/utils/formatters';
 	import type { InventoryWithCatalog, RoastProfile } from '$lib/types/component.types';
+	import { getDecafPresentation } from '$lib/catalog/decafPresentation';
+	import DecafBadge from '$lib/components/catalog/DecafBadge.svelte';
 
 	let {
 		selectedBean,
@@ -158,11 +160,13 @@
 	<!-- Catalog Bean Information -->
 	{#if selectedBean.coffee_catalog}
 		{@const cat = selectedBean.coffee_catalog}
+		{@const decafPresentation = getDecafPresentation(cat)}
 		{@const locationStr = formatLocation(cat.continent, cat.country, cat.region)}
 		{@const hasOriginData = !!(
 			locationStr ||
 			cat.cultivar_detail ||
 			cat.processing ||
+			decafPresentation.isDecaffeinated ||
 			cat.drying_method ||
 			cat.grade ||
 			cat.appearance ||
@@ -256,6 +260,14 @@
 							<div class="rounded-lg bg-surface-panel p-3 ring-1 ring-line">
 								<h5 class="text-xs font-medium text-muted">PROCESSING</h5>
 								<div class="mt-1 text-sm text-ink">{cat.processing}</div>
+							</div>
+						{/if}
+						{#if decafPresentation.isDecaffeinated}
+							<div class="rounded-lg bg-surface-panel p-3 ring-1 ring-line">
+								<h5 class="text-xs font-medium text-muted">DECAFFEINATION</h5>
+								<div class="mt-1 text-sm text-ink">
+									<DecafBadge presentation={decafPresentation} />
+								</div>
 							</div>
 						{/if}
 						{#if cat.drying_method}

@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { formatSourceName } from '$lib/utils/formatters';
 	import type { CatalogComparison, ComparisonLot, ComparisonRow } from '$lib/catalog/compareTypes';
+	import { getDecafPresentation } from '$lib/catalog/decafPresentation';
+	import DecafBadge from '$lib/components/catalog/DecafBadge.svelte';
 
 	let {
 		comparison,
@@ -72,6 +74,19 @@
 		return `$${value.toFixed(2)}/lb`;
 	}
 
+	function decafPresentationAt(index: number) {
+		const decaffeinated = comparison.rows.find((row) => row.key === 'decaffeinated')?.values[index];
+		const method = comparison.rows.find((row) => row.key === 'decaf_method')?.values[index];
+		const process = comparison.rows.find((row) => row.key === 'process')?.values[index];
+
+		return getDecafPresentation({
+			decaffeinated: decaffeinated === 'Yes' ? true : decaffeinated === 'No' ? false : undefined,
+			decafMethod:
+				typeof method === 'string' ? { label: method } : method === null ? null : undefined,
+			processing: typeof process === 'string' ? process : null
+		});
+	}
+
 	function display(row: ComparisonRow, value: string | number | null, lot: ComparisonLot): string {
 		if (value === null) {
 			if (row.key === 'price_at_quantity' && lot.price.minOrderLbs) {
@@ -135,7 +150,8 @@
 					>
 						{lots.length} coffees
 					</th>
-					{#each lots as lot (lot.id)}
+					{#each lots as lot, index (lot.id)}
+						{@const decafPresentation = decafPresentationAt(index)}
 						<th scope="col" class="min-w-[12rem] p-3 text-left font-normal">
 							<a
 								href={`/catalog?coffee=${lot.id}`}
@@ -145,6 +161,7 @@
 								{formatSourceName(lot.source ?? '') || 'Supplier undisclosed'}
 							</p>
 							<div class="mt-2 flex flex-wrap items-center gap-2 text-xs">
+								<DecafBadge presentation={decafPresentation} />
 								{#if comparison.bestPriceLotIds.includes(lot.id)}
 									<span
 										class="rounded-full bg-success-subtle px-2 py-0.5 font-semibold text-success-strong"

@@ -4,6 +4,7 @@ import {
 	catalogFilterLock,
 	catalogSortAfterFilterChange,
 	catalogSortOptions,
+	decafFilterOptions,
 	describeActiveCatalogFilters,
 	isStatedScoreProtocol,
 	scoreProtocolLabel,
@@ -31,6 +32,7 @@ const member: CatalogFilterAccess = {
 const CONTROLS = [
 	'price',
 	'process',
+	'decaf',
 	'variety',
 	'freshness',
 	'transparency',
@@ -54,6 +56,11 @@ describe('catalogFilterLock', () => {
 			action: 'Sign in free'
 		});
 		expect(catalogFilterLock(anonymous, 'process')).toMatchObject({ href: '/subscription' });
+		expect(catalogFilterLock(anonymous, 'decaf')).toEqual({
+			reason: 'Members filter coffees by decaf status.',
+			href: '/subscription',
+			action: 'See membership'
+		});
 	});
 
 	it('opens only the price range for a signed-in free account', () => {
@@ -62,6 +69,34 @@ describe('catalogFilterLock', () => {
 
 	it('locks nothing for members', () => {
 		expect(lockedControls(member)).toEqual([]);
+	});
+});
+
+describe('decafFilterOptions', () => {
+	it('uses only canonical facet counts and leaves Any uncounted', () => {
+		expect(decafFilterOptions(undefined, undefined)).toEqual([
+			{ value: 'any', label: 'Any', count: null },
+			{ value: 'true', label: 'Decaf only', count: null },
+			{ value: 'false', label: 'No decaf', count: null }
+		]);
+		expect(decafFilterOptions([], [])).toEqual([
+			{ value: 'any', label: 'Any', count: null },
+			{ value: 'true', label: 'Decaf only', count: 0 },
+			{ value: 'false', label: 'No decaf', count: 0 }
+		]);
+		expect(
+			decafFilterOptions(
+				['true', 'false'],
+				[
+					{ value: 'true', count: 27 },
+					{ value: 'false', count: 81 }
+				]
+			)
+		).toEqual([
+			{ value: 'any', label: 'Any', count: null },
+			{ value: 'true', label: 'Decaf only', count: 27 },
+			{ value: 'false', label: 'No decaf', count: 81 }
+		]);
 	});
 });
 
@@ -168,6 +203,30 @@ describe('describeActiveCatalogFilters', () => {
 			'Cup score: up to 88',
 			'Stocked in the last 30 days'
 		]);
+	});
+
+	it('shows both decaf selections distinctly and clears them as one boolean filter', () => {
+		const base = {
+			showWholesale: true,
+			wholesaleOnly: false,
+			includeUnstocked: false
+		};
+		const decafOnly = describeActiveCatalogFilters({
+			...base,
+			filters: { decaf: true }
+		})[0];
+		const noDecaf = describeActiveCatalogFilters({
+			...base,
+			filters: { decaf: false }
+		})[0];
+
+		expect(decafOnly).toMatchObject({
+			id: 'decaf',
+			label: 'Decaf only',
+			remove: { kind: 'filter', key: 'decaf', value: '' },
+			inPanel: true
+		});
+		expect(noDecaf).toMatchObject({ id: 'decaf', label: 'No decaf' });
 	});
 
 	it('removes one value of a multi-value filter and clears a single-value one', () => {

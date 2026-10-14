@@ -28,8 +28,10 @@
 	import { getPurveyorScoreSummary } from '$lib/catalog/purveyorScore';
 	import { dryingDisplay, varietyDisplay } from '$lib/catalog/taxonomyDisplay';
 	import type { LotPriceContext, LotPriceTier } from '$lib/catalog/priceContext';
+	import { getDecafPresentation } from '$lib/catalog/decafPresentation';
 	import { formatSourceName } from '$lib/utils/formatters';
 	import PriceHistorySparkline from '$lib/components/catalog/PriceHistorySparkline.svelte';
+	import DecafBadge from '$lib/components/catalog/DecafBadge.svelte';
 
 	let {
 		coffee: initialCoffee,
@@ -211,6 +213,7 @@
 			? hydratedCoffee
 			: initialCoffee
 	);
+	let decafPresentation = $derived(getDecafPresentation(coffee));
 
 	const DETAIL_PREFETCH_DWELL_MS = 120;
 	let prefetchTimer: ReturnType<typeof setTimeout> | null = null;
@@ -542,6 +545,7 @@
 							{coffee.processing}
 						</span>
 					{/if}
+					<DecafBadge presentation={decafPresentation} />
 					<span>
 						<span class="font-medium text-ink">Freshness</span>
 						{freshnessSummary}
@@ -857,7 +861,10 @@
 									</div>
 									<div>
 										<dt class="font-semibold text-ink">Process</dt>
-										<dd class="text-muted">{coffee.processing ?? 'Not disclosed'}</dd>
+										<dd class="flex flex-wrap items-center gap-2 text-muted">
+											{coffee.processing ?? 'Not disclosed'}
+											<DecafBadge presentation={decafPresentation} />
+										</dd>
 									</div>
 									<div>
 										<dt class="font-semibold text-ink">Availability</dt>
@@ -964,7 +971,10 @@
 						<div class="space-y-4">
 							{#if processAnalysis}
 								<div class="rounded-lg border border-line bg-surface-panel p-4">
-									<p class="text-xs font-semibold text-organic-rust">Process transparency</p>
+									<div class="flex flex-wrap items-center gap-2">
+										<p class="text-xs font-semibold text-organic-rust">Process transparency</p>
+										<DecafBadge presentation={decafPresentation} />
+									</div>
 									<h3 class="mt-1 font-semibold text-ink">{processAnalysis.headline}</h3>
 									{#if processAnalysis.details.length > 0}
 										<ul class="mt-3 space-y-2 text-sm text-muted">

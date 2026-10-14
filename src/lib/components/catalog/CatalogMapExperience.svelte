@@ -23,6 +23,8 @@
 		type CatalogMapPlace
 	} from '$lib/catalog/mapPresentation';
 	import { TERRAIN_ELEVATION_BANDS } from '$lib/styles/mapColors';
+	import { getDecafPresentation } from '$lib/catalog/decafPresentation';
+	import DecafBadge from '$lib/components/catalog/DecafBadge.svelte';
 
 	type CatalogMapUiResponse = Omit<CatalogMapResponse, 'data'> & {
 		data: CatalogMapDisplayItem[];
@@ -637,6 +639,7 @@
 					{/if}
 					<div class="space-y-2">
 						{#each selectedCoffees as coffee (coffee.id)}
+							{@const decafPresentation = getDecafPresentation(coffee)}
 							<button
 								type="button"
 								class="w-full rounded-lg border border-line bg-surface-raised p-3 text-left transition-colors hover:border-accent hover:bg-surface-panel focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
@@ -653,6 +656,7 @@
 											>{coffee.processing}</span
 										>
 									{/if}
+									<DecafBadge presentation={decafPresentation} />
 									<span
 										class="rounded-full bg-accent/25 px-2 py-1 text-[0.7rem] font-semibold text-ink"
 										>{selectedCoffeePrice(coffee)}</span

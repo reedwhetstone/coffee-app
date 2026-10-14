@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { describeSourcingBriefCriteria } from './sourcingBriefPresentation';
+import {
+	describeSourcingBriefCriteria,
+	type SourcingBriefCriteria
+} from './sourcingBriefPresentation';
+
+const decafCriteriaCases: Array<[SourcingBriefCriteria, string]> = [
+	[{ version: 1, decaf: true }, 'decaf only'],
+	[{ version: 1, decaf: false }, 'not decaf'],
+	[{ version: 1, processing_base_method: 'Decaf' }, 'decaf only'],
+	[{ version: 1, processing_base_method: 'Decaf', decaf: false }, 'decaf only, not decaf']
+];
 
 describe('describeSourcingBriefCriteria', () => {
 	it('formats canonical typed criteria as presentation copy', () => {
@@ -23,4 +33,11 @@ describe('describeSourcingBriefCriteria', () => {
 	it('does not perform criteria validation or normalization', () => {
 		expect(describeSourcingBriefCriteria({ version: 1 })).toBe('open criteria');
 	});
+
+	it.each(decafCriteriaCases)(
+		'presents decaf criteria without treating it as farm processing: %o',
+		(criteria, expected) => {
+			expect(describeSourcingBriefCriteria(criteria)).toBe(expected);
+		}
+	);
 });

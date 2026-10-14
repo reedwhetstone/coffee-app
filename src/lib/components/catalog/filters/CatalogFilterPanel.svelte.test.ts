@@ -57,6 +57,30 @@ const memberAccess = {
 };
 
 describe('CatalogFilterPanel', () => {
+	it('offers farm processes but preserves an already selected legacy Decaf choice for removal', async () => {
+		filterState.setFilters({});
+		filterState.setFacetCounts({
+			processing_base_method: [
+				{ value: 'Washed', count: 100 },
+				{ value: 'Decaf', count: 12 }
+			]
+		});
+		render(CatalogFilterPanel, {
+			access: memberAccess,
+			resultCount: 112,
+			activeFilterCount: 0,
+			onClose: () => undefined
+		});
+		expect(screen.getByRole('button', { name: /Washed/ })).toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: /^Decaf\s+12$/ })).not.toBeInTheDocument();
+		filterState.setFilters({ processing_base_method: 'Decaf' });
+		await waitFor(() =>
+			expect(screen.getByRole('button', { name: /^Decaf\s+12$/ })).toBeInTheDocument()
+		);
+		await fireEvent.click(screen.getByRole('button', { name: /^Decaf\s+12$/ }));
+		expect(filterState.current().filters).not.toHaveProperty('processing_base_method');
+	});
+
 	beforeEach(() => {
 		filterState.setFacetCounts({});
 		filterState.setFilters({});
@@ -151,5 +175,48 @@ describe('CatalogFilterPanel', () => {
 
 		filterState.setFacetCounts({ score_protocols: [] });
 		await waitFor(() => expect(section).toHaveTextContent('No supplier in these results'));
+	});
+
+	it('offers independent decaf, no-decaf and any states with canonical facet counts', async () => {
+		filterState.setFacetCounts({
+			decaf: [
+				{ value: 'true', count: 14 },
+				{ value: 'false', count: 62 }
+			]
+		});
+		renderPanel();
+
+		expect(screen.getByRole('button', { name: 'Decaf only 14' })).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'No decaf 62' })).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Any' })).toHaveAttribute('aria-pressed', 'true');
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Decaf only 14' }));
+		expect(filterState.current().filters).toEqual({ decaf: true });
+		expect(screen.getByRole('button', { name: 'Decaf only 14' })).toHaveAttribute(
+			'aria-pressed',
+			'true'
+		);
+
+		await fireEvent.click(screen.getByRole('button', { name: 'No decaf 62' }));
+		expect(filterState.current().filters).toEqual({ decaf: false });
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Any' }));
+		expect(filterState.current().filters).toEqual({});
+	});
+
+	it('locks the decaf control for viewers without allowing local state changes', async () => {
+		render(CatalogFilterPanel, {
+			access: { ...memberAccess, canUseProcessFacets: false },
+			resultCount: 12,
+			activeFilterCount: 0,
+			onClose: () => {}
+		});
+
+		await fireEvent.click(screen.getByText('Decaf', { selector: 'summary' }));
+		expect(screen.getByText('Members filter coffees by decaf status.')).toBeInTheDocument();
+		const decafOnly = screen.getByRole('button', { name: 'Decaf only' });
+		expect(decafOnly).toBeDisabled();
+		await fireEvent.click(decafOnly);
+		expect(filterState.current().filters).toEqual({});
 	});
 });

@@ -43,8 +43,8 @@ type CatalogOriginPriceStats =
 type CatalogOriginPriceStatsQuery = NonNullable<
 	Parameters<ParchmentClient['catalog']['originPriceStats']>[0]
 >;
-// The installed SDK's CatalogListQuery type lags the Span A generated params.
-// Keep this overlay local to the BFF adapter until the next SDK type publish.
+// The BFF first collects coffee-app's stable snake_case URL aliases, then maps
+// them to the SDK's generated query names at the upstream request boundary.
 type ParchmentCatalogListQuery = CatalogListQuery & {
 	showWholesale?: 'true' | 'false';
 	wholesaleOnly?: 'true' | 'false';
@@ -183,6 +183,7 @@ function buildParchmentCatalogQuery(
 	}
 	appendStringArrayParam(query, 'source', searchState.source);
 	appendStringParam(query, 'processing', searchState.processing);
+	if (searchState.decaf !== undefined) query.decaf = searchState.decaf ? 'true' : 'false';
 	appendStringParam(query, 'processing_base_method', searchState.processingBaseMethod);
 	appendStringParam(query, 'fermentation_type', searchState.fermentationType);
 	appendStringParam(query, 'process_additive', searchState.processAdditive);

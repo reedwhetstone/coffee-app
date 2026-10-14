@@ -169,6 +169,72 @@ describe('CompareTable', () => {
 		expect(screen.getByRole('table').textContent).not.toContain('Not disclosed');
 	});
 
+	it('shows structured decaf facts and does not override a false value with a stale process label', () => {
+		render(CompareTable, {
+			comparison: {
+				...comparison,
+				rows: [
+					{
+						key: 'process',
+						group: 'Process',
+						label: 'Process',
+						values: ['Washed', 'Swiss Water Decaf', 'Natural'],
+						relation: 'different',
+						bestLotIds: []
+					},
+					{
+						key: 'decaffeinated',
+						group: 'Process',
+						label: 'Decaf',
+						values: ['Yes', 'No', 'No'],
+						relation: 'different',
+						bestLotIds: []
+					},
+					{
+						key: 'decaf_method',
+						group: 'Process',
+						label: 'Decaf method',
+						values: ['Swiss Water', null, null],
+						relation: 'partial',
+						bestLotIds: []
+					}
+				]
+			},
+			quantityOptions: [1, 5, 10],
+			onQuantityChange: vi.fn(),
+			onRemove: vi.fn()
+		});
+
+		expect(screen.getByLabelText('Decaf · Swiss Water')).toBeInTheDocument();
+		expect(screen.getAllByLabelText('Decaf · Swiss Water')).toHaveLength(1);
+		expect(screen.getByRole('rowheader', { name: 'Decaf' })).toBeInTheDocument();
+		expect(screen.getByRole('rowheader', { name: 'Decaf method' })).toBeInTheDocument();
+	});
+
+	it('falls back to a legacy process label when comparison status rows are absent', () => {
+		render(CompareTable, {
+			comparison: {
+				...comparison,
+				rows: [
+					{
+						key: 'process',
+						group: 'Process',
+						label: 'Process',
+						values: ['Washed', 'Swiss Water Decaf', 'Natural'],
+						relation: 'different',
+						bestLotIds: []
+					}
+				]
+			},
+			quantityOptions: [1, 5, 10],
+			onQuantityChange: vi.fn(),
+			onRemove: vi.fn()
+		});
+
+		expect(screen.getByLabelText('Decaf · Swiss Water')).toBeInTheDocument();
+		expect(screen.getAllByLabelText('Decaf · Swiss Water')).toHaveLength(1);
+	});
+
 	it('shows grading rows in their own group between Coffee and Taste', () => {
 		render(CompareTable, {
 			comparison: {

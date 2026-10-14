@@ -65,6 +65,28 @@ export function compactCatalogRowForModel(row: Record<string, unknown>): Record<
 		if (truncated) compact[field] = truncated;
 	}
 
+	// Preserve the structured decaf facts without forwarding arbitrary nested
+	// API metadata (which can grow independently of the model-facing contract).
+	if (typeof row.decaffeinated === 'boolean') compact.decaffeinated = row.decaffeinated;
+	if (
+		row.decaffeinated === true &&
+		row.decafMethod &&
+		typeof row.decafMethod === 'object' &&
+		!Array.isArray(row.decafMethod)
+	) {
+		const method = row.decafMethod as Record<string, unknown>;
+		if (
+			typeof method.code === 'string' &&
+			method.code.length > 0 &&
+			method.code.length <= 80 &&
+			typeof method.label === 'string' &&
+			method.label.length > 0 &&
+			method.label.length <= 80
+		) {
+			compact.decafMethod = { code: method.code, label: method.label };
+		}
+	}
+
 	return compact;
 }
 

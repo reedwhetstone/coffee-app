@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import type { components } from '@purveyors/sdk';
 	import {
 		formatCanonicalBaselinePrice,
 		formatPriceDelta,
@@ -7,109 +8,15 @@
 	} from '$lib/utils/pricing';
 	import { getCatalogProofBadges, type CatalogProofSummary } from '$lib/catalog/proofSummary';
 	import type { CoffeeCatalog } from '$lib/types/component.types';
-	import type { Json } from '$lib/types/json.types';
+	import { getDecafPresentation } from '$lib/catalog/decafPresentation';
 	import { formatSourceName } from '$lib/utils/formatters';
+	import DecafBadge from '$lib/components/catalog/DecafBadge.svelte';
 
-	type BaselineSource = 'price_per_lb' | 'price_tiers' | 'cost_lb' | null;
-
-	type SimilarityPricing = {
-		price_per_lb: number | null;
-		price_tiers: Json | null;
-		cost_lb: number | null;
-		baseline_quantity_lbs: 1;
-		baseline_price_per_lb: number | null;
-		baseline_source: BaselineSource;
-	};
-
-	type SimilarityTarget = {
-		id: number;
-		name: string;
-		source: string | null;
-		origin: string | null;
-		country: string | null;
-		continent: string | null;
-		processing: string | null;
-		processing_base_method: string | null;
-		fermentation_type: string | null;
-		drying_method: string | null;
-		stocked: boolean | null;
-		arrival_date: string | null;
-		stocked_date: string | null;
-		proof: CatalogProofSummary | null;
-		price_per_lb: number | null;
-		price_tiers: Json | null;
-		cost_lb: number | null;
-		pricing: SimilarityPricing;
-	};
-
-	type SimilarityMatch = {
-		coffee: {
-			id: number;
-			name: string;
-			source: string | null;
-			origin: string | null;
-			country: string | null;
-			continent: string | null;
-			processing: string | null;
-			processing_base_method: string | null;
-			fermentation_type: string | null;
-			drying_method: string | null;
-			stocked: boolean | null;
-			arrival_date: string | null;
-			stocked_date: string | null;
-			proof: CatalogProofSummary | null;
-		};
-		pricing: SimilarityPricing;
-		price_delta_1lb: {
-			amount: number | null;
-			percent: number | null;
-			currency: 'USD';
-		};
-		score: {
-			average: number;
-			dimensions: {
-				origin: number | null;
-				processing: number | null;
-				tasting: number | null;
-			};
-			chunk_matches: number;
-		};
-		match: {
-			category: 'likely_same' | 'similar_profile';
-			classification?: {
-				kind: 'canonical_candidate' | 'similar_recommendation';
-				identity_eligibility: 'eligible' | 'blocked' | 'insufficient_evidence';
-				confidence: 'high_beta' | 'medium_beta' | 'low_beta';
-				blockers: Array<{
-					code: string;
-					severity: 'hard' | 'soft';
-					target_value: string | null;
-					candidate_value: string | null;
-				}>;
-				evidence: string[];
-			};
-			confidence: 'high_beta' | 'medium_beta' | 'low_beta';
-			beta: true;
-			language: string;
-			same_supplier?: boolean;
-		};
-		explanation: {
-			summary: string;
-			signals: string[];
-		};
-	};
-
-	type SimilarityResponse = {
-		data: {
-			target: SimilarityTarget;
-			matches: SimilarityMatch[];
-		};
-		meta: {
-			copy?: {
-				confidence?: string;
-			};
-		};
-	};
+	type SimilarityResponse = components['schemas']['CatalogSimilarityResponse'];
+	type SimilarityTarget = SimilarityResponse['data']['target'];
+	type SimilarityMatch = SimilarityResponse['data']['matches'][number];
+	type SimilarityPricing = SimilarityTarget['pricing'];
+	type BaselineSource = SimilarityPricing['baseline_source'];
 
 	type SimilarityErrorResponse = {
 		error?: string;
@@ -302,6 +209,7 @@
 							response.data.target.continent ||
 							'Origin unavailable'}
 						{response.data.target.processing ? ` · ${response.data.target.processing}` : ''}
+						<DecafBadge presentation={getDecafPresentation(response.data.target)} />
 					</p>
 					{#if freshnessLabel(response.data.target)}
 						<p class="mt-1 text-xs text-muted">
@@ -385,6 +293,7 @@
 										match.coffee.continent ||
 										'Origin unavailable'}
 									{match.coffee.processing ? ` · ${match.coffee.processing}` : ''}
+									<DecafBadge presentation={getDecafPresentation(match.coffee)} />
 								</p>
 								{#if freshnessLabel(match.coffee)}
 									<p class="mt-1 text-xs text-muted">

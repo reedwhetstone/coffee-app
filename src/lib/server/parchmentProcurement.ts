@@ -1,8 +1,14 @@
-import type { ParchmentClient, components } from '@purveyors/sdk';
-import type { SourcingBriefMatchSummary } from '$lib/procurement/sourcingBriefPresentation';
+import type { ParchmentClient } from '@purveyors/sdk';
+import type {
+	SourcingBriefCriteria,
+	SourcingBriefMatchSummary,
+	SourcingBriefResource
+} from '$lib/procurement/sourcingBriefPresentation';
 
-export type SourcingBriefCriteria = components['schemas']['SourcingBriefCriteria'];
-export type SourcingBriefResource = components['schemas']['SourcingBriefResource'];
+export type {
+	SourcingBriefCriteria,
+	SourcingBriefResource
+} from '$lib/procurement/sourcingBriefPresentation';
 
 export type { SourcingBriefMatchSummary } from '$lib/procurement/sourcingBriefPresentation';
 
@@ -26,7 +32,8 @@ const CRITERIA_FIELDS = new Set([
 	'max_price_per_lb',
 	'stocked_only',
 	'wholesale_only',
-	'stocked_days'
+	'stocked_days',
+	'decaf'
 ]);
 const CRITERIA_STRING_FIELDS = [
 	'country',
@@ -34,7 +41,7 @@ const CRITERIA_STRING_FIELDS = [
 	'processing',
 	'processing_base_method'
 ] as const;
-const CRITERIA_BOOLEAN_FIELDS = ['stocked_only', 'wholesale_only'] as const;
+const CRITERIA_BOOLEAN_FIELDS = ['stocked_only', 'wholesale_only', 'decaf'] as const;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -120,7 +127,7 @@ function parseSourcingBrief(value: unknown, path: string): SourcingBriefResource
 	return {
 		id: requireString(value.id, `${path}.id`),
 		name: requireString(value.name, `${path}.name`),
-		criteria: criteria as SourcingBriefCriteria & Record<string, never>,
+		criteria,
 		cadence: 'manual',
 		isActive: true,
 		lastRunAt: value.lastRunAt as string | null,

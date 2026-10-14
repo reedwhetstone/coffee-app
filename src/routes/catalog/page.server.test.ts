@@ -178,6 +178,38 @@ function makeLoadInputWithPrincipal(
 }
 
 describe('/catalog page load', () => {
+	it.each(['true', 'false'])(
+		'forwards decaf=%s independently of farm processing for members',
+		async (decaf) => {
+			await load(
+				makeLoadInput(
+					'member',
+					{ access_token: 'member-token' } as Session,
+					`https://app.test/catalog?decaf=${decaf}&processing_base_method=Natural`
+				)
+			);
+			expect(mockCatalogList).toHaveBeenCalledWith(
+				expect.objectContaining({ decaf, processing_base_method: 'Natural' })
+			);
+		}
+	);
+
+	it.each([null, { access_token: 'viewer-token' } as Session])(
+		'strips unauthorized decaf=false and returns the existing denial notice',
+		async (session) => {
+			const result = (await load(
+				makeLoadInput('viewer', session, 'https://app.test/catalog?decaf=false')
+			)) as {
+				catalogAccessNotice: { deniedParams: string[]; status: number };
+			};
+			expect(mockCatalogList.mock.calls[0][0]).not.toHaveProperty('decaf');
+			expect(result.catalogAccessNotice).toMatchObject({
+				deniedParams: ['decaf'],
+				status: session ? 403 : 401
+			});
+		}
+	);
+
 	it('uses public-demo for anonymous catalog reads and session mode for viewer sessions', async () => {
 		const viewerSession = { access_token: 'cookie-token' } as Session | null;
 

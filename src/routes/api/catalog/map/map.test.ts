@@ -98,6 +98,15 @@ beforeEach(async () => {
 });
 
 describe('/api/catalog/map route', () => {
+	it.each(['true', 'false'])(
+		'forwards decaf=%s without locally reclassifying map data',
+		async (decaf) => {
+			const response = await GET(makeEvent(`https://app.test/api/catalog/map?decaf=${decaf}`));
+			expect(mockCatalogMap).toHaveBeenCalledWith(expect.objectContaining({ decaf }));
+			expect(await response.json()).toEqual(mapBody);
+		}
+	);
+
 	it('uses the public-demo credential lane and forwards canonical map/filter params', async () => {
 		await GET(
 			makeEvent(

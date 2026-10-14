@@ -22,6 +22,7 @@
 	} from '$lib/catalog/filterOptionsView';
 	import {
 		formatProcessDisplayValue,
+		isFarmProcessFacetOption,
 		isPublicProcessFacetOption
 	} from '$lib/catalog/processDisplay';
 	import {
@@ -36,6 +37,7 @@
 	import SearchableChecklist from './SearchableChecklist.svelte';
 	import LockedNotice from './LockedNotice.svelte';
 	import RangeFields from './RangeFields.svelte';
+	import DecafFilter from './DecafFilter.svelte';
 
 	interface Props {
 		access: CatalogFilterAccess;
@@ -109,7 +111,7 @@
 			counts: counts[facet],
 			selected,
 			label: formatProcessDisplayValue,
-			keep: isPublicProcessFacetOption
+			keep: key === 'processing_base_method' ? isFarmProcessFacetOption : isPublicProcessFacetOption
 		});
 	}
 	let additiveState = $derived(
@@ -268,11 +270,14 @@
 			const has = (...keys: string[]) =>
 				keys.some((key) => {
 					const value = active[key];
-					return Array.isArray(value) ? value.length > 0 : Boolean(value);
+					return Array.isArray(value)
+						? value.length > 0
+						: value !== undefined && value !== null && value !== '';
 				});
 			return {
 				origin: true,
 				process: catalogFilterLock(access, 'process') === null,
+				decaf: has('decaf'),
 				variety: has('variety_code', 'species_code', 'cultivar_detail'),
 				freshness: has('stocked_days', 'arrival_date'),
 				transparency: has('processing_disclosure_level'),
@@ -392,6 +397,13 @@
 						<div class="mt-2"><LockedNotice lock={wholesaleOnlyLock} compact /></div>
 					{/if}
 				</fieldset>
+			</div>
+		</details>
+
+		<details bind:open={sections.decaf} class={sectionClass} data-catalog-decaf>
+			<summary class={summaryClass}>Decaf</summary>
+			<div class="mt-4">
+				<DecafFilter {access} />
 			</div>
 		</details>
 

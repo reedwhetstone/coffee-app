@@ -178,6 +178,45 @@ describe('catalog URL state helpers', () => {
 		);
 	});
 
+	it('round-trips decaf true and false while omission means any', () => {
+		const decafState = parseCatalogUrlState(
+			new URL('https://app.test/catalog?decaf=true'),
+			'/catalog'
+		);
+		const noDecafState = parseCatalogUrlState(
+			new URL('https://app.test/catalog?decaf=false'),
+			'/catalog'
+		);
+		const anyState = parseCatalogUrlState(new URL('https://app.test/catalog'), '/catalog');
+		const malformedState = parseCatalogUrlState(
+			new URL('https://app.test/catalog?decaf=enabled'),
+			'/catalog'
+		);
+
+		expect(decafState.filters.decaf).toBe(true);
+		expect(noDecafState.filters.decaf).toBe(false);
+		expect(anyState.filters).not.toHaveProperty('decaf');
+		expect(malformedState.filters).not.toHaveProperty('decaf');
+		expect(catalogUrlStateToSearchState(decafState).decaf).toBe(true);
+		expect(catalogUrlStateToSearchState(noDecafState).decaf).toBe(false);
+		expect(catalogUrlStateToSearchState(anyState).decaf).toBeUndefined();
+		expect(buildCatalogRequestParams(decafState, '/catalog').toString()).toBe(
+			'page=1&limit=15&decaf=true'
+		);
+		expect(buildCatalogRequestParams(noDecafState, '/catalog').toString()).toBe(
+			'page=1&limit=15&decaf=false'
+		);
+		expect(buildCatalogShareParams(noDecafState, '/catalog').toString()).toBe('decaf=false');
+		expect(buildCatalogShareParams(anyState, '/catalog').toString()).toBe('');
+
+		const invalidInMemoryState = createDefaultCatalogUrlState('/catalog');
+		invalidInMemoryState.filters = { decaf: 'false' };
+		expect(catalogUrlStateToSearchState(invalidInMemoryState).decaf).toBeUndefined();
+		expect(buildCatalogRequestParams(invalidInMemoryState, '/catalog').toString()).toBe(
+			'page=1&limit=15'
+		);
+	});
+
 	it('round-trips numeric MASL bounds separately from the legacy grade text filter', () => {
 		const state = parseCatalogUrlState(
 			new URL(

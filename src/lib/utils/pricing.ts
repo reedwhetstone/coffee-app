@@ -23,7 +23,8 @@ export interface PriceableCoffee {
 
 export interface CanonicalPriceInput {
 	price_per_lb?: number | null;
-	price_tiers?: Json | null;
+	/** Generated Parchment price tiers are unknown until parsePriceTiers validates them. */
+	price_tiers?: unknown;
 	cost_lb?: number | null;
 	baseline_price_per_lb?: number | null;
 	baseline_source?: 'price_per_lb' | 'price_tiers' | 'cost_lb' | null;
@@ -33,7 +34,7 @@ export interface CanonicalPriceInput {
  * Parse raw jsonb `price_tiers` into typed tiers, sorted by `min_lbs` ascending.
  * Returns null if the input is null, not an array, or contains no valid tiers.
  */
-export function parsePriceTiers(raw: Json | null | undefined): PriceTier[] | null {
+export function parsePriceTiers(raw: unknown): PriceTier[] | null {
 	if (raw == null) return null;
 
 	let arr: unknown[];
@@ -165,7 +166,7 @@ export function formatCanonicalBaselinePrice(coffee: CanonicalPriceInput): strin
 	return price == null ? 'Price unavailable' : formatPricePerLb(price);
 }
 
-export function formatPriceTierSummary(priceTiers: Json | null | undefined): string | null {
+export function formatPriceTierSummary(priceTiers: unknown): string | null {
 	const tiers = parsePriceTiers(priceTiers);
 	if (!tiers || tiers.length === 0) return null;
 	if (tiers.length === 1)
