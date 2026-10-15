@@ -50,7 +50,7 @@ export interface CatalogSearchState {
 	grade?: string;
 	appearance?: string;
 	name?: string;
-	region?: string;
+	region?: string | string[];
 	scoreValueMin?: number;
 	scoreValueMax?: number;
 	pricePerLbMin?: number;
@@ -131,6 +131,7 @@ export function isMoistureMax(value: number): boolean {
 }
 const MULTI_VALUE_FILTER_KEYS = new Set([
 	'country',
+	'region',
 	'source',
 	...TAXONOMY_CODE_FILTER_KEYS,
 	'grade_code'
@@ -148,7 +149,6 @@ const STRING_FILTER_KEYS = [
 	'grade',
 	'appearance',
 	'name',
-	'region',
 	'arrival_date',
 	'stocked_date'
 ] as const;
@@ -607,6 +607,7 @@ export function catalogUrlStateToSearchState(state: CatalogUrlState): CatalogSea
 	const elevationRange = readRangeValue(state.filters.elevation_masl);
 	const screenRange = readRangeValue(state.filters.screen_size);
 	const countries = readArrayValue(state.filters.country);
+	const regions = readArrayValue(state.filters.region);
 
 	return {
 		origin: readStringValue(state.filters.origin),
@@ -639,7 +640,11 @@ export function catalogUrlStateToSearchState(state: CatalogUrlState): CatalogSea
 		grade: readStringValue(state.filters.grade),
 		appearance: readStringValue(state.filters.appearance),
 		name: readStringValue(state.filters.name),
-		region: readStringValue(state.filters.region),
+		region: regions
+			? regions.length === 1
+				? regions[0]
+				: regions
+			: readStringValue(state.filters.region),
 		scoreValueMin: scoreRange?.min,
 		scoreValueMax: scoreRange?.max,
 		pricePerLbMin: priceRange?.min,

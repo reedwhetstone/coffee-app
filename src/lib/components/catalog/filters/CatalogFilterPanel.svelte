@@ -91,9 +91,17 @@
 			sort: 'label'
 		})
 	);
-	// Regions number in the hundreds, so the field suggests the most common ones
-	// and accepts any text.
-	let regionSuggestions = $derived((counts.regions ?? []).map((entry) => entry.value));
+	let region = $derived(
+		Array.isArray(filters.region) ? selectedList(filters.region) : selectedOne(filters.region)
+	);
+	let regionOptions = $derived(
+		countedOptions({
+			values: values.regions,
+			counts: counts.regions,
+			selected: region,
+			sort: 'label'
+		})
+	);
 	let supplierScope = $derived(
 		$filterStore.wholesaleOnly ? 'wholesale' : $filterStore.showWholesale ? 'all' : 'hobbyist'
 	);
@@ -347,23 +355,15 @@
 					selected={countries}
 					onChange={(next) => filterStore.setFilter('country', next)}
 				/>
-				<div>
-					<label for="catalog-panel-region" class="text-xs font-semibold text-ink">Region</label>
-					<input
-						id="catalog-panel-region"
-						type="search"
-						list="catalog-panel-region-suggestions"
-						value={filters.region ?? ''}
-						onchange={(event) => filterStore.setFilter('region', event.currentTarget.value.trim())}
-						placeholder="Type a region, such as Huila"
-						class="mt-1.5 w-full rounded-md border border-line bg-surface-canvas px-3 py-1.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-accent"
-					/>
-					<datalist id="catalog-panel-region-suggestions">
-						{#each regionSuggestions as region (region)}
-							<option value={region}></option>
-						{/each}
-					</datalist>
-				</div>
+				<SearchableChecklist
+					id="catalog-panel-region"
+					label="Region"
+					searchPlaceholder="Search regions"
+					options={regionOptions}
+					emptyText={optionsNote}
+					selected={region}
+					onChange={(next) => filterStore.setFilter('region', next)}
+				/>
 				<SearchableChecklist
 					id="catalog-panel-supplier"
 					label="Supplier"

@@ -8,6 +8,19 @@ import {
 } from './urlState';
 
 describe('catalog URL state helpers', () => {
+	it('round-trips multiple regions and keeps legacy single-region links', () => {
+		const state = parseCatalogUrlState(
+			new URL('https://app.test/catalog?region=Huila&region=Cauca&region=Huila')
+		);
+		expect(state.filters.region).toEqual(['Huila', 'Cauca']);
+		expect(buildCatalogRequestParams(state).getAll('region')).toEqual(['Huila', 'Cauca']);
+		expect(buildCatalogShareParams(state).getAll('region')).toEqual(['Huila', 'Cauca']);
+		expect(catalogUrlStateToSearchState(state).region).toEqual(['Huila', 'Cauca']);
+		const legacy = parseCatalogUrlState(new URL('https://app.test/catalog?region=Huila'));
+		expect(legacy.filters.region).toEqual(['Huila']);
+		expect(catalogUrlStateToSearchState(legacy).region).toBe('Huila');
+	});
+
 	it('parses canonical catalog query params into route state', () => {
 		const url = new URL(
 			'https://app.test/catalog?country=Ethiopia&country=Colombia&processing=Washed&processing_base_method=washed&fermentation_type=anaerobic&process_additive=fruit&has_additives=true&processing_disclosure_level=high_detail&processing_confidence_min=0.8&name=guji&price_per_lb_min=7.5&price_per_lb_max=9&page=2&showWholesale=true&wholesaleOnly=true'

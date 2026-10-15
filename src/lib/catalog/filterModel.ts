@@ -413,6 +413,7 @@ const LIST_FILTERS: ReadonlyArray<
 	]
 > = [
 	['country', 'Origin', false],
+	['region', 'Region', true],
 	['source', 'Supplier', true],
 	['drying_method_code', 'Drying', true, 'drying_methods'],
 	['variety_code', 'Variety', true, 'varieties'],

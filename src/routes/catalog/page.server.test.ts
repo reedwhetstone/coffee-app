@@ -325,6 +325,21 @@ describe('/catalog page load', () => {
 		});
 	});
 
+	it('hydrates multiple regions and sends every selection to Parchment', async () => {
+		const result = await load(
+			makeLoadInput(
+				'member',
+				{ access_token: 'member-token' } as Session,
+				'https://app.test/catalog?region=Huila&region=Cauca'
+			)
+		);
+		if (!result) throw new Error('Expected catalog page data');
+		expect(result.initialCatalogState.filters.region).toEqual(['Huila', 'Cauca']);
+		expect(mockCatalogList).toHaveBeenCalledWith(
+			expect.objectContaining({ region: ['Huila', 'Cauca'] })
+		);
+	});
+
 	it('hydrates filtered catalog URLs from query params on first load', async () => {
 		const memberSession = { access_token: 'member-token' } as Session | null;
 		await load(

@@ -66,6 +66,7 @@ const SELECTION_FACETS: ReadonlyArray<{
 }> = [
 	{ params: ['decaf'], facets: ['decaf'], requiresDecafFilter: true },
 	{ params: ['country'], facets: ['countries'] },
+	{ params: ['region'], facets: ['regions'] },
 	{ params: ['continent'], facets: ['continents'] },
 	{ params: ['source'], facets: ['sources'] },
 	{ params: ['processing'], facets: ['processing'] },
@@ -99,9 +100,6 @@ const SELECTION_FACETS: ReadonlyArray<{
 const SCORE_PARAMS = ['scoreValueMin', 'scoreValueMax', 'scoreProtocol'] as const;
 const UNSTATED_PROTOCOL = 'supplier_unspecified';
 const STATED_PROTOCOLS = ['sca_2004', 'cva_affective', 'q_arabica', 'coe'] as const;
-
-/** Region is typed, not picked: the control only suggests the most common. */
-const REGION_SUGGESTION_LIMIT = 150;
 
 type FilterQuery = Record<string, CatalogQueryValue>;
 
@@ -248,9 +246,6 @@ function pickOptionFacets(
 			if (counted) facets[facet] = counted;
 		}
 	}
-	facets.regions = [...(allFacets.regions ?? [])]
-		.sort((a, b) => b.count - a.count)
-		.slice(0, REGION_SUGGESTION_LIMIT);
 	return { values, facets };
 }
 

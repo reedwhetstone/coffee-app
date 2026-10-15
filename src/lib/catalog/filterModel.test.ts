@@ -237,6 +237,15 @@ describe('describeActiveCatalogFilters', () => {
 		expect(noDecaf).toMatchObject({ id: 'decaf', label: 'No decaf' });
 	});
 
+	it('removes one selected region without clearing the other regions', () => {
+		const chips = describeActiveCatalogFilters({
+			...none,
+			filters: { region: ['Huila', 'Cauca'] }
+		});
+		expect(chips.map((chip) => chip.label)).toEqual(['Region: Huila', 'Region: Cauca']);
+		expect(chips[0].remove).toEqual({ kind: 'filter', key: 'region', value: ['Cauca'] });
+	});
+
 	it('removes one value of a multi-value filter and clears a single-value one', () => {
 		const chips = describeActiveCatalogFilters({
 			...none,
