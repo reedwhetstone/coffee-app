@@ -1,6 +1,20 @@
 import type { components } from '@purveyors/sdk';
 
-export type SourcingBriefCriteria = components['schemas']['SourcingBriefCriteria'];
+/**
+ * Step 3 reads the next Parchment brief criterion before step 4 enables it on
+ * writes and releases it in the SDK. Keep this narrow forward-compatible
+ * bridge here; all other criteria still come from the generated contract.
+ */
+export type SourcingBriefCriteria = components['schemas']['SourcingBriefCriteria'] & {
+	decaf?: boolean;
+};
+
+export type SourcingBriefResource = Omit<
+	components['schemas']['SourcingBriefResource'],
+	'criteria'
+> & {
+	criteria: SourcingBriefCriteria;
+};
 
 export type SourcingBriefMatchSummary = {
 	briefId: string;
@@ -20,9 +34,12 @@ export function describeSourcingBriefCriteria(criteria: SourcingBriefCriteria): 
 	if (criteria.country) parts.push(`origin ${criteria.country}`);
 	if (criteria.region) parts.push(`region ${criteria.region}`);
 	if (criteria.processing) parts.push(`process ${criteria.processing}`);
-	if (criteria.processing_base_method) {
+	const legacyDecaf = criteria.processing_base_method?.toLowerCase() === 'decaf';
+	if (criteria.processing_base_method && !legacyDecaf) {
 		parts.push(`base process ${criteria.processing_base_method}`);
 	}
+	if (criteria.decaf === true || legacyDecaf) parts.push('decaf only');
+	if (criteria.decaf === false) parts.push('not decaf');
 	if (criteria.max_price_per_lb !== undefined) parts.push(`max $${criteria.max_price_per_lb}/lb`);
 	if (criteria.stocked_only) parts.push('stocked only');
 	if (criteria.wholesale_only) parts.push('wholesale only');

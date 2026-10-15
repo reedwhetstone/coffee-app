@@ -140,11 +140,35 @@ describe('listActiveSourcingBriefs', () => {
 				])
 			}
 		],
+		[
+			'malformed decaf criterion type',
+			{
+				data: listBody([
+					{
+						...brief,
+						criteria: { version: 1, decaf: 'false' }
+					} as unknown as SourcingBriefResource
+				])
+			}
+		],
 		['duplicate brief ids', { data: listBody([brief, brief]) }]
 	])('rejects a malformed list envelope: %s', async (_label, result) => {
 		await expect(listActiveSourcingBriefs(makeClient({ list: result }) as never)).rejects.toThrow(
 			'Invalid Parchment procurement response'
 		);
+	});
+
+	it.each([true, false])('preserves decaf=%s from a canonical brief list', async (decaf) => {
+		const decafBrief = {
+			...brief,
+			criteria: { ...brief.criteria, decaf }
+		} as SourcingBriefResource;
+		const client = makeClient({ list: { data: listBody([decafBrief]) } });
+
+		const [parsed] = await listActiveSourcingBriefs(client as never);
+
+		expect(parsed.criteria.decaf).toBe(decaf);
+		expect(parsed.criteria).toHaveProperty('decaf', decaf);
 	});
 
 	it('surfaces API errors unchanged', async () => {
@@ -273,6 +297,55 @@ describe('getSourcingBriefMatches', () => {
 		await expect(
 			getSourcingBriefMatches(makeClient({ matches: [{ data: body }] }) as never, brief)
 		).rejects.toThrow('meta.criteria.wholesale_only must be a boolean');
+	});
+
+	it('preserves explicit decaf=false through match metadata and canonical validation', async () => {
+		const decafFalseBrief = {
+			...brief,
+			criteria: { ...brief.criteria, decaf: false }
+		} as SourcingBriefResource;
+		const client = makeClient({
+			matches: [
+				{
+					data: matchBody({
+						page: 1,
+						total: 1,
+						ids: [42],
+						briefOverride: decafFalseBrief
+					})
+				}
+			]
+		});
+
+		await expect(getSourcingBriefMatches(client as never, decafFalseBrief)).resolves.toEqual({
+			briefId: decafFalseBrief.id,
+			briefName: decafFalseBrief.name,
+			criteria: decafFalseBrief.criteria,
+			totalMatchCount: 1,
+			matchingIds: [42]
+		});
+	});
+
+	it('rejects malformed decaf metadata while retaining strict unknown-key validation', async () => {
+		const malformed = matchBody({
+			page: 1,
+			total: 1,
+			ids: [42],
+			criteria: { ...brief.criteria, decaf: 'false' }
+		});
+		await expect(
+			getSourcingBriefMatches(makeClient({ matches: [{ data: malformed }] }) as never, brief)
+		).rejects.toThrow('meta.criteria.decaf must be a boolean');
+
+		const unknown = matchBody({
+			page: 1,
+			total: 1,
+			ids: [42],
+			criteria: { ...brief.criteria, decaf: false, supplier: 'Example Importer' }
+		});
+		await expect(
+			getSourcingBriefMatches(makeClient({ matches: [{ data: unknown }] }) as never, brief)
+		).rejects.toThrow('meta.criteria.supplier is not supported');
 	});
 
 	it('rejects malformed match rows', async () => {

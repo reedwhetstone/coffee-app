@@ -70,6 +70,22 @@ describe('resolveCatalogAccessCapabilities', () => {
 		});
 	});
 
+	it('opens decaf to Viewer, member, admin and customer keys, not anonymous visitors', () => {
+		expect(
+			resolveCatalogAccessCapabilities({ principal: anonymousPrincipal }).canUseDecafFilter
+		).toBe(false);
+		for (const principal of [
+			sessionPrincipal('viewer'),
+			sessionPrincipal('member'),
+			sessionPrincipal('admin'),
+			apiPrincipal('viewer'),
+			apiPrincipal('member'),
+			apiPrincipal('enterprise')
+		]) {
+			expect(resolveCatalogAccessCapabilities({ principal }).canUseDecafFilter).toBe(true);
+		}
+	});
+
 	it('grants member and admin sessions advanced catalog leverage', () => {
 		for (const role of ['member', 'admin'] as const) {
 			const capabilities = resolveCatalogAccessCapabilities({ principal: sessionPrincipal(role) });

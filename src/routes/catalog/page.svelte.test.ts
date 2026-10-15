@@ -941,6 +941,7 @@ describe('/catalog filters', () => {
 		canUseAdvancedFilters: true,
 		canUseProcessFacets: true,
 		canUsePriceRanges: true,
+		canUseDecafFilter: true,
 		canUsePriceScoreRanges: true,
 		canUseAdvancedSorts: true,
 		canViewPremiumFilterMetadata: true,
@@ -997,6 +998,44 @@ describe('/catalog filters', () => {
 		expect(
 			screen.getByRole('button', { name: 'Remove filter: Price: up to $8 per lb' })
 		).toBeInTheDocument();
+	});
+
+	it('keeps decaf compact, explains the anonymous lock on demand, and supports Viewer choices', async () => {
+		const { unmount } = renderCatalog(createData());
+		expect(
+			screen.queryByText('Sign in with a free account to filter by decaf status.')
+		).not.toBeInTheDocument();
+		await fireEvent.click(screen.getByRole('button', { name: 'Decaf: Any' }));
+		expect(
+			screen.getByText('Sign in with a free account to filter by decaf status.')
+		).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Decaf only' })).toBeDisabled();
+		unmount();
+		renderCatalog(
+			createData({
+				session: { access_token: 'viewer-token' },
+				role: 'viewer',
+				catalogAccess: { ...createData().catalogAccess, canUseDecafFilter: true }
+			} as unknown as Partial<PageData>)
+		);
+		const trigger = screen.getByRole('button', { name: 'Decaf: Any' });
+		await fireEvent.click(trigger);
+		await fireEvent.click(screen.getByRole('button', { name: 'No decaf' }));
+		expect(get(filterStore).filters.decaf).toBe(false);
+		expect(screen.getByRole('button', { name: 'Decaf: No decaf' })).toHaveAttribute(
+			'aria-expanded',
+			'false'
+		);
+		await fireEvent.click(trigger);
+		await fireEvent.keyDown(window, { key: 'Escape' });
+		expect(screen.getByRole('button', { name: 'Decaf: No decaf' })).toHaveAttribute(
+			'aria-expanded',
+			'false'
+		);
+		expect(trigger).toHaveFocus();
+		await fireEvent.click(trigger);
+		await fireEvent.click(screen.getByRole('button', { name: 'Any' }));
+		expect(get(filterStore).filters).not.toHaveProperty('decaf');
 	});
 
 	it('explains when viewer-tier premium discovery filters were not applied', () => {
@@ -1056,13 +1095,15 @@ describe('/catalog filters', () => {
 			[...panel.querySelectorAll('summary')].map((summary) => summary.textContent?.trim())
 		).toEqual([
 			'Origin and supplier',
+			'Decaf',
 			'Process',
 			'Grade and quality',
 			'Variety',
 			'Freshness',
 			'Transparency'
 		]);
-		expect(panel.querySelectorAll('[data-catalog-lock]')).toHaveLength(6);
+		expect(panel.querySelectorAll('[data-catalog-lock]')).toHaveLength(7);
+		expect(within(panel).getByRole('button', { name: 'Decaf only' })).toBeDisabled();
 		expect(within(panel).getByLabelText('Hobbyist suppliers only')).toBeEnabled();
 		expect(within(panel).getByLabelText('Wholesale suppliers only')).toBeDisabled();
 		// A locked section shows its reason and none of its controls.
@@ -1086,6 +1127,7 @@ describe('/catalog filters', () => {
 		await fireEvent.click(screen.getByRole('button', { name: /^All filters/ }));
 		panel = document.querySelector('[data-catalog-filter-panel]') as HTMLElement;
 		expect(panel.querySelectorAll('[data-catalog-lock]')).toHaveLength(0);
+		expect(within(panel).getByRole('button', { name: 'Decaf only' })).toBeEnabled();
 		expect(within(panel).getByLabelText('Wholesale suppliers only')).toBeEnabled();
 		expect(within(panel).getByLabelText('Lowest elevation')).toBeEnabled();
 		expect(within(panel).getByRole('group', { name: 'Drying' })).toBeInTheDocument();

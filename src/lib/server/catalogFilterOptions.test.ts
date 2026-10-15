@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { decafFilterOptions } from '$lib/catalog/filterModel';
 import type { ParchmentClient } from '@purveyors/sdk';
 import { loadCatalogFilterOptions, toCatalogFilterQuery } from './catalogFilterOptions';
 
@@ -68,6 +69,7 @@ function makeClient(
 
 const url = (search: string) => new URL(`https://app.test/api/catalog/filters?counts=1&${search}`);
 const freeAccount = {
+	canUseDecafFilter: true,
 	canUseProcessFacets: false,
 	canUseAdvancedFilters: false,
 	canUsePriceScoreRanges: false
@@ -118,6 +120,80 @@ describe('toCatalogFilterQuery', () => {
 });
 
 describe('loadCatalogFilterOptions', () => {
+	it.each(['true', 'false'])(
+		'keeps decaf alternatives counted under other filters for %s',
+		async (decaf) => {
+			const alternatives = [
+				{ value: 'true', count: 12 },
+				{ value: 'false', count: 88 }
+			];
+			const { client, facets } = makeClient({
+				facets: (query) => ({
+					values: { decaf: query.decaf ? [query.decaf] : ['true', 'false'] },
+					facets: {
+						decaf: query.decaf
+							? alternatives.filter((entry) => entry.value === query.decaf)
+							: alternatives
+					}
+				})
+			});
+			const result = await loadCatalogFilterOptions(
+				client,
+				url(`name=coffee&decaf=${decaf}`),
+				member
+			);
+			expect(result.facets.decaf).toEqual(alternatives);
+			expect(result.values.decaf).toEqual(['true', 'false']);
+			expect(facets).toHaveBeenCalledWith(expect.objectContaining({ name: 'coffee', decaf }));
+			expect(facets).toHaveBeenCalledWith({
+				stocked: 'true',
+				showWholesale: 'true',
+				name: 'coffee'
+			});
+		}
+	);
+
+	it.each(['true', 'false'])(
+		'leaves decaf alternatives selectable with unknown counts when the extra read fails (%s)',
+		async (decaf) => {
+			const { client } = makeClient({
+				facets: (query) => {
+					if (!('decaf' in query)) throw new Error('alternative read unavailable');
+					return { values: { decaf: [decaf] }, facets: { decaf: [{ value: decaf, count: 12 }] } };
+				}
+			});
+			const result = await loadCatalogFilterOptions(client, url(`decaf=${decaf}`), freeAccount);
+			expect(result.facets.decaf).toBeUndefined();
+			expect(decafFilterOptions(result.values.decaf, result.facets.decaf)).toEqual([
+				{ value: 'any', label: 'Any', count: null },
+				{ value: 'true', label: 'Decaf only', count: null },
+				{ value: 'false', label: 'No decaf', count: null }
+			]);
+		}
+	);
+
+	it('omits decaf metadata and its filter for an unentitled control, even if upstream supplies it', async () => {
+		const { client, facets } = makeClient({
+			facets: () => ({
+				values: { decaf: ['true', 'false'] },
+				facets: {
+					decaf: [
+						{ value: 'true', count: 12 },
+						{ value: 'false', count: 88 }
+					]
+				}
+			})
+		});
+		const result = await loadCatalogFilterOptions(client, url('decaf=false'), {
+			...freeAccount,
+			canUseDecafFilter: false
+		});
+		expect(result.values).not.toHaveProperty('decaf');
+		expect(result.facets).not.toHaveProperty('decaf');
+		expect(facets).toHaveBeenCalledTimes(1);
+		expect(facets).toHaveBeenCalledWith({ stocked: 'true', showWholesale: 'true' });
+	});
+
 	it('reads one set of counts under the active filters for a caller without the standardized filters', async () => {
 		const { client, facets, list, taxonomies } = makeClient({
 			facets: () => ({
@@ -194,7 +270,7 @@ describe('loadCatalogFilterOptions', () => {
 		expect(result.facets.continents).toEqual([{ value: 'Africa', count: 85 }]);
 	});
 
-	it("keeps a control's counts under the filters when its extra read fails", async () => {
+	it("omits a control's counts when its alternative read fails", async () => {
 		const { client, facets } = makeClient();
 		facets.mockImplementation(async (query: Query) => {
 			if (!('country' in query)) throw new Error('upstream timeout');
@@ -206,7 +282,7 @@ describe('loadCatalogFilterOptions', () => {
 
 		const result = await loadCatalogFilterOptions(client, url('country=Kenya'), freeAccount);
 
-		expect(result.facets.countries).toEqual([{ value: 'Kenya', count: 85 }]);
+		expect(result.facets.countries).toBeUndefined();
 	});
 
 	it('adds the vocabulary and standardized counts for callers who may filter on them', async () => {

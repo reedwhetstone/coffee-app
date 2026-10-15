@@ -344,6 +344,7 @@
 		canUseProcessFacets: data.catalogAccess?.canUseProcessFacets === true,
 		canUseAdvancedFilters: data.catalogAccess?.canUseAdvancedFilters === true,
 		canUsePriceRanges: data.catalogAccess?.canUsePriceRanges === true,
+		canUseDecafFilter: data.catalogAccess?.canUseDecafFilter === true,
 		canUsePriceScoreRanges: data.catalogAccess?.canUsePriceScoreRanges === true,
 		canUseAdvancedSorts: data.catalogAccess?.canUseAdvancedSorts === true,
 		canUseWholesaleOnly: hasRequiredRole('member')

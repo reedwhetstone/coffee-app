@@ -1,5 +1,10 @@
 import type { CatalogFilterValue } from '$lib/catalog/urlState';
-import type { CatalogFilterVocabulary, CatalogGradeEntry } from '$lib/catalog/filterOptions';
+import type {
+	CatalogFacetCount,
+	CatalogFilterVocabulary,
+	CatalogGradeEntry
+} from '$lib/catalog/filterOptions';
+import { countedOptions } from '$lib/catalog/filterOptionsView';
 import { formatProcessDisplayValue } from '$lib/catalog/processDisplay';
 import { formatSourceName } from '$lib/utils/formatters';
 import { DISCLOSURE_LABELS } from '$lib/styles/chartColors';
@@ -15,6 +20,7 @@ import { DISCLOSURE_LABELS } from '$lib/styles/chartColors';
 /** The capabilities the catalog loader resolves for the viewer. */
 export interface CatalogFilterAccess {
 	canUseProcessFacets: boolean;
+	canUseDecafFilter: boolean;
 	canUseAdvancedFilters: boolean;
 	canUsePriceRanges: boolean;
 	canUsePriceScoreRanges: boolean;
@@ -34,6 +40,7 @@ export function catalogFilterLock(
 	control:
 		| 'price'
 		| 'process'
+		| 'decaf'
 		| 'variety'
 		| 'freshness'
 		| 'transparency'
@@ -55,6 +62,10 @@ export function catalogFilterLock(
 						reason: 'Members filter by process method, fermentation, additives and drying.',
 						...MEMBER_LOCK
 					};
+		case 'decaf':
+			return access.canUseDecafFilter
+				? null
+				: { reason: 'Sign in with a free account to filter by decaf status.', ...SIGN_IN_LOCK };
 		case 'variety':
 			return access.canUseProcessFacets
 				? null
@@ -308,6 +319,40 @@ export interface ActiveCatalogFilter {
 	inPanel: boolean;
 }
 
+/**
+ * The decaf control always offers the same three states. Counts, when present,
+ * come only from the canonical facet response; the current page is not a
+ * source of counts.
+ */
+export function decafFilterOptions(
+	values: readonly unknown[] | undefined,
+	counts: readonly CatalogFacetCount[] | undefined
+): { value: string; label: string; count: number | null }[] {
+	const known = new Map(
+		countedOptions({
+			values,
+			counts,
+			// Keep both choices present even while one has zero matches, or when
+			// the canonical facet response has not arrived yet.
+			selected: ['true', 'false']
+		}).map((option) => [option.value, option.count ?? null])
+	);
+
+	return [
+		{ value: 'any', label: 'Any', count: null },
+		{
+			value: 'true',
+			label: 'Decaf only',
+			count: known.get('true') ?? null
+		},
+		{
+			value: 'false',
+			label: 'No decaf',
+			count: known.get('false') ?? null
+		}
+	];
+}
+
 export interface CatalogFilterSnapshot {
 	filters: Record<string, CatalogFilterValue>;
 	showWholesale: boolean;
@@ -479,6 +524,15 @@ export function describeActiveCatalogFilters(
 			id: 'has_additives',
 			label: filters.has_additives ? 'Has additives' : 'No additives',
 			remove: clear('has_additives'),
+			inPanel: true
+		});
+	}
+
+	if (typeof filters.decaf === 'boolean') {
+		chips.push({
+			id: 'decaf',
+			label: filters.decaf ? 'Decaf only' : 'No decaf',
+			remove: clear('decaf'),
 			inPanel: true
 		});
 	}

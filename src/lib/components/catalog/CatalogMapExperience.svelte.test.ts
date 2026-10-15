@@ -224,6 +224,8 @@ describe('CatalogMapExperience', () => {
 								country: 'Ethiopia',
 								region: 'Sidama',
 								processing: 'Natural',
+								decaffeinated: true,
+								decafMethod: { code: 'ethyl_acetate', label: 'Ethyl acetate' },
 								cost_lb: 7.25,
 								price_per_lb: 7.25,
 								price_tiers: null
@@ -253,6 +255,7 @@ describe('CatalogMapExperience', () => {
 		await fireEvent.click(screen.getByRole('button', { name: 'Simulate cluster selection' }));
 
 		expect(await screen.findByText('Sidama Natural')).toBeInTheDocument();
+		expect(screen.getByLabelText('Decaf · Ethyl acetate')).toBeInTheDocument();
 		expect(screen.getByText('Kenya AA')).toBeInTheDocument();
 		expect(screen.getByText('Ethiopia and Kenya')).toBeInTheDocument();
 		expect(screen.getByText(/2 coffees across 12 mapped placements/)).toBeInTheDocument();

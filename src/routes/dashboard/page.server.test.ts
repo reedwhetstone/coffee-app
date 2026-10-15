@@ -190,6 +190,67 @@ describe('/dashboard sourcing workspace load', () => {
 		expect(result.activeBriefs[0].criteriaDescription).toContain('Colombia');
 	});
 
+	it('preserves both decaf booleans and legacy Decaf brief links', async () => {
+		const result = (await load(
+			makeLoadInput({
+				role: 'member',
+				principal: { isAuthenticated: true, userId: 'member-1', ppiAccess: false },
+				briefRows: [
+					{
+						id: 'decaf-only',
+						name: 'Decaf only',
+						criteria: { version: 1, decaf: true },
+						cadence: 'manual',
+						isActive: true,
+						lastRunAt: null,
+						createdAt: '2026-07-01T00:00:00Z',
+						updatedAt: '2026-07-01T00:00:00Z'
+					},
+					{
+						id: 'not-decaf',
+						name: 'Not decaf',
+						criteria: { version: 1, decaf: false },
+						cadence: 'manual',
+						isActive: true,
+						lastRunAt: null,
+						createdAt: '2026-07-01T00:00:00Z',
+						updatedAt: '2026-07-01T00:00:00Z'
+					},
+					{
+						id: 'legacy-decaf',
+						name: 'Legacy Decaf',
+						criteria: { version: 1, processing_base_method: 'Decaf' },
+						cadence: 'manual',
+						isActive: true,
+						lastRunAt: null,
+						createdAt: '2026-07-01T00:00:00Z',
+						updatedAt: '2026-07-01T00:00:00Z'
+					}
+				]
+			})
+		)) as {
+			activeBriefs: Array<{ id: string; criteriaDescription: string; catalogHref: string }>;
+		};
+
+		expect(result.activeBriefs).toEqual([
+			expect.objectContaining({
+				id: 'decaf-only',
+				criteriaDescription: 'decaf only',
+				catalogHref: '/catalog?decaf=true'
+			}),
+			expect.objectContaining({
+				id: 'not-decaf',
+				criteriaDescription: 'not decaf',
+				catalogHref: '/catalog?decaf=false'
+			}),
+			expect.objectContaining({
+				id: 'legacy-decaf',
+				criteriaDescription: 'decaf only',
+				catalogHref: '/catalog?decaf=true'
+			})
+		]);
+	});
+
 	it('keeps the dashboard rendering when sourcing context queries fail', async () => {
 		mockGetTrackedLotSummaries.mockRejectedValue(new Error('rls denied'));
 

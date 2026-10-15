@@ -43,8 +43,8 @@ type CatalogOriginPriceStats =
 type CatalogOriginPriceStatsQuery = NonNullable<
 	Parameters<ParchmentClient['catalog']['originPriceStats']>[0]
 >;
-// The installed SDK's CatalogListQuery type lags the Span A generated params.
-// Keep this overlay local to the BFF adapter until the next SDK type publish.
+// The BFF first collects coffee-app's stable snake_case URL aliases, then maps
+// them to the SDK's generated query names at the upstream request boundary.
 type ParchmentCatalogListQuery = CatalogListQuery & {
 	showWholesale?: 'true' | 'false';
 	wholesaleOnly?: 'true' | 'false';
@@ -183,6 +183,7 @@ function buildParchmentCatalogQuery(
 	}
 	appendStringArrayParam(query, 'source', searchState.source);
 	appendStringParam(query, 'processing', searchState.processing);
+	if (searchState.decaf !== undefined) query.decaf = searchState.decaf ? 'true' : 'false';
 	appendStringParam(query, 'processing_base_method', searchState.processingBaseMethod);
 	appendStringParam(query, 'fermentation_type', searchState.fermentationType);
 	appendStringParam(query, 'process_additive', searchState.processAdditive);
@@ -296,9 +297,13 @@ function isCatalogSchemaUnavailableError(error: unknown): error is Error {
 	);
 }
 
-function stripProcessFacetFilters(state: CatalogUrlState): CatalogUrlState {
+function stripProcessFacetFilters(
+	state: CatalogUrlState,
+	preserveDecafAlias = false
+): CatalogUrlState {
 	const filters = { ...state.filters };
 	for (const key of PROCESS_FACET_FILTER_KEYS) {
+		if (preserveDecafAlias && key === 'processing_base_method') continue;
 		delete filters[key];
 	}
 
@@ -467,9 +472,13 @@ export const load: PageServerLoad = async (event) => {
 	const catalogAccess = resolveCatalogAccessCapabilities({
 		principal: locals.principal
 	});
+	const hasDecafAlias = requestedCatalogState.filters.processing_base_method === 'Decaf';
+	const preserveDecafAlias = catalogAccess.canUseDecafFilter && hasDecafAlias;
 	const deniedProcessParams = catalogAccess.canUseProcessFacets
 		? []
-		: getRequestedProcessFacetParams(url.searchParams);
+		: getRequestedProcessFacetParams(url.searchParams).filter(
+				(key) => !(hasDecafAlias && key === 'processing_base_method')
+			);
 	const deniedPremiumDiscoveryParams = catalogAccess.canUseAdvancedFilters
 		? []
 		: getRequestedPremiumDiscoveryParams(url.searchParams);
@@ -480,15 +489,29 @@ export const load: PageServerLoad = async (event) => {
 	const catalogAccessNotice: CatalogAccessDeniedNotice | null = createCatalogAccessDeniedNotice({
 		isAuthenticated: locals.principal.isAuthenticated,
 		processParams: deniedProcessParams,
+		decafParams: catalogAccess.canUseDecafFilter
+			? []
+			: [
+					...(requestedCatalogState.filters.decaf !== undefined ? ['decaf'] : []),
+					...(hasDecafAlias ? ['processing_base_method'] : [])
+				],
 		premiumDiscoveryParams: deniedPremiumDiscoveryParams,
 		advancedSortRequested: deniedAdvancedSort
 	});
 	const processAuthorizedCatalogState = catalogAccess.canUseProcessFacets
 		? requestedCatalogState
-		: stripProcessFacetFilters(requestedCatalogState);
-	const discoveryAuthorizedCatalogState = catalogAccess.canUseAdvancedFilters
+		: stripProcessFacetFilters(requestedCatalogState, preserveDecafAlias);
+	const decafAuthorizedCatalogState = catalogAccess.canUseDecafFilter
 		? processAuthorizedCatalogState
-		: stripPremiumDiscoveryFilters(processAuthorizedCatalogState);
+		: {
+				...processAuthorizedCatalogState,
+				filters: Object.fromEntries(
+					Object.entries(processAuthorizedCatalogState.filters).filter(([key]) => key !== 'decaf')
+				)
+			};
+	const discoveryAuthorizedCatalogState = catalogAccess.canUseAdvancedFilters
+		? decafAuthorizedCatalogState
+		: stripPremiumDiscoveryFilters(decafAuthorizedCatalogState);
 	const freshnessAuthorizedCatalogState = catalogAccess.canUseAdvancedFilters
 		? discoveryAuthorizedCatalogState
 		: stripFreshnessFilters(discoveryAuthorizedCatalogState);

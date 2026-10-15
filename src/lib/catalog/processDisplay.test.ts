@@ -1,11 +1,24 @@
 import { describe, expect, it } from 'vitest';
 import {
 	formatProcessDisplayValue,
+	isFarmProcessFacetOption,
 	isPublicProcessFacetOption,
 	normalizeProcessDisplayValue
 } from './processDisplay';
 
 describe('public process display helpers', () => {
+	it.each(['Decaf', 'Natural Decaf', 'Swiss Water', 'EA Decaf'])(
+		'does not offer %s as a new farm-processing choice',
+		(value) => {
+			expect(isFarmProcessFacetOption(value)).toBe(false);
+		}
+	);
+
+	it('keeps disclosed farm-processing methods selectable', () => {
+		for (const value of ['Washed', 'Natural', 'Honey'])
+			expect(isFarmProcessFacetOption(value)).toBe(true);
+	});
+
 	it.each([
 		'unknown',
 		'not specified',

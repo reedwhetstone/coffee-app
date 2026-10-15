@@ -32,8 +32,19 @@ function briefCatalogHref(criteria: SourcingBriefCriteria): string {
 	if (criteria.region) params.set('region', criteria.region);
 	if (criteria.processing) params.set('processing', criteria.processing);
 	if (criteria.processing_base_method) {
-		params.set('processing_base_method', criteria.processing_base_method);
+		if (criteria.processing_base_method.toLowerCase() === 'decaf') {
+			// Existing briefs remain readable during the transition, but the
+			// catalog deep link uses the new independent fact.
+			if (criteria.decaf === undefined) params.set('decaf', 'true');
+			else if (criteria.decaf === false) {
+				// Preserve the legacy contradiction (which intentionally matches none).
+				params.set('processing_base_method', criteria.processing_base_method);
+			}
+		} else {
+			params.set('processing_base_method', criteria.processing_base_method);
+		}
 	}
+	if (criteria.decaf !== undefined) params.set('decaf', String(criteria.decaf));
 	if (criteria.max_price_per_lb !== undefined) {
 		params.set('price_per_lb_max', String(criteria.max_price_per_lb));
 	}

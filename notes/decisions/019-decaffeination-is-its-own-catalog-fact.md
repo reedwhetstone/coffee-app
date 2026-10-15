@@ -59,7 +59,7 @@ The set is small and closed, so supplier wording is mapped in the scraper's norm
 - **Parchment API:** catalog responses carry `decaffeinated` and `decafMethod`. Catalog list, search and facets accept `decaf=true|false`. The processing facet stops returning `Decaf` once no row stores it.
 - **coffee-app:** one decaf control with three states: any, decaf only, no decaf. The default is any. A decaf lot shows a decaf badge and its method. The processing filter lists farm processes only.
 - **Similar coffees:** the existing "Decaf status differs" signal reads the flag.
-- **Access:** the `decaf` filter is a structured catalog filter, so it takes the default placement in ADR-005 and the pattern in ADR-018 section 5, and joins the structured process facets' gate. `decaf` is added to `PROCESS_FACET_FILTER_KEYS` in Parchment and in coffee-app's `catalogAccess.ts`, and its facet counts sit behind the same `canUseProcessFacets` check. Member website sessions and customer API keys of every plan with `catalog:read` may use it. Anonymous, public demo key and Viewer principals get the existing denial notice, the website loader strips the param for them, and the control shows locked with an upgrade reason. The BFF does not return its counts to them. The response fields and the card badge are catalog reading and are visible wherever the row is. Opening the filter to Anonymous or Viewer sessions would require amending ADR-005 first.
+- **Access (amended by Reed, 2026-10-14):** per the decaf amendment in ADR-005, the independent filter and its counts use `canUseDecafFilter`, not `canUseProcessFacets`. Signed-in free Viewer, Member, and Admin website sessions and customer API keys of every plan with `catalog:read` may use it. The exact legacy base-method `Decaf` alias follows the same capability during the compatibility window; every other structured process filter retains its existing gate. Anonymous and public-demo callers remain denied; the website loader strips their `decaf` param, the control explains free sign-in on demand, and the BFF omits decaf counts. Row facts and badges remain visible wherever the row is. Parchment must deploy the independent access/count support before the corrected coffee-app reader ships. No release flag or separate activation switch is introduced.
 
 ### 6. Market Index
 
@@ -93,10 +93,10 @@ Each step works in production on its own. Step 3 depends on steps 1 and 2 being 
 
 ## Consequences
 
-- A decaf filter is one click and cannot miss a lot because of its label.
+- One decaf control replaces the separate method labels; the compact toolbar opens its three choices on demand.
 - Decaf lots can be filtered and compared by farm process where the supplier states it.
 - The processing filter loses eleven entries.
 - About 250 in-stock decaf lots will show no farm process, because their supplier states none. That is a visible gap that was hidden before. Their Purveyor Score falls for the same reason (section 7), and the Market Index score series move with them.
 - `Decaf` as a base process is part of the documented API today (`processingBaseMethod`). Clients filtering on it must move to `decaf=true` before step 6. Stored briefs are rewritten for them in step 4. The docs and CLI manifest change in steps 2 and 3.
-- Anonymous and Viewer website sessions can no longer find decaf lots by label once the labels change, because the `decaf` filter is a Member capability (section 5). They still see the badge and the method on every card. Reversing that is an ADR-005 amendment, not a change to this record.
+- Signed-in free Viewer sessions can find decaf lots with the independent control after labels change. Anonymous visitors still see the badge and method but must sign in to use the decaf filter, per amended ADR-005.
 - Six coordinated changes across four repositories: Parchment (with its SDK), purveyors-cli, coffee-app and the scraper.

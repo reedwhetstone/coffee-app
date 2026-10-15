@@ -146,6 +146,38 @@ describe('/api/catalog/filters', () => {
 	});
 
 	describe('with counts=1', () => {
+		it.each([false, true])(
+			'returns decaf counts only to signed-in callers (authenticated=%s)',
+			async (authenticated) => {
+				mockResolvePrincipal.mockResolvedValue({
+					isAuthenticated: authenticated,
+					authKind: authenticated ? 'session' : 'anonymous',
+					primaryAppRole: authenticated ? 'viewer' : null
+				});
+				mockFacets.mockResolvedValue({
+					data: {
+						values: { decaf: ['true', 'false'] },
+						facets: { decaf: [{ value: 'true', count: 267 }] }
+					},
+					error: null
+				});
+				const response = await GET(
+					makeEvent('https://app.test/api/catalog/filters?counts=1&decaf=false')
+				);
+				expect(response.status).toBe(200);
+				const result = await response.json();
+				if (authenticated) {
+					expect(result.values.decaf).toEqual(['true', 'false']);
+					expect(result.facets.decaf).toEqual([{ value: 'true', count: 267 }]);
+					expect(mockFacets.mock.calls[0][0]).toMatchObject({ decaf: 'false' });
+				} else {
+					expect(result.values).not.toHaveProperty('decaf');
+					expect(result.facets).not.toHaveProperty('decaf');
+					expect(mockFacets.mock.calls[0][0]).not.toHaveProperty('decaf');
+				}
+			}
+		);
+
 		const countsUrl =
 			'https://app.test/api/catalog/filters?counts=1&country=Kenya&price_per_lb_max=8&variety_code=bourbon';
 

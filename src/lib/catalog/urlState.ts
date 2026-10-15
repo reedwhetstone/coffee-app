@@ -26,6 +26,8 @@ export interface CatalogSearchState {
 	country?: string | string[];
 	source?: string[];
 	processing?: string;
+	/** Decaffeination is independent of the farm process (ADR-019). */
+	decaf?: boolean;
 	processingBaseMethod?: string;
 	fermentationType?: string;
 	processAdditive?: string;
@@ -155,6 +157,7 @@ const FILTER_SERIALIZATION_ORDER = [
 	'continent',
 	'country',
 	'source',
+	'decaf',
 	'processing',
 	'processing_base_method',
 	'fermentation_type',
@@ -353,6 +356,10 @@ export function parseCatalogUrlState(url: URL, routeId = '/catalog'): CatalogUrl
 	if (hasAdditives !== undefined) {
 		filters.has_additives = hasAdditives;
 	}
+	const decaf = parseStrictBoolean(url.searchParams.get('decaf'));
+	if (decaf !== undefined) {
+		filters.decaf = decaf;
+	}
 
 	const stockedDays = parsePositiveInteger(url.searchParams.get('stocked_days'), 0);
 	if (stockedDays > 0) {
@@ -433,6 +440,13 @@ function appendFilterParam(
 	}
 
 	if (filterKey === 'has_additives') {
+		if (typeof value === 'boolean') {
+			params.append(paramKey, value.toString());
+		}
+		return;
+	}
+
+	if (filterKey === 'decaf') {
 		if (typeof value === 'boolean') {
 			params.append(paramKey, value.toString());
 		}
@@ -600,6 +614,7 @@ export function catalogUrlStateToSearchState(state: CatalogUrlState): CatalogSea
 		country: countries && countries.length === 1 ? countries[0] : countries,
 		source: readArrayValue(state.filters.source),
 		processing: readStringValue(state.filters.processing),
+		decaf: readBooleanValue(state.filters.decaf),
 		processingBaseMethod: readStringValue(state.filters.processing_base_method),
 		fermentationType: readStringValue(state.filters.fermentation_type),
 		processAdditive: readStringValue(state.filters.process_additive),

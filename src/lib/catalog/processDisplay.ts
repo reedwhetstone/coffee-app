@@ -1,3 +1,5 @@
+import { getDecafPresentation } from '$lib/catalog/decafPresentation';
+
 const PLACEHOLDER_PROCESS_VALUES = new Set([
 	'unknown',
 	'not specified',
@@ -31,4 +33,12 @@ export function formatProcessDisplayValue(value: string): string {
 export function isPublicProcessFacetOption(value: unknown): boolean {
 	if (value === undefined || value === null) return false;
 	return normalizeProcessDisplayValue(String(value)) !== null;
+}
+
+/** New process choices describe the farm process, not a decaffeination label. */
+export function isFarmProcessFacetOption(value: unknown): boolean {
+	return (
+		isPublicProcessFacetOption(value) &&
+		!getDecafPresentation({ processing: String(value) }).isDecaffeinated
+	);
 }

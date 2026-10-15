@@ -48,6 +48,41 @@ describe('compactCatalogRowForModel', () => {
 		expect(compact.cupping_notes as string).toMatch(/…$/);
 	});
 
+	it('keeps decaf facts but only the public method code and label', () => {
+		const compact = compactCatalogRowForModel({
+			id: 12,
+			decaffeinated: true,
+			decafMethod: {
+				code: 'swiss_water',
+				label: 'Swiss Water',
+				internalNotes: 'must not reach the model',
+				ownerId: 'private-user-id'
+			},
+			privateMetadata: { accessToken: 'secret' }
+		});
+
+		expect(compact.decaffeinated).toBe(true);
+		expect(compact.decafMethod).toEqual({ code: 'swiss_water', label: 'Swiss Water' });
+		expect(compact.privateMetadata).toBeUndefined();
+	});
+
+	it('keeps explicit non-decaf and omits contradictory or malformed method data', () => {
+		const compact = compactCatalogRowForModel({
+			id: 13,
+			decaffeinated: false,
+			decafMethod: { code: 'swiss_water', label: 'Swiss Water' }
+		});
+
+		expect(compact.decaffeinated).toBe(false);
+		expect(compact.decafMethod).toBeUndefined();
+		expect(
+			compactCatalogRowForModel({
+				decaffeinated: true,
+				decafMethod: { code: 'swiss_water', label: 42 }
+			}).decafMethod
+		).toBeUndefined();
+	});
+
 	it('shrinks the serialized row substantially', () => {
 		const compact = compactCatalogRowForModel(fullRow);
 

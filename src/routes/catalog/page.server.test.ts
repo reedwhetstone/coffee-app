@@ -178,6 +178,86 @@ function makeLoadInputWithPrincipal(
 }
 
 describe('/catalog page load', () => {
+	it.each(['true', 'false'])(
+		'forwards decaf=%s independently of farm processing for members',
+		async (decaf) => {
+			await load(
+				makeLoadInput(
+					'member',
+					{ access_token: 'member-token' } as Session,
+					`https://app.test/catalog?decaf=${decaf}&processing_base_method=Natural`
+				)
+			);
+			expect(mockCatalogList).toHaveBeenCalledWith(
+				expect.objectContaining({ decaf, processing_base_method: 'Natural' })
+			);
+		}
+	);
+
+	it.each(['true', 'false'])(
+		'strips anonymous decaf=%s with a free-sign-in notice',
+		async (decaf) => {
+			const result = (await load(
+				makeLoadInput('viewer', null, `https://app.test/catalog?decaf=${decaf}`)
+			)) as { catalogAccessNotice: unknown };
+			expect(mockCatalogList.mock.calls[0][0]).not.toHaveProperty('decaf');
+			expect(result.catalogAccessNotice).toMatchObject({
+				deniedParams: ['decaf'],
+				status: 401,
+				message: 'Sign in with a free account to filter by decaf status.'
+			});
+		}
+	);
+
+	it.each(['true', 'false'])(
+		'preserves Viewer decaf=%s while stripping paid farm-process filters',
+		async (decaf) => {
+			const result = (await load(
+				makeLoadInput(
+					'viewer',
+					{ access_token: 'viewer-token' } as Session,
+					`https://app.test/catalog?decaf=${decaf}&processing_base_method=Natural`
+				)
+			)) as {
+				catalogAccessNotice: unknown;
+				initialCatalogState: { filters: Record<string, unknown> };
+			};
+			expect(mockCatalogList.mock.calls[0][0]).toMatchObject({ decaf });
+			expect(mockCatalogList.mock.calls[0][0]).not.toHaveProperty('processing_base_method');
+			expect(result.catalogAccessNotice).toMatchObject({
+				deniedParams: ['processing_base_method']
+			});
+		}
+	);
+
+	it('explains free sign-in for anonymous legacy Decaf links while stripping the alias', async () => {
+		const result = (await load(
+			makeLoadInput('viewer', null, 'https://app.test/catalog?processing_base_method=Decaf')
+		)) as { catalogAccessNotice: unknown };
+		expect(mockCatalogList.mock.calls[0][0]).not.toHaveProperty('processing_base_method');
+		expect(result.catalogAccessNotice).toMatchObject({
+			status: 401,
+			deniedParams: ['processing_base_method'],
+			message: 'Sign in with a free account to filter by decaf status.'
+		});
+	});
+
+	it('preserves the exact legacy Decaf alias for Viewers, including contradictory criteria', async () => {
+		const result = (await load(
+			makeLoadInput(
+				'viewer',
+				{ access_token: 'viewer-token' } as Session,
+				'https://app.test/catalog?decaf=false&processing_base_method=Decaf&fermentation_type=Anaerobic'
+			)
+		)) as { catalogAccessNotice: unknown };
+		expect(mockCatalogList.mock.calls[0][0]).toMatchObject({
+			decaf: 'false',
+			processing_base_method: 'Decaf'
+		});
+		expect(mockCatalogList.mock.calls[0][0]).not.toHaveProperty('fermentation_type');
+		expect(result.catalogAccessNotice).toMatchObject({ deniedParams: ['fermentation_type'] });
+	});
+
 	it('uses public-demo for anonymous catalog reads and session mode for viewer sessions', async () => {
 		const viewerSession = { access_token: 'cookie-token' } as Session | null;
 

@@ -16,6 +16,8 @@ function createCoffee(overrides: Partial<CoffeeCatalog> = {}): CoffeeCatalog {
 		region: 'Huila',
 		continent: 'South America',
 		processing: 'Washed',
+		decaffeinated: false,
+		decafMethod: null,
 		processing_base_method: 'natural',
 		fermentation_type: 'anaerobic',
 		process_additives: ['fruit'],
@@ -97,6 +99,34 @@ describe('CoffeeCard Purveyor Score hierarchy', () => {
 		expect(screen.getByText('92')).toBeTruthy();
 		expect(screen.getByText(/Exceptional/)).toBeTruthy();
 		expect(screen.queryByText('Provenance identified')).toBeNull();
+	});
+
+	it('shows the structured decaf fact and method beside the independent farm process', () => {
+		render(CoffeeCard, {
+			coffee: createCoffee({
+				processing: 'Washed',
+				decaffeinated: true,
+				decafMethod: { code: 'swiss_water', label: 'Swiss Water' }
+			}),
+			parseTastingNotes
+		});
+
+		expect(screen.getByText('Washed')).toBeTruthy();
+		expect(screen.getByLabelText('Decaf · Swiss Water')).toBeTruthy();
+	});
+
+	it('does not resurrect decaf from a stale label when the structured flag is false', () => {
+		render(CoffeeCard, {
+			coffee: createCoffee({
+				processing: 'Swiss Water Decaf',
+				decaffeinated: false,
+				decafMethod: null
+			}),
+			parseTastingNotes
+		});
+
+		expect(screen.getByText('Swiss Water Decaf')).toBeTruthy();
+		expect(screen.queryByLabelText('Decaf · Swiss Water')).toBeNull();
 	});
 
 	it('formats supplier slugs anywhere the card exposes the supplier name', async () => {
