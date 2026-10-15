@@ -370,7 +370,7 @@ describe('loadCatalogFilterOptions', () => {
 		expect(result.facets.regions).toEqual([]);
 	});
 
-	it('returns only the most common regions, as suggestions', async () => {
+	it('returns all regions so the searchable list includes less common origins', async () => {
 		const regions = Array.from({ length: 400 }, (_, index) => ({
 			value: `Region ${index}`,
 			count: index
@@ -379,9 +379,37 @@ describe('loadCatalogFilterOptions', () => {
 
 		const result = await loadCatalogFilterOptions(client, url(''), freeAccount);
 
-		expect(result.facets.regions).toHaveLength(150);
-		expect(result.facets.regions[0]).toEqual({ value: 'Region 399', count: 399 });
-		expect(result.values).not.toHaveProperty('regions');
+		expect(result.facets.regions).toEqual(regions);
+	});
+
+	it('keeps alternative regions available while preserving the other filters', async () => {
+		const regions = [
+			{ value: 'Huila', count: 8 },
+			{ value: 'Cauca', count: 4 }
+		];
+		const { client, facets } = makeClient({
+			facets: (query) => ({
+				values: {},
+				facets: { regions: query.region ? regions.slice(0, 1) : regions }
+			})
+		});
+
+		const result = await loadCatalogFilterOptions(
+			client,
+			url('region=Huila&region=Cauca&country=Colombia'),
+			freeAccount
+		);
+
+		expect(result.facets.regions).toEqual(regions);
+		expect(facets).toHaveBeenCalledWith(
+			expect.objectContaining({ region: ['Huila', 'Cauca'], country: 'Colombia' })
+		);
+		expect(facets).toHaveBeenCalledWith(
+			expect.objectContaining({ country: 'Colombia', stocked: 'true', showWholesale: 'true' })
+		);
+		expect(
+			facets.mock.calls.some(([query]) => query.country === 'Colombia' && !('region' in query))
+		).toBe(true);
 	});
 
 	it('fails when the counts under the active filters cannot be read', async () => {

@@ -208,7 +208,11 @@ function buildParchmentCatalogQuery(
 	appendStringParam(query, 'grade', searchState.grade);
 	appendStringParam(query, 'appearance', searchState.appearance);
 	appendStringParam(query, 'name', searchState.name);
-	appendStringParam(query, 'region', searchState.region);
+	if (Array.isArray(searchState.region)) {
+		appendStringArrayParam(query, 'region', searchState.region);
+	} else {
+		appendStringParam(query, 'region', searchState.region);
+	}
 	appendNumberParam(query, 'score_value_min', searchState.scoreValueMin);
 	appendNumberParam(query, 'score_value_max', searchState.scoreValueMax);
 	appendNumberParam(query, 'price_per_lb_min', searchState.pricePerLbMin);

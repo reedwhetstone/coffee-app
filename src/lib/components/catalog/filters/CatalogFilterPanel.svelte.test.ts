@@ -95,6 +95,48 @@ describe('CatalogFilterPanel', () => {
 			onClose: () => {}
 		});
 
+	it('searches regions without applying text and selects, deselects, and clears multiple regions', async () => {
+		filterState.setFacetCounts({
+			countries: [{ value: 'Colombia', count: 12 }],
+			regions: [
+				{ value: 'Huila', count: 8 },
+				{ value: 'Cauca', count: 4 }
+			]
+		});
+		renderPanel();
+		const search = screen.getByRole('searchbox', { name: 'Region' });
+		await fireEvent.input(search, { target: { value: 'hUi' } });
+		expect(screen.queryByRole('checkbox', { name: 'Cauca 4' })).not.toBeInTheDocument();
+		expect(filterState.current().filters).toEqual({});
+
+		await fireEvent.click(screen.getByRole('checkbox', { name: 'Huila 8' }));
+		expect(filterState.current().filters).toEqual({ region: ['Huila'] });
+		await fireEvent.input(search, { target: { value: '' } });
+		await fireEvent.click(screen.getByRole('checkbox', { name: 'Cauca 4' }));
+		expect(filterState.current().filters).toEqual({ region: ['Huila', 'Cauca'] });
+		expect(screen.getByRole('checkbox', { name: 'Huila 8' })).toBeChecked();
+		expect(screen.getByRole('checkbox', { name: 'Cauca 4' })).toBeChecked();
+
+		await fireEvent.click(screen.getByRole('checkbox', { name: 'Huila 8' }));
+		expect(filterState.current().filters).toEqual({ region: ['Cauca'] });
+		await fireEvent.click(screen.getByRole('button', { name: 'Clear 1' }));
+		expect(filterState.current().filters.region).toEqual([]);
+		expect(screen.getByRole('checkbox', { name: 'Cauca 4' })).not.toBeChecked();
+		// Country keeps its existing multi-select control.
+		await fireEvent.click(screen.getByRole('checkbox', { name: 'Colombia 12' }));
+		expect(filterState.current().filters).toEqual({ region: [], country: ['Colombia'] });
+	});
+
+	it('preserves a region from an existing URL even when absent from the available options', async () => {
+		filterState.setFilters({ region: 'Legacy region' });
+		filterState.setFacetCounts({ regions: [{ value: 'Huila', count: 8 }] });
+		renderPanel();
+		expect(screen.getByRole('checkbox', { name: 'Legacy region 0' })).toBeChecked();
+		expect(screen.getByRole('checkbox', { name: 'Legacy region 0' })).toBeEnabled();
+		await fireEvent.click(screen.getByRole('button', { name: 'Clear 1' }));
+		expect(filterState.current().filters.region).toEqual([]);
+	});
+
 	it('clears an elevation range that was edited into inverted bounds', async () => {
 		filterState.setFilters({ elevation_masl: { min: '1200', max: '1900' } });
 		render(CatalogFilterPanel, {
