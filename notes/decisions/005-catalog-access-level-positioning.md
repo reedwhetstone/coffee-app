@@ -34,6 +34,18 @@
 > Recorded with the catalog filter rework plan
 > (`notes/implementation-plans/2026-10-02-catalog-filter-ux-rework.md`).
 
+> **Decaf amendment (2026-10-14):** Reed authorized opening the independent
+> decaf filter to signed-in free Viewer accounts, following the price-range
+> precedent. Decaf is a basic suitability choice, not detailed sourcing analysis.
+> `canUseDecafFilter` governs its query and counts independently of process facets.
+> All signed-in sessions and customer API keys with `catalog:read` may use it;
+> anonymous/public-demo access remains unchanged. The exact transitional
+> `processing_base_method=Decaf` alias follows the same rule, without opening
+> Washed/Natural or other structured process facets. This is a narrow exception,
+> not approval to expand the entire free tier. See the
+> [core-filter assessment](../product-assessments/2026-10-14-viewer-core-filters.md)
+> for recommendations that are not yet policy.
+
 ## Context
 
 PR #302 exposed advanced process-transparency filters on the public catalog. That made a local implementation question visible as a product strategy question: what should anonymous visitors, free signed-in viewers, subscribed members, API customers, and admins each be able to see and do?

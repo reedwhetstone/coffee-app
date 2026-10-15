@@ -25,7 +25,34 @@
 
 	let { access, panelFilterCount, onOpenPanel }: Props = $props();
 
-	let openMenu = $state<'origin' | 'price' | null>(null);
+	let openMenu = $state<'origin' | 'price' | 'decaf' | null>(null);
+
+	let decafTrigger: HTMLButtonElement;
+	let decafSummary = $derived(
+		$filterStore.filters.decaf === true
+			? 'Decaf only'
+			: $filterStore.filters.decaf === false
+				? 'No decaf'
+				: 'Any'
+	);
+
+	// A wrapped toolbar can place the trigger against either viewport edge.
+	// Keep this panel on screen without changing the shared toolbar geometry.
+	function containDecafMenu(node: HTMLElement) {
+		function position() {
+			node.style.transform = '';
+			const bounds = node.getBoundingClientRect();
+			const offset = Math.max(16 - bounds.left, Math.min(0, window.innerWidth - 16 - bounds.right));
+			node.style.transform = `translateX(${offset}px)`;
+		}
+		position();
+		window.addEventListener('resize', position);
+		return {
+			destroy() {
+				window.removeEventListener('resize', position);
+			}
+		};
+	}
 
 	let countries = $derived(selectedList($filterStore.filters.country));
 	let countryOptions = $derived(
@@ -101,6 +128,15 @@
 	const menuPanelClass =
 		'absolute left-0 top-full z-30 mt-1 w-72 max-w-[calc(100vw-2rem)] rounded-lg border border-line bg-surface-canvas p-3 shadow-lg';
 </script>
+
+<svelte:window
+	onkeydown={(event) => {
+		if (event.key === 'Escape' && openMenu === 'decaf') {
+			openMenu = null;
+			decafTrigger?.focus();
+		}
+	}}
+/>
 
 <div class="rounded-lg border border-line bg-surface-panel px-4 py-3" data-catalog-primary-row>
 	<div class="flex flex-wrap items-center gap-2">
@@ -228,8 +264,35 @@
 			<span>In stock only</span>
 		</label>
 
-		<div class="rounded-md border border-line bg-surface-canvas px-3 py-1.5" data-catalog-decaf>
-			<DecafFilter {access} compact />
+		<div
+			class="relative"
+			data-catalog-decaf
+			use:dismissOnOutsidePointer={() => {
+				if (openMenu === 'decaf') openMenu = null;
+			}}
+		>
+			<button
+				bind:this={decafTrigger}
+				type="button"
+				class={menuButtonClass}
+				aria-expanded={openMenu === 'decaf'}
+				aria-controls="catalog-decaf-menu"
+				onclick={() => (openMenu = openMenu === 'decaf' ? null : 'decaf')}
+			>
+				Decaf: {decafSummary}
+				<span aria-hidden="true">▾</span>
+			</button>
+			{#if openMenu === 'decaf'}
+				<div id="catalog-decaf-menu" class={menuPanelClass} use:containDecafMenu>
+					<DecafFilter
+						{access}
+						onSelect={() => {
+							openMenu = null;
+							decafTrigger?.focus();
+						}}
+					/>
+				</div>
+			{/if}
 		</div>
 
 		<label class="inline-flex min-w-0 max-w-full items-center gap-2 text-sm text-muted">

@@ -941,6 +941,7 @@ describe('/catalog filters', () => {
 		canUseAdvancedFilters: true,
 		canUseProcessFacets: true,
 		canUsePriceRanges: true,
+		canUseDecafFilter: true,
 		canUsePriceScoreRanges: true,
 		canUseAdvancedSorts: true,
 		canViewPremiumFilterMetadata: true,
@@ -997,6 +998,44 @@ describe('/catalog filters', () => {
 		expect(
 			screen.getByRole('button', { name: 'Remove filter: Price: up to $8 per lb' })
 		).toBeInTheDocument();
+	});
+
+	it('keeps decaf compact, explains the anonymous lock on demand, and supports Viewer choices', async () => {
+		const { unmount } = renderCatalog(createData());
+		expect(
+			screen.queryByText('Sign in with a free account to filter by decaf status.')
+		).not.toBeInTheDocument();
+		await fireEvent.click(screen.getByRole('button', { name: 'Decaf: Any' }));
+		expect(
+			screen.getByText('Sign in with a free account to filter by decaf status.')
+		).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Decaf only' })).toBeDisabled();
+		unmount();
+		renderCatalog(
+			createData({
+				session: { access_token: 'viewer-token' },
+				role: 'viewer',
+				catalogAccess: { ...createData().catalogAccess, canUseDecafFilter: true }
+			} as unknown as Partial<PageData>)
+		);
+		const trigger = screen.getByRole('button', { name: 'Decaf: Any' });
+		await fireEvent.click(trigger);
+		await fireEvent.click(screen.getByRole('button', { name: 'No decaf' }));
+		expect(get(filterStore).filters.decaf).toBe(false);
+		expect(screen.getByRole('button', { name: 'Decaf: No decaf' })).toHaveAttribute(
+			'aria-expanded',
+			'false'
+		);
+		await fireEvent.click(trigger);
+		await fireEvent.keyDown(window, { key: 'Escape' });
+		expect(screen.getByRole('button', { name: 'Decaf: No decaf' })).toHaveAttribute(
+			'aria-expanded',
+			'false'
+		);
+		expect(trigger).toHaveFocus();
+		await fireEvent.click(trigger);
+		await fireEvent.click(screen.getByRole('button', { name: 'Any' }));
+		expect(get(filterStore).filters).not.toHaveProperty('decaf');
 	});
 
 	it('explains when viewer-tier premium discovery filters were not applied', () => {

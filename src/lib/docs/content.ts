@@ -556,7 +556,7 @@ const docsPages: DocsPage[] = [
 							'decaf',
 							'true | false',
 							'none',
-							'true selects decaffeinated coffees; false excludes them. Omit for any coffee. Independent of farm processing and available to member/admin sessions and customer API keys across every API plan.'
+							'true selects decaffeinated coffees; false excludes them. Omit for any coffee. Independent of farm processing and available to signed-in sessions, including free Viewer accounts, and customer API keys across every API plan. Anonymous website visitors must sign in.'
 						],
 						[
 							'processing_base_method',

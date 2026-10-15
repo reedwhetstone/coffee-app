@@ -20,6 +20,7 @@ import { DISCLOSURE_LABELS } from '$lib/styles/chartColors';
 /** The capabilities the catalog loader resolves for the viewer. */
 export interface CatalogFilterAccess {
 	canUseProcessFacets: boolean;
+	canUseDecafFilter: boolean;
 	canUseAdvancedFilters: boolean;
 	canUsePriceRanges: boolean;
 	canUsePriceScoreRanges: boolean;
@@ -62,9 +63,9 @@ export function catalogFilterLock(
 						...MEMBER_LOCK
 					};
 		case 'decaf':
-			return access.canUseProcessFacets
+			return access.canUseDecafFilter
 				? null
-				: { reason: 'Members filter coffees by decaf status.', ...MEMBER_LOCK };
+				: { reason: 'Sign in with a free account to filter by decaf status.', ...SIGN_IN_LOCK };
 		case 'variety':
 			return access.canUseProcessFacets
 				? null

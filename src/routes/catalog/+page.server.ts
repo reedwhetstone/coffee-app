@@ -297,9 +297,13 @@ function isCatalogSchemaUnavailableError(error: unknown): error is Error {
 	);
 }
 
-function stripProcessFacetFilters(state: CatalogUrlState): CatalogUrlState {
+function stripProcessFacetFilters(
+	state: CatalogUrlState,
+	preserveDecafAlias = false
+): CatalogUrlState {
 	const filters = { ...state.filters };
 	for (const key of PROCESS_FACET_FILTER_KEYS) {
+		if (preserveDecafAlias && key === 'processing_base_method') continue;
 		delete filters[key];
 	}
 
@@ -468,9 +472,13 @@ export const load: PageServerLoad = async (event) => {
 	const catalogAccess = resolveCatalogAccessCapabilities({
 		principal: locals.principal
 	});
+	const hasDecafAlias = requestedCatalogState.filters.processing_base_method === 'Decaf';
+	const preserveDecafAlias = catalogAccess.canUseDecafFilter && hasDecafAlias;
 	const deniedProcessParams = catalogAccess.canUseProcessFacets
 		? []
-		: getRequestedProcessFacetParams(url.searchParams);
+		: getRequestedProcessFacetParams(url.searchParams).filter(
+				(key) => !(hasDecafAlias && key === 'processing_base_method')
+			);
 	const deniedPremiumDiscoveryParams = catalogAccess.canUseAdvancedFilters
 		? []
 		: getRequestedPremiumDiscoveryParams(url.searchParams);
@@ -481,15 +489,29 @@ export const load: PageServerLoad = async (event) => {
 	const catalogAccessNotice: CatalogAccessDeniedNotice | null = createCatalogAccessDeniedNotice({
 		isAuthenticated: locals.principal.isAuthenticated,
 		processParams: deniedProcessParams,
+		decafParams: catalogAccess.canUseDecafFilter
+			? []
+			: [
+					...(requestedCatalogState.filters.decaf !== undefined ? ['decaf'] : []),
+					...(hasDecafAlias ? ['processing_base_method'] : [])
+				],
 		premiumDiscoveryParams: deniedPremiumDiscoveryParams,
 		advancedSortRequested: deniedAdvancedSort
 	});
 	const processAuthorizedCatalogState = catalogAccess.canUseProcessFacets
 		? requestedCatalogState
-		: stripProcessFacetFilters(requestedCatalogState);
-	const discoveryAuthorizedCatalogState = catalogAccess.canUseAdvancedFilters
+		: stripProcessFacetFilters(requestedCatalogState, preserveDecafAlias);
+	const decafAuthorizedCatalogState = catalogAccess.canUseDecafFilter
 		? processAuthorizedCatalogState
-		: stripPremiumDiscoveryFilters(processAuthorizedCatalogState);
+		: {
+				...processAuthorizedCatalogState,
+				filters: Object.fromEntries(
+					Object.entries(processAuthorizedCatalogState.filters).filter(([key]) => key !== 'decaf')
+				)
+			};
+	const discoveryAuthorizedCatalogState = catalogAccess.canUseAdvancedFilters
+		? decafAuthorizedCatalogState
+		: stripPremiumDiscoveryFilters(decafAuthorizedCatalogState);
 	const freshnessAuthorizedCatalogState = catalogAccess.canUseAdvancedFilters
 		? discoveryAuthorizedCatalogState
 		: stripFreshnessFilters(discoveryAuthorizedCatalogState);

@@ -147,7 +147,7 @@ describe('/api/catalog/filters', () => {
 
 	describe('with counts=1', () => {
 		it.each([false, true])(
-			'does not return decaf counts to anonymous/viewer callers (authenticated=%s)',
+			'returns decaf counts only to signed-in callers (authenticated=%s)',
 			async (authenticated) => {
 				mockResolvePrincipal.mockResolvedValue({
 					isAuthenticated: authenticated,
@@ -166,9 +166,15 @@ describe('/api/catalog/filters', () => {
 				);
 				expect(response.status).toBe(200);
 				const result = await response.json();
-				expect(result.values).not.toHaveProperty('decaf');
-				expect(result.facets).not.toHaveProperty('decaf');
-				expect(mockFacets.mock.calls[0][0]).not.toHaveProperty('decaf');
+				if (authenticated) {
+					expect(result.values.decaf).toEqual(['true', 'false']);
+					expect(result.facets.decaf).toEqual([{ value: 'true', count: 267 }]);
+					expect(mockFacets.mock.calls[0][0]).toMatchObject({ decaf: 'false' });
+				} else {
+					expect(result.values).not.toHaveProperty('decaf');
+					expect(result.facets).not.toHaveProperty('decaf');
+					expect(mockFacets.mock.calls[0][0]).not.toHaveProperty('decaf');
+				}
 			}
 		);
 

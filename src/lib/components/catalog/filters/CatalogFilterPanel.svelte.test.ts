@@ -51,6 +51,7 @@ const memberAccess = {
 	canUseProcessFacets: true,
 	canUseAdvancedFilters: true,
 	canUsePriceRanges: true,
+	canUseDecafFilter: true,
 	canUsePriceScoreRanges: true,
 	canUseAdvancedSorts: true,
 	canUseWholesaleOnly: true
@@ -204,16 +205,18 @@ describe('CatalogFilterPanel', () => {
 		expect(filterState.current().filters).toEqual({});
 	});
 
-	it('locks the decaf control for viewers without allowing local state changes', async () => {
+	it('locks the decaf control for anonymous visitors without allowing local state changes', async () => {
 		render(CatalogFilterPanel, {
-			access: { ...memberAccess, canUseProcessFacets: false },
+			access: { ...memberAccess, canUseProcessFacets: false, canUseDecafFilter: false },
 			resultCount: 12,
 			activeFilterCount: 0,
 			onClose: () => {}
 		});
 
 		await fireEvent.click(screen.getByText('Decaf', { selector: 'summary' }));
-		expect(screen.getByText('Members filter coffees by decaf status.')).toBeInTheDocument();
+		expect(
+			screen.getByText('Sign in with a free account to filter by decaf status.')
+		).toBeInTheDocument();
 		const decafOnly = screen.getByRole('button', { name: 'Decaf only' });
 		expect(decafOnly).toBeDisabled();
 		await fireEvent.click(decafOnly);

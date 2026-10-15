@@ -62,9 +62,9 @@ const SELECTION_FACETS: ReadonlyArray<{
 	params: readonly string[];
 	facets: readonly string[];
 	include?: OptInCounts;
-	requiresProcessFacets?: boolean;
+	requiresDecafFilter?: boolean;
 }> = [
-	{ params: ['decaf'], facets: ['decaf'], requiresProcessFacets: true },
+	{ params: ['decaf'], facets: ['decaf'], requiresDecafFilter: true },
 	{ params: ['country'], facets: ['countries'] },
 	{ params: ['continent'], facets: ['continents'] },
 	{ params: ['source'], facets: ['sources'] },
@@ -239,7 +239,7 @@ function pickOptionFacets(
 	const values: Record<string, string[]> = {};
 	const facets: Record<string, CatalogFacetCount[]> = {};
 	for (const control of SELECTION_FACETS) {
-		if (control.requiresProcessFacets && !access.canUseProcessFacets) continue;
+		if (control.requiresDecafFilter && !access.canUseDecafFilter) continue;
 		if (control.include && !included.includes(control.include)) continue;
 		for (const facet of control.facets) {
 			const listed = allValues[facet] ?? [];
@@ -257,6 +257,7 @@ function pickOptionFacets(
 export interface CatalogFilterOptionsAccess {
 	/** Structured process filters and the variety, species and drying vocabulary. */
 	canUseProcessFacets: boolean;
+	canUseDecafFilter: boolean;
 	/** Grading filters: grade designations, screen size, elevation bands. */
 	canUseAdvancedFilters: boolean;
 	/** Cup score range and protocol. */
@@ -271,7 +272,7 @@ export async function loadCatalogFilterOptions(
 	const filterQuery = toCatalogFilterQuery(url);
 	// The website's locked control must not narrow counts through an unentitled
 	// URL, even if an upstream response includes more metadata than expected.
-	if (!access.canUseProcessFacets) delete filterQuery.decaf;
+	if (!access.canUseDecafFilter) delete filterQuery.decaf;
 	const included: OptInCounts[] = [
 		...(access.canUseProcessFacets ? (['taxonomy'] as const) : []),
 		...(access.canUseAdvancedFilters ? (['grading'] as const) : [])
@@ -312,7 +313,7 @@ export async function loadCatalogFilterOptions(
 
 	const activeSelections = SELECTION_FACETS.filter(
 		(control) =>
-			(!control.requiresProcessFacets || access.canUseProcessFacets) &&
+			(!control.requiresDecafFilter || access.canUseDecafFilter) &&
 			(!control.include || included.includes(control.include)) &&
 			control.params.some((param) => param in filterQuery)
 	);
@@ -329,8 +330,8 @@ export async function loadCatalogFilterOptions(
 						);
 						return { control, picked: pickOptionFacets(response, needed, access) };
 					} catch {
-						// Keep the base counts for this control when its extra read fails.
-						return null;
+						// Counts under the selected value cannot describe alternatives.
+						return { control, picked: null };
 					}
 				})
 			),
@@ -342,8 +343,11 @@ export async function loadCatalogFilterOptions(
 
 	const { values, facets } = pickOptionFacets(base, included, access);
 	for (const alternative of alternatives) {
-		if (!alternative) continue;
 		for (const facet of alternative.control.facets) {
+			if (!alternative.picked) {
+				delete facets[facet];
+				continue;
+			}
 			values[facet] = alternative.picked.values[facet] ?? [];
 			if (alternative.picked.facets[facet]) facets[facet] = alternative.picked.facets[facet];
 			else delete facets[facet];

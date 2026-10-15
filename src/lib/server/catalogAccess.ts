@@ -12,6 +12,8 @@ export interface CatalogAccessCapabilities {
 	canUseBasicFilters: boolean;
 	canUseAdvancedFilters: boolean;
 	canUseProcessFacets: boolean;
+	/** Decaf is a signed-in discovery filter, independent of detailed process facets. */
+	canUseDecafFilter: boolean;
 	/**
 	 * Price-per-pound range. ADR-005 (amended 2026-10-04) makes this the free
 	 * Viewer level's broad filter: every signed-in session and API key.
@@ -44,7 +46,6 @@ export interface CatalogAccessDeniedNotice {
 }
 
 export const PROCESS_FACET_FILTER_KEYS = [
-	'decaf',
 	'processing_base_method',
 	'fermentation_type',
 	'process_additive',
@@ -106,6 +107,7 @@ export function resolveCatalogAccessCapabilities(
 		canUseAdvancedFilters: canUsePublicSearchLeverage,
 		canUseProcessFacets: canUsePublicSearchLeverage,
 		canUsePriceRanges: subject.isAuthenticated,
+		canUseDecafFilter: subject.isAuthenticated,
 		canUsePriceScoreRanges: canUsePublicSearchLeverage,
 		canUseAdvancedSorts: canUsePublicSearchLeverage,
 		canViewPremiumFilterMetadata: canUsePublicSearchLeverage,
@@ -134,6 +136,7 @@ export function getRequestedPremiumDiscoveryParams(searchParams: URLSearchParams
 export function createCatalogAccessDeniedNotice(input: {
 	isAuthenticated: boolean;
 	processParams?: string[];
+	decafParams?: string[];
 	premiumDiscoveryParams?: string[];
 	advancedSortRequested?: boolean;
 }): CatalogAccessDeniedNotice | null {
@@ -143,6 +146,7 @@ export function createCatalogAccessDeniedNotice(input: {
 	const deniedParams = [
 		...new Set([
 			...processParams,
+			...(input.decafParams ?? []),
 			...premiumDiscoveryParams,
 			...(advancedSortRequested ? ['sort'] : [])
 		])
@@ -173,6 +177,10 @@ export function createCatalogAccessDeniedNotice(input: {
 	) {
 		authMessage = 'This sort field requires a member account.';
 		entitlementMessage = 'Advanced sort fields are available to members and customer API keys.';
+	}
+
+	if (deniedParams.every((param) => input.decafParams?.includes(param))) {
+		authMessage = 'Sign in with a free account to filter by decaf status.';
 	}
 
 	return {

@@ -10,10 +10,10 @@
 
 	interface Props {
 		access: CatalogFilterAccess;
-		compact?: boolean;
+		onSelect?: () => void;
 	}
 
-	let { access, compact = false }: Props = $props();
+	let { access, onSelect }: Props = $props();
 
 	let decafLock = $derived(catalogFilterLock(access, 'decaf'));
 	let selected = $derived([
@@ -28,10 +28,11 @@
 
 		const value = next[0];
 		filterStore.setFilter('decaf', value === 'true' ? true : value === 'false' ? false : '');
+		onSelect?.();
 	}
 </script>
 
-<div class={compact ? 'flex flex-wrap items-center gap-x-3 gap-y-1' : 'space-y-2'}>
+<div class="space-y-2">
 	<FilterChips
 		legend="Decaf"
 		{options}
@@ -40,6 +41,6 @@
 		onChange={changeDecaf}
 	/>
 	{#if decafLock}
-		<LockedNotice lock={decafLock} {compact} />
+		<LockedNotice lock={decafLock} />
 	{/if}
 </div>

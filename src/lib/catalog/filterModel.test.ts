@@ -15,15 +15,21 @@ const anonymous: CatalogFilterAccess = {
 	canUseProcessFacets: false,
 	canUseAdvancedFilters: false,
 	canUsePriceRanges: false,
+	canUseDecafFilter: false,
 	canUsePriceScoreRanges: false,
 	canUseAdvancedSorts: false,
 	canUseWholesaleOnly: false
 };
-const freeAccount: CatalogFilterAccess = { ...anonymous, canUsePriceRanges: true };
+const freeAccount: CatalogFilterAccess = {
+	...anonymous,
+	canUsePriceRanges: true,
+	canUseDecafFilter: true
+};
 const member: CatalogFilterAccess = {
 	canUseProcessFacets: true,
 	canUseAdvancedFilters: true,
 	canUsePriceRanges: true,
+	canUseDecafFilter: true,
 	canUsePriceScoreRanges: true,
 	canUseAdvancedSorts: true,
 	canUseWholesaleOnly: true
@@ -57,14 +63,16 @@ describe('catalogFilterLock', () => {
 		});
 		expect(catalogFilterLock(anonymous, 'process')).toMatchObject({ href: '/subscription' });
 		expect(catalogFilterLock(anonymous, 'decaf')).toEqual({
-			reason: 'Members filter coffees by decaf status.',
-			href: '/subscription',
-			action: 'See membership'
+			reason: 'Sign in with a free account to filter by decaf status.',
+			href: '/auth',
+			action: 'Sign in free'
 		});
 	});
 
-	it('opens only the price range for a signed-in free account', () => {
-		expect(lockedControls(freeAccount)).toEqual(CONTROLS.filter((control) => control !== 'price'));
+	it('opens price and decaf for a signed-in free account', () => {
+		expect(lockedControls(freeAccount)).toEqual(
+			CONTROLS.filter((control) => control !== 'price' && control !== 'decaf')
+		);
 	});
 
 	it('locks nothing for members', () => {
