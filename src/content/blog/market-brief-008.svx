@@ -1,0 +1,37 @@
+---
+title: 'Agent runs that pass every time, the ICO''s data platform and a roaster''s two limits'
+date: '2026-10-04'
+description: 'Why an agent benchmark''s every-run figure describes a whole setup, which unstated terms decide whether the ICO''s new market data platform can be built on, and what two published hit rates say about one roaster''s tolerances.'
+tags: ['coffee', 'technology', 'ideas']
+pillar: 'market-intelligence'
+draft: false
+format: 'market-brief'
+newsletter: 'fieldnotes'
+edition: 8
+---
+
+## An agent's every-run pass rate belongs to the whole setup
+
+Microsoft's ThinkingBox benchmark runs AI agents through 507 synthetic business workflows, 20 times each, and grades the records each run leaves behind. It reports three figures per model: the average share of attempts that pass, the share of tasks solved at least once, and the share passed on all 20 runs. For work that changes real records, where a failed run can leave a wrong entry behind, the authors call at-least-once the wrong figure to look at. A task counts there even if most of its runs failed. The every-run share orders models differently. Kimi-K3 solves the most tasks at least once, 93.89% to Claude Opus 5's 79.09%, yet passes 13.41% every time to Opus 5's 47.53%. [[1]](https://huggingface.co/blog/microsoft/thinkingbox)
+
+An average absorbs an occasional failed run from any cause, so it cannot show whether a task passed every time. Under an all-20 rule, one failed run removes the task, whatever caused it. That is how Kimi-K3's average (57.37) can sit within one percentage point of GPT-6 Astra's (58.31) while Astra passes 45.56% of tasks on every run to Kimi-K3's 13.41%. The authors counted system errors, operational failures as opposed to wrong results from the model, as failed attempts, so a single one costs a task. They also describe the common failure, an agent that does not recover from a tool error or an empty lookup, as a retry and error-recovery problem before a model problem. [[1]](https://huggingface.co/blog/microsoft/thinkingbox)
+
+So I read each model's figures as results for that model as Microsoft ran it: the model itself, the endpoint serving it, and the tools and error handling around it. The gaps between models are real, since all ran in one test rig, but the post does not split a figure among those parts, and a builder's parts will differ. A published every-run figure therefore does not carry over. It has to be measured on the builder's own workflow and reported, as the authors advise, with the number of runs and whether success means any run or every run. A low result is a reason to work on retries and error handling first, though the authors say they have not measured whether such changes help. [[1]](https://huggingface.co/blog/microsoft/thinkingbox)
+
+## The ICO's new data platform is a reference to check until its terms are known
+
+Daily Coffee News reports that the International Coffee Organization, the intergovernmental body behind some widely cited coffee statistics, has launched a Coffee Market Intelligence Platform. It gathers the ICO's composite indicator price, New York arabica and London robusta futures, trade flows, production, consumption and exchange-certified stocks in one interactive place, with trade explorable by origin, destination, species, coffee form and processing method. The ICO's executive director, Vanúsia Nogueira, describes the purpose as stakeholders working from a shared and credible evidence base. [[2]](https://dailycoffeenews.com/2026/09/30/ico-puts-global-coffee-market-data-in-one-interactive-place/)
+
+As reported, what is free fits that purpose: the latest full year of data costs nothing, so people on opposite sides of a trade can look up the same composite price or the same export figure. Building on the data is different work. Anything that needs earlier years, or the figures taken out of the platform, runs into the two things the article says are reserved for ICO members and subscribers, historical data and data extraction. I have not opened the platform or the ICO's own terms, and the article alone does not say which year is the free one, or when that year begins and ends; what counts as extraction; what a subscription costs; or how often the figures update. Until those four questions are answered, the platform is a reference to check figures against, and anyone designing something that depends on its data should get the answers first. [[2]](https://dailycoffeenews.com/2026/09/30/ico-puts-global-coffee-market-data-in-one-interactive-place/)
+
+## Reading a roaster's two published hit rates together
+
+Cropster, a roasting software vendor, has published a customer story about Grind, a coffee company with London cafes that it says roasts about 15 tons a week. The headline names a quarter-degree target. The post gives two limits, set by Grind's head of coffee and tracked in Cropster's software: end temperature within 0.25°C of target and total roast time within 10 seconds. In March, Cropster reports, 72% of roasts met the temperature limit and 40% hit every goal, roast time included. [[3]](https://www.cropster.com/blog-post/how-grind-roasts-to-a-quarter-degree-target-at-15-tons-a-week/)
+
+If every goal means those two limits, which the post implies and never states, the two rates can be subtracted; the arithmetic is mine, not Cropster's. With 72% holding temperature, twenty-eight percent missed it. With 40% meeting every goal, thirty-two percent held temperature and still missed on time. The time window, and not the quarter degree, would then be the limit missed more often: at least thirty-two percent against twenty-eight, and more if some roasts missed both, which the post does not say. That shows only because Cropster printed both rates. The 40% alone would not say which limit was missed, and the 72% alone is only a ceiling on how often both were met. The post covers a single March and gives no year, batch count or measuring instrument, so the figures support no judgment of the roasting itself. For any process with several tolerances, ask for the share that met all of them and the rate for each limit: the first says how often the specification was met, the others where the misses fall. [[3]](https://www.cropster.com/blog-post/how-grind-roasts-to-a-quarter-degree-target-at-15-tons-a-week/)
+
+## Sources
+
+1. [The Agent Said It Was Done. The Database Disagreed. (Hugging Face)](https://huggingface.co/blog/microsoft/thinkingbox)
+2. [ICO Puts Global Coffee Market Data in One Interactive Place (Daily Coffee News by Roast Magazine)](https://dailycoffeenews.com/2026/09/30/ico-puts-global-coffee-market-data-in-one-interactive-place/)
+3. [How Grind roasts to a quarter-degree target at 15 tons a week (Cropster)](https://www.cropster.com/blog-post/how-grind-roasts-to-a-quarter-degree-target-at-15-tons-a-week/)
