@@ -1,0 +1,32 @@
+---
+title: 'Where a tariff refund stops, and what a GPU budget does'
+date: '2026-10-11'
+description: 'A tariff refund that reaches only the importer, and a lab that prices GPU time to settle who gets it.'
+tags: ['coffee', 'technology', 'ideas']
+pillar: 'market-intelligence'
+draft: false
+format: 'market-brief'
+newsletter: 'fieldnotes'
+edition: 9
+---
+
+## A tariff refund goes to the importer and travels on only if the importer sends it
+
+Importers paid the tariffs directly to the US government and built the cost into their prices, and roasters then absorbed it or passed it on. The refund does not retrace that path. Only the importer that paid at entry can claim it through the Customs portal, so a roaster gets money back only if its importer chooses to pass it on. Perfect Daily Grind reports that several independent importers, Royal Coffee among them, said in July 2026 that they would. [[1]](https://perfectdailygrind.com/2026/10/tariff-refunds-coffee/)
+
+Royal says it offered a 100% credit to every roaster that paid toward its tariff costs. Its cafe, The Crown, had raised drink prices by US$0.50 in April 2025 because of the tariffs, and Royal says it had no sustainable way to refund individual drinks. It converted about US$2,500 of tariff cost on the coffee it imported into a US$0.25 discount in July and August 2026. The gap looks structural: a roaster is a known buyer that can be credited, while a cafe cannot find everyone who bought a drink. [[1]](https://perfectdailygrind.com/2026/10/tariff-refunds-coffee/)
+
+Clean invoices did not make the refund arrive cleanly either. Copan Trade, a Texas importer, listed duties on a separate invoice line, yet Customs returned lump sums that did not line up with individual entries, and its CEO says Copan has not recovered everything it paid. What a roaster gets depends, he says, on who paid at entry, when its contract was signed relative to the tariff period, and whether Customs has processed the claim, and roasters could not see that process unless their importer shared it. A buyer cannot assume a credit, an exact amount or a date, and unless the importer shares where its claim stands, a roaster has no way to check any of them. [[1]](https://perfectdailygrind.com/2026/10/tariff-refunds-coffee/)
+
+## A lab's GPU budgets settle who gets time; the authors credit another rule for shorter waits
+
+Ai2, a research institute that trains large AI models, shares its GPU clusters among about 150 researchers whose requests add up to two to three times the GPUs available. Its old priority scheduler failed in three ways: priority inflated until every scheduled workload ran at the top level, researchers parked no-op jobs on GPUs because debugging runs could not launch fast enough to be useful, and on-call engineers spent most of their ticket time negotiating the shutdown of non-preemptible workloads on hosts with known maintenance problems. [[2]](https://huggingface.co/blog/allenai/impactful-scheduling)
+
+The replacement has two parts. First, managers set each team's budget of GPU time in advance, since demand cannot be forecast but priority between research efforts can be decided up front. A fair-share scheduler then tracks each group's use over a seven-day window and puts work from under-used allocations ahead of over-used ones; unbudgeted work can fill idle GPUs but can always be preempted. A parked job needs protection from preemption to keep its GPUs and protection requires a budget, so parking now spends budget on nothing. Second, each workload declares a minimum runtime, is protected for that long, and may then be preempted and requeued, which the authors call time-slicing. [[2]](https://huggingface.co/blog/allenai/impactful-scheduling)
+
+What the post measures is delivery, not judgment. Over 30 days teams received 98% of the GPU hours they were owed, meaning their allocation capped at what they actually requested, and occupancy held at 98% with demand still two to three times capacity. The authors credit time-slicing, not the budgets, for the shorter queues: median wait on the largest H100 cluster fell from 5 minutes to 24 seconds. Their explanation is turnover: under the old scheme a workload could hold its GPUs for a week or more, leaving no opening for anyone else, while a declared minimum runtime lets the scheduler take the GPUs back once that progress is banked. Budgets are managers' bets on likely impact, and these figures cannot show the bets were good. I read the scheme as moving the argument over who deserves compute to whoever sets budgets, which at Ai2 means managers with the most context, up to the CEO, and the post offers no evidence for a group without such an arbiter. [[2]](https://huggingface.co/blog/allenai/impactful-scheduling)
+
+## Sources
+
+1. [Why tariff refunds aren’t so straightforward in coffee (Perfect Daily Grind green buying)](https://perfectdailygrind.com/2026/10/tariff-refunds-coffee/)
+2. [Impactful scheduling for GPU clusters (Hugging Face)](https://huggingface.co/blog/allenai/impactful-scheduling)
