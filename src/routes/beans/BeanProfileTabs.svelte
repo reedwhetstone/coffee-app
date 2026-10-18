@@ -407,7 +407,11 @@
 		</div>
 
 		<!-- Tab navigation: the same pill tabs as the catalog coffee panel. -->
-		<div class="mt-4 flex gap-2 overflow-x-auto" role="tablist" aria-label="Coffee detail tabs">
+		<div
+			class="mt-4 flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+			role="tablist"
+			aria-label="Coffee detail tabs"
+		>
 			{#each tabs as panelTab}
 				<button
 					type="button"

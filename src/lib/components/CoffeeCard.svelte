@@ -162,6 +162,10 @@
 		{ id: 'matches', label: 'Matches' }
 	];
 
+	// Secondary actions on a coffee the viewer may keep: quieter than buying from the supplier.
+	const detailActionClass =
+		'inline-flex h-8 items-center gap-1.5 rounded-md border border-line px-2.5 text-xs font-semibold text-ink transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent';
+
 	let TastingNotesRadar = $state<Component | null>(null);
 	let radarComponentLoading = $state(true);
 	// Deliberate initial-value capture: the prop seeds the open state only.
@@ -769,17 +773,8 @@
 							{coffee.name}
 						</h2>
 						<p class="mt-1 break-words text-sm text-muted">{longLocationSummary}</p>
-						{#if coffee.link || showCatalogLink || addToPortfolioHref}
+						{#if coffee.link || showCatalogLink}
 							<div class="mt-2 flex flex-wrap items-center gap-3 text-sm">
-								{#if addToPortfolioHref}
-									<a
-										href={addToPortfolioHref}
-										class="inline-flex min-h-9 items-center gap-1 rounded-md bg-accent px-3 py-1.5 font-semibold text-ink transition-opacity hover:opacity-90"
-									>
-										<span aria-hidden="true">+</span>
-										Add to portfolio
-									</a>
-								{/if}
 								{#if coffee.link}
 									<a
 										href={coffee.link}
@@ -808,6 +803,54 @@
 								{/if}
 							</div>
 						{/if}
+						{#if addToPortfolioHref || onToggleTrack}
+							<div class="mt-3 flex flex-wrap items-center gap-2">
+								{#if addToPortfolioHref}
+									<a href={addToPortfolioHref} class={detailActionClass}>
+										<svg
+											class="h-3.5 w-3.5"
+											fill="none"
+											stroke="currentColor"
+											viewBox="0 0 24 24"
+											aria-hidden="true"
+										>
+											<path
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												stroke-width="2"
+												d="M12 5v14M5 12h14"
+											/>
+										</svg>
+										Add to portfolio
+									</a>
+								{/if}
+								{#if onToggleTrack}
+									<button
+										type="button"
+										class="{detailActionClass} {tracked ? 'border-accent/60 text-accent' : ''}"
+										aria-pressed={tracked}
+										title="Tracked lots report price moves and delistings on your dashboard and in the Market Index watchlist."
+										onclick={() => onToggleTrack(coffee.id as unknown as number)}
+									>
+										<svg
+											class="h-3.5 w-3.5"
+											fill={tracked ? 'currentColor' : 'none'}
+											stroke="currentColor"
+											viewBox="0 0 24 24"
+											aria-hidden="true"
+										>
+											<path
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												stroke-width="2"
+												d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
+											/>
+										</svg>
+										{tracked ? 'Tracking lot' : 'Track lot'}
+									</button>
+								{/if}
+							</div>
+						{/if}
 					</div>
 					<button
 						type="button"
@@ -819,7 +862,7 @@
 				</div>
 				{#if !detailContent}
 					<div
-						class="mt-4 flex gap-2 overflow-x-auto"
+						class="mt-4 flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
 						role="tablist"
 						aria-label="Coffee detail tabs"
 					>
@@ -924,29 +967,6 @@
 						</div>
 
 						<aside class="space-y-4">
-							{#if onToggleTrack}
-								<div class="rounded-lg border border-line bg-surface-panel p-4">
-									<p class="text-xs font-semibold text-muted">Watchlist</p>
-									<p class="mt-2 text-sm font-semibold text-ink">
-										{tracked ? 'Tracking this lot' : 'Not on your watchlist'}
-									</p>
-									<p class="mt-1 text-xs leading-relaxed text-muted">
-										Tracked lots report price moves and delistings on your dashboard, feed the
-										Market Index watchlist panel, and give chat the context to reference them by
-										name.
-									</p>
-									<button
-										type="button"
-										class="mt-3 rounded-md px-4 py-2 text-sm font-medium transition-all duration-200 {tracked
-											? 'border border-line text-muted hover:border-danger/40 hover:text-danger'
-											: 'bg-accent text-ink hover:opacity-90'}"
-										aria-pressed={tracked}
-										onclick={() => onToggleTrack(coffee.id as unknown as number)}
-									>
-										{tracked ? 'Stop tracking' : 'Track this lot'}
-									</button>
-								</div>
-							{/if}
 							<div class="rounded-lg border border-line bg-surface-panel p-4">
 								<p class="text-xs font-semibold text-muted">Purveyor Score</p>
 								<div class="mt-2 flex items-baseline gap-2">
