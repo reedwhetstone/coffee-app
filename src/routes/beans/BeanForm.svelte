@@ -339,7 +339,10 @@
 
 	function removeBeanFromBatch(index: number) {
 		batchBeans = batchBeans.filter((_, i) => i !== index);
-		coffeeSearches = coffeeSearches.filter((_, i) => i !== index);
+		// Rows that were never searched have no entry; fill them so every row after the removed one keeps its own search.
+		coffeeSearches = Array.from(coffeeSearches, (search) => search ?? '').filter(
+			(_, i) => i !== index
+		);
 	}
 
 	function resetFormData() {

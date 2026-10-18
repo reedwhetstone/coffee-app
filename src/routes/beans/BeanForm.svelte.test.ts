@@ -837,4 +837,23 @@ describe('BeanForm catalog coffee picker', () => {
 			expect((search as HTMLInputElement).value).toBe('');
 		}
 	});
+
+	it("keeps each row's search with its row when an earlier row is removed", async () => {
+		render(BeanForm, {
+			bean: null,
+			onClose: vi.fn(),
+			onSubmit: vi.fn(),
+			catalogBeans: PICKER_BEANS,
+			ownerId: 'user-a'
+		});
+		await fireEvent.click(screen.getByText('Select from Catalog'));
+		await fireEvent.click(screen.getByText('Add Another Coffee'));
+		await fireEvent.click(screen.getByText('Add Another Coffee'));
+		const searches = screen.getAllByLabelText('Search Coffees');
+		expect(searches.length).toBe(3);
+		await fireEvent.input(searches[2], { target: { value: 'kasama' } });
+		await fireEvent.click(screen.getByLabelText('Remove coffee 2'));
+		const after = screen.getAllByLabelText('Search Coffees') as HTMLInputElement[];
+		expect(after.map((i) => i.value)).toEqual(['', 'kasama']);
+	});
 });
