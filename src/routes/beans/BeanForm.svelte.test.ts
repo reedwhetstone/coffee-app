@@ -57,7 +57,7 @@ function storeReservation(storageKey: string, request: Record<string, unknown>) 
 async function fillManualRows(names: string[]) {
 	const nameInputs = screen.getAllByLabelText('Coffee Name');
 	const quantityInputs = screen.getAllByLabelText('Purchased Quantity (lbs)');
-	const costInputs = screen.getAllByLabelText('Bean Cost ($)');
+	const costInputs = screen.getAllByLabelText('Coffee Cost ($)');
 
 	for (const [index, name] of names.entries()) {
 		await fireEvent.input(nameInputs[index], { target: { value: name } });
@@ -111,13 +111,13 @@ async function selectCatalogRows(ids: number[]) {
 	await fireEvent.click(screen.getByText('Select from Catalog'));
 	if (ids.length > 1) {
 		for (let index = 1; index < ids.length; index++) {
-			await fireEvent.click(screen.getAllByRole('button', { name: /Add Bean/ })[0]);
+			await fireEvent.click(screen.getAllByRole('button', { name: /Add Another Coffee/ })[0]);
 		}
 	}
 
 	const selects = screen.getAllByLabelText('Select Coffee Bean');
 	const quantities = screen.getAllByLabelText('Purchased Quantity (lbs)');
-	const costs = screen.getAllByLabelText('Bean Cost ($)');
+	const costs = screen.getAllByLabelText('Coffee Cost ($)');
 	for (const [index, id] of ids.entries()) {
 		await fireEvent.change(selects[index], { target: { value: String(id) } });
 		await fireEvent.input(quantities[index], { target: { value: String(index + 1) } });
@@ -152,9 +152,9 @@ describe('BeanForm atomic manual inventory batches', () => {
 			catalogBeans: [],
 			ownerId: 'user-a'
 		});
-		await fireEvent.click(screen.getAllByRole('button', { name: /Add Bean/ })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: /Add Another Coffee/ })[0]);
 		await fillManualRows(['First lot', 'Second lot']);
-		await fireEvent.input(screen.getByLabelText('Total Tax & Shipping ($)'), {
+		await fireEvent.input(screen.getByLabelText('Tax & Shipping Only ($)'), {
 			target: { value: '5.01' }
 		});
 
@@ -193,7 +193,7 @@ describe('BeanForm atomic manual inventory batches', () => {
 		expect(sessionStorage.getItem('purveyors:pending-manual-inventory-batch:user-a')).toBeNull();
 	});
 
-	it('shows exact-cent Parchment allocation copy for both batch types', async () => {
+	it('labels tax and shipping apart from the coffee cost and totals the order', async () => {
 		render(BeanForm, {
 			bean: null,
 			onClose: vi.fn(),
@@ -202,18 +202,16 @@ describe('BeanForm atomic manual inventory batches', () => {
 			ownerId: 'user-a'
 		});
 
-		expect(
-			screen.getByText('This total will be allocated across the manual batch in exact cents')
-		).toBeInTheDocument();
+		await fireEvent.input(screen.getByLabelText('Coffee Cost ($)'), { target: { value: '42.5' } });
+		await fireEvent.input(screen.getByLabelText('Tax & Shipping Only ($)'), {
+			target: { value: '7.25' }
+		});
 
-		await fireEvent.click(screen.getByText('Select from Catalog'));
-
-		expect(
-			screen.queryByText('This total will be allocated across the manual batch in exact cents')
-		).not.toBeInTheDocument();
-		expect(
-			screen.getByText('This total will be allocated across the catalog batch in exact cents')
-		).toBeInTheDocument();
+		expect(screen.getByLabelText('Tax & Shipping Only ($)')).toHaveAccessibleDescription(
+			'Leave out the coffee itself. This amount is split across the coffees in this purchase.'
+		);
+		const summary = screen.getByLabelText('Order total');
+		expect(summary).toHaveTextContent('Coffee $42.50 Tax & shipping $7.25 Order total $49.75');
 	});
 
 	it('retries an uncertain reservation with the exact in-memory request and durable UUID', async () => {
@@ -565,7 +563,7 @@ describe('BeanForm atomic catalog inventory batches', () => {
 			ownerId: 'user-a'
 		});
 		await selectCatalogRows([101, 102]);
-		await fireEvent.input(screen.getByLabelText('Total Tax & Shipping ($)'), {
+		await fireEvent.input(screen.getByLabelText('Tax & Shipping Only ($)'), {
 			target: { value: '5.01' }
 		});
 		await fireEvent.submit(container.querySelector('form')!);
@@ -727,5 +725,74 @@ describe('BeanForm atomic catalog inventory batches', () => {
 		expect(requestPayload(fetchMock, 0).batchId).toBe(UUIDS[0]);
 		expect(requestPayload(fetchMock, 1).batchId).toBe(UUIDS[2]);
 		expect(onSubmit).toHaveBeenCalledOnce();
+	});
+});
+
+describe('BeanForm catalog coffee picker', () => {
+	const PICKER_BEANS = [
+		{ id: 201, name: 'Zambia Kasama', stocked: true, source: 'sweet_marias', country: 'Zambia' },
+		{ id: 202, name: 'colombia Huila', stocked: true, source: 'sweet_marias', country: 'Colombia' },
+		{ id: 203, name: 'Ethiopia Guji', stocked: true, source: 'bodhi_leaf', country: 'Ethiopia' },
+		{ id: 204, name: 'Brazil Cerrado', stocked: false, source: 'bodhi_leaf', country: 'Brazil' },
+		{ id: 205, name: 'Ethiopia Sidama', stocked: true, source: 'sweet_marias', country: 'Ethiopia' }
+	].map((coffee) => ({
+		price_tiers: null,
+		price_per_lb: 6,
+		cost_lb: 6,
+		...coffee
+	})) as unknown as CoffeeCatalog[];
+
+	function optionLabels(select: HTMLElement): string[] {
+		return Array.from((select as HTMLSelectElement).options)
+			.slice(1)
+			.map((option) => option.textContent?.trim() ?? '');
+	}
+
+	beforeEach(() => {
+		vi.restoreAllMocks();
+		sessionStorage.clear();
+	});
+
+	it('lists stocked coffees A to Z and narrows them by search', async () => {
+		render(BeanForm, {
+			bean: null,
+			onClose: vi.fn(),
+			onSubmit: vi.fn(),
+			catalogBeans: PICKER_BEANS,
+			ownerId: 'user-a'
+		});
+		await fireEvent.click(screen.getByText('Select from Catalog'));
+
+		const select = screen.getByLabelText('Select Coffee Bean');
+		expect(optionLabels(select)).toEqual([
+			"colombia Huila · Sweet Maria's",
+			'Ethiopia Guji · Bodhi Leaf',
+			"Ethiopia Sidama · Sweet Maria's",
+			"Zambia Kasama · Sweet Maria's"
+		]);
+
+		await fireEvent.input(screen.getByLabelText('Search Coffees'), {
+			target: { value: 'ethiopia sweet' }
+		});
+		expect(optionLabels(select)).toEqual(["Ethiopia Sidama · Sweet Maria's"]);
+		expect(screen.getByText('1 coffee, listed A to Z')).toBeInTheDocument();
+	});
+
+	it('opens on a requested catalog coffee, even one that is no longer stocked', async () => {
+		render(BeanForm, {
+			bean: null,
+			onClose: vi.fn(),
+			onSubmit: vi.fn(),
+			catalogBeans: PICKER_BEANS,
+			initialCatalogCoffee: PICKER_BEANS[3],
+			ownerId: 'user-a'
+		});
+
+		const select = (await screen.findByLabelText('Select Coffee Bean')) as HTMLSelectElement;
+		expect(select.value).toBe('204');
+		expect((screen.getByLabelText('Filter by Supplier') as HTMLSelectElement).value).toBe(
+			'bodhi_leaf'
+		);
+		expect(optionLabels(select)).toEqual(['Brazil Cerrado', 'Ethiopia Guji']);
 	});
 });

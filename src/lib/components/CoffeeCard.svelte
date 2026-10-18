@@ -49,6 +49,7 @@
 		compareSelected = false,
 		onToggleCompare = undefined,
 		showCatalogLink = false,
+		addToPortfolioHref = undefined,
 		initialDetailsOpen = false,
 		open = undefined,
 		cardAction = undefined,
@@ -84,6 +85,8 @@
 		onToggleTrack?: (id: number) => void;
 		/** Show a "View in catalog" link in the detail panel (for surfaces outside /catalog, e.g. chat canvas). */
 		showCatalogLink?: boolean;
+		/** Shows an "Add to portfolio" action in the detail panel that opens the add form with this coffee. */
+		addToPortfolioHref?: string;
 		/** Open the detail panel on mount (used by /catalog?coffee=<id> deep links). */
 		initialDetailsOpen?: boolean;
 		/**
@@ -766,8 +769,17 @@
 							{coffee.name}
 						</h2>
 						<p class="mt-1 break-words text-sm text-muted">{longLocationSummary}</p>
-						{#if coffee.link || showCatalogLink}
+						{#if coffee.link || showCatalogLink || addToPortfolioHref}
 							<div class="mt-2 flex flex-wrap items-center gap-3 text-sm">
+								{#if addToPortfolioHref}
+									<a
+										href={addToPortfolioHref}
+										class="inline-flex min-h-9 items-center gap-1 rounded-md bg-accent px-3 py-1.5 font-semibold text-ink transition-opacity hover:opacity-90"
+									>
+										<span aria-hidden="true">+</span>
+										Add to portfolio
+									</a>
+								{/if}
 								{#if coffee.link}
 									<a
 										href={coffee.link}

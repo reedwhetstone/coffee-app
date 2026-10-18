@@ -41,3 +41,16 @@ export async function loadBeanPickerCatalog(fetchCatalog: typeof fetch): Promise
 
 	return catalog;
 }
+
+/** Read one catalog coffee for the add form, including one that is no longer stocked. */
+export async function loadCatalogCoffeeForForm(
+	id: number,
+	signal: AbortSignal,
+	fetchCatalog: typeof fetch = fetch
+): Promise<CoffeeCatalog | null> {
+	const params = new URLSearchParams({ coffeeIds: String(id), stocked: 'all', limit: '1' });
+	const response = await fetchCatalog(`/api/catalog?${params.toString()}`, { signal });
+	if (!response.ok) throw new Error('Failed to fetch catalog coffee');
+	const result = (await response.json()) as CatalogPageResponse;
+	return result.data?.find((coffee) => coffee.id === id) ?? null;
+}

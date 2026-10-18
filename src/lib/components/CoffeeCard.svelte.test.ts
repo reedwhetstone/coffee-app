@@ -329,6 +329,27 @@ describe('CoffeeCard Purveyor Score hierarchy', () => {
 		);
 	});
 
+	it('offers adding the coffee to the portfolio only when the surface allows it', () => {
+		const { unmount } = render(CoffeeCard, {
+			coffee: createCoffee({ id: 44 }),
+			parseTastingNotes,
+			initialDetailsOpen: true,
+			addToPortfolioHref: '/beans?modal=new&catalog_id=44'
+		});
+
+		expect(screen.getByRole('link', { name: /add to portfolio/i }).getAttribute('href')).toBe(
+			'/beans?modal=new&catalog_id=44'
+		);
+		unmount();
+
+		render(CoffeeCard, {
+			coffee: createCoffee({ id: 44 }),
+			parseTastingNotes,
+			initialDetailsOpen: true
+		});
+		expect(screen.queryByRole('link', { name: /add to portfolio/i })).toBeNull();
+	});
+
 	it('keeps the mobile detail sheet below app chrome with a persistent close action', async () => {
 		const onDetailClose = vi.fn();
 		const longName =
