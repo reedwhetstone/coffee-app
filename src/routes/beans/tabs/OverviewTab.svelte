@@ -16,146 +16,254 @@
 		isEditing,
 		editedBean = $bindable(),
 		canManagePortfolio,
+		saving = false,
 		onToggleEdit,
+		onCancelEdit = () => undefined,
 		onDelete
 	} = $props<{
 		selectedBean: InventoryWithCatalog;
 		isEditing: boolean;
 		editedBean: InventoryWithCatalog;
 		canManagePortfolio: boolean;
+		saving?: boolean;
+		/** Starts editing, or saves when already editing. */
 		onToggleEdit: () => void;
+		onCancelEdit?: () => void;
 		onDelete: () => void;
 	}>();
+
+	const inputClass =
+		'block w-full rounded-md border-0 bg-surface-canvas px-3 py-2 text-ink shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent';
+
+	function finiteNumber(value: unknown): number | null {
+		const number = typeof value === 'number' ? value : Number(value);
+		return value !== null && value !== '' && Number.isFinite(number) ? number : null;
+	}
+
+	function formatMoney(amount: number | null): string {
+		return amount != null ? `$${amount.toFixed(2)}` : 'Not set';
+	}
+
+	let purchasedLbs = $derived(finiteNumber(selectedBean.purchased_qty_lbs));
+	let beanCost = $derived(finiteNumber(selectedBean.bean_cost));
+	let taxShipCost = $derived(finiteNumber(selectedBean.tax_ship_cost));
+	let totalPaid = $derived(
+		beanCost != null || taxShipCost != null ? (beanCost ?? 0) + (taxShipCost ?? 0) : null
+	);
+	let deliveredCostPerLb = $derived(
+		totalPaid != null && purchasedLbs ? totalPaid / purchasedLbs : null
+	);
+	let purchasedOz = $derived((purchasedLbs ?? 0) * 16);
+	let roastedOz = $derived(
+		selectedBean.roast_profiles?.reduce(
+			(ozSum: number, profile: RoastProfile) => ozSum + (profile.oz_in || 0),
+			0
+		) || 0
+	);
+	let remainingLbs = $derived((purchasedOz - roastedOz) / 16);
 </script>
 
 <div class="space-y-6">
-	<!-- User Inventory Data Section -->
-	<div>
-		<h3 class="mb-4 font-semibold text-ink">Your Inventory</h3>
-
-		<!-- Notes field without border -->
-		{#if selectedBean.notes !== undefined && selectedBean.notes !== null && selectedBean.notes !== ''}
-			<div class="mb-4">
-				{#if isEditing}
-					<textarea
-						class="w-full rounded border border-line bg-surface-canvas px-2 py-1 text-ink"
-						rows="4"
-						bind:value={editedBean.notes}
-					></textarea>
-				{:else}
-					<div class="whitespace-pre-wrap text-ink">
-						{selectedBean.notes}
-					</div>
-				{/if}
-			</div>
-		{/if}
-
-		<!-- Inventory details in single row -->
-		<div class="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-			{#each ['purchase_date', 'purchased_qty_lbs', 'bean_cost', 'tax_ship_cost'] as key}
-				{#if selectedBean[key] !== undefined && selectedBean[key] !== null && selectedBean[key] !== ''}
-					<div class="rounded-lg bg-surface-panel p-4 ring-1 ring-line">
-						<h4 class="text-sm font-medium text-ink">
-							{key.replace(/_/g, ' ').toUpperCase()}
-						</h4>
-						{#if isEditing}
-							{#if key === 'bean_cost' || key === 'tax_ship_cost'}
-								<input
-									type="number"
-									step="0.01"
-									min="0"
-									class="mt-2 w-full rounded bg-surface-canvas px-2 py-1 text-ink"
-									bind:value={editedBean[key]}
-								/>
-							{:else if key === 'purchased_qty_lbs'}
-								<input
-									type="number"
-									step="0.1"
-									min="0"
-									class="mt-2 w-full rounded bg-surface-canvas px-2 py-1 text-ink"
-									bind:value={editedBean[key]}
-								/>
-							{:else if key === 'purchase_date'}
-								<input
-									type="date"
-									class="mt-2 w-full rounded bg-surface-canvas px-2 py-1 text-ink"
-									bind:value={editedBean[key]}
-								/>
-							{/if}
-						{:else}
-							<div class="mt-2 text-ink">
-								{#if key === 'bean_cost' || key === 'tax_ship_cost'}
-									${typeof selectedBean[key] === 'number'
-										? selectedBean[key].toFixed(2)
-										: selectedBean[key]}
-								{:else}
-									{selectedBean[key]}
-								{/if}
-							</div>
-						{/if}
-					</div>
-				{/if}
-			{/each}
+	<!-- The owner's purchase record: the only part of this tab they edit. -->
+	<section
+		class="rounded-lg border border-line bg-surface-panel p-4"
+		aria-labelledby="purchase-heading-{selectedBean.id}"
+	>
+		<div class="flex flex-wrap items-center justify-between gap-3">
+			<h3 id="purchase-heading-{selectedBean.id}" class="font-semibold text-ink">Your purchase</h3>
+			{#if canManagePortfolio && !isEditing}
+				<button
+					type="button"
+					class="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-accent px-3 py-1.5 text-sm font-semibold text-accent transition-colors hover:bg-accent hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+					onclick={onToggleEdit}
+				>
+					<svg
+						class="h-4 w-4"
+						fill="none"
+						stroke="currentColor"
+						viewBox="0 0 24 24"
+						aria-hidden="true"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M15.232 5.232l3.536 3.536M9 13l6.464-6.464a2.5 2.5 0 113.536 3.536L12.536 16.536 8 18l1.464-4.536z"
+						/>
+					</svg>
+					Edit purchase
+				</button>
+			{/if}
 		</div>
 
-		<!-- Stocked Inventory Calculation -->
-		{#if selectedBean.purchased_qty_lbs !== undefined}
-			{@const purchasedOz = (selectedBean.purchased_qty_lbs || 0) * 16}
-			{@const roastedOz =
-				selectedBean.roast_profiles?.reduce(
-					(ozSum: number, profile: RoastProfile) => ozSum + (profile.oz_in || 0),
-					0
-				) || 0}
-			{@const remainingLbs = (purchasedOz - roastedOz) / 16}
-			<div class="rounded-lg bg-surface-panel p-4 ring-1 ring-line">
-				<div class="flex items-center justify-between">
-					<h4 class="text-sm font-medium text-ink">
-						{selectedBean.stocked ? 'STOCKED' : 'UNSTOCKED'} INVENTORY
-					</h4>
-					{#if isEditing}
-						<!-- Checkbox -->
-						<label class="flex items-center gap-2">
-							<input
-								type="checkbox"
-								bind:checked={editedBean.stocked}
-								class="h-4 w-4 rounded border-line text-success focus:ring-success focus:ring-offset-0"
-							/>
-							<span class="text-sm font-medium text-muted">In Stock</span>
+		{#if isEditing}
+			<form
+				class="mt-4 space-y-4"
+				onsubmit={(event) => {
+					event.preventDefault();
+					onToggleEdit();
+				}}
+			>
+				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+					<div class="space-y-1">
+						<label for="purchase-date-{selectedBean.id}" class="block text-sm font-medium text-ink">
+							Purchase date
 						</label>
-					{:else}
-						<!-- Status Indicator -->
-						<div class="flex items-center gap-2">
-							<div
-								class="h-3 w-3 rounded-full {selectedBean.stocked ? 'bg-success' : 'bg-danger'}"
-							></div>
-							<span class="text-xs font-medium text-muted">
-								{selectedBean.stocked ? 'In Stock' : 'Out of Stock'}
-							</span>
-						</div>
-					{/if}
-				</div>
-				<div class="mt-2 flex items-center gap-3">
-					<span
-						class="text-2xl font-bold {selectedBean.stocked === false
-							? 'text-danger'
-							: remainingLbs > 0
-								? 'text-success-strong'
-								: 'text-danger'}"
-					>
-						{remainingLbs.toFixed(1)} lbs
-					</span>
-					<span class="text-sm text-muted">
-						({purchasedOz.toFixed(0)} oz purchased - {roastedOz.toFixed(0)} oz roasted)
-					</span>
-				</div>
-				{#if isEditing}
-					<div class="mt-2 text-xs text-muted">
-						Toggle to manually override stock status (auto-updates when inventory &lt; 4 oz)
+						<input
+							id="purchase-date-{selectedBean.id}"
+							type="date"
+							class={inputClass}
+							bind:value={editedBean.purchase_date}
+						/>
 					</div>
-				{/if}
+					<div class="space-y-1">
+						<label for="purchased-qty-{selectedBean.id}" class="block text-sm font-medium text-ink">
+							Quantity purchased (lb)
+						</label>
+						<input
+							id="purchased-qty-{selectedBean.id}"
+							type="number"
+							step="0.1"
+							min="0"
+							class={inputClass}
+							bind:value={editedBean.purchased_qty_lbs}
+						/>
+					</div>
+					<div class="space-y-1">
+						<label for="bean-cost-{selectedBean.id}" class="block text-sm font-medium text-ink">
+							Coffee cost ($)
+						</label>
+						<input
+							id="bean-cost-{selectedBean.id}"
+							type="number"
+							step="0.01"
+							min="0"
+							class={inputClass}
+							bind:value={editedBean.bean_cost}
+						/>
+					</div>
+					<div class="space-y-1">
+						<label for="tax-ship-{selectedBean.id}" class="block text-sm font-medium text-ink">
+							Tax & shipping ($)
+						</label>
+						<input
+							id="tax-ship-{selectedBean.id}"
+							type="number"
+							step="0.01"
+							min="0"
+							class={inputClass}
+							bind:value={editedBean.tax_ship_cost}
+						/>
+					</div>
+				</div>
+				<div class="space-y-1">
+					<label for="notes-{selectedBean.id}" class="block text-sm font-medium text-ink">
+						Notes
+					</label>
+					<textarea
+						id="notes-{selectedBean.id}"
+						class={inputClass}
+						rows="4"
+						placeholder="Anything worth remembering about this coffee"
+						bind:value={editedBean.notes}
+					></textarea>
+				</div>
+				<div class="rounded-md bg-surface-canvas p-3 ring-1 ring-line">
+					<label class="flex items-center gap-2 text-sm font-medium text-ink">
+						<input
+							type="checkbox"
+							bind:checked={editedBean.stocked}
+							class="h-4 w-4 rounded border-line text-success focus:ring-success focus:ring-offset-0"
+						/>
+						In stock
+					</label>
+					<p class="mt-1 text-xs text-muted">
+						Turns off on its own when less than 4 oz is left. Change it here to override.
+					</p>
+				</div>
+				<div class="flex flex-wrap justify-end gap-2">
+					<button
+						type="button"
+						class="min-h-9 rounded-md border border-line px-4 py-1.5 text-sm font-semibold text-muted transition-colors hover:border-accent hover:text-accent"
+						onclick={onCancelEdit}
+						disabled={saving}
+					>
+						Cancel
+					</button>
+					<button
+						type="submit"
+						class="min-h-9 rounded-md bg-accent px-4 py-1.5 text-sm font-semibold text-ink transition-opacity hover:opacity-90 disabled:opacity-60"
+						disabled={saving}
+					>
+						{saving ? 'Saving…' : 'Save changes'}
+					</button>
+				</div>
+			</form>
+		{:else}
+			<dl class="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-3">
+				<div>
+					<dt class="text-xs font-semibold text-muted">Purchased</dt>
+					<dd class="mt-0.5 text-ink">
+						{selectedBean.purchase_date ? formatDisplayDate(selectedBean.purchase_date) : 'Not set'}
+					</dd>
+				</div>
+				<div>
+					<dt class="text-xs font-semibold text-muted">Quantity</dt>
+					<dd class="mt-0.5 text-ink">
+						{purchasedLbs != null ? `${purchasedLbs} lb` : 'Not set'}
+					</dd>
+				</div>
+				<div>
+					<dt class="text-xs font-semibold text-muted">Coffee cost</dt>
+					<dd class="mt-0.5 text-ink">{formatMoney(beanCost)}</dd>
+				</div>
+				<div>
+					<dt class="text-xs font-semibold text-muted">Tax & shipping</dt>
+					<dd class="mt-0.5 text-ink">{formatMoney(taxShipCost)}</dd>
+				</div>
+				<div>
+					<dt class="text-xs font-semibold text-muted">Total paid</dt>
+					<dd class="mt-0.5 font-semibold text-ink">{formatMoney(totalPaid)}</dd>
+				</div>
+				<div>
+					<dt class="text-xs font-semibold text-muted">Cost per lb, delivered</dt>
+					<dd class="mt-0.5 text-ink">
+						{deliveredCostPerLb != null ? formatCostPerLb(deliveredCostPerLb) : '—'}
+					</dd>
+				</div>
+			</dl>
+			{#if selectedBean.notes}
+				<div class="mt-4 border-t border-line pt-3">
+					<p class="text-xs font-semibold text-muted">Notes</p>
+					<p class="mt-1 whitespace-pre-wrap text-sm text-ink">{selectedBean.notes}</p>
+				</div>
+			{/if}
+		{/if}
+
+		{#if selectedBean.purchased_qty_lbs !== undefined && !isEditing}
+			<div class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-line pt-3">
+				<span
+					class="text-2xl font-bold {selectedBean.stocked === false
+						? 'text-danger'
+						: remainingLbs > 0
+							? 'text-success-strong'
+							: 'text-danger'}"
+				>
+					{remainingLbs.toFixed(1)} lb left
+				</span>
+				<span class="text-sm text-muted">
+					{purchasedOz.toFixed(0)} oz purchased, {roastedOz.toFixed(0)} oz roasted
+				</span>
+				<span class="ml-auto flex items-center gap-2 text-xs font-medium text-muted">
+					<span
+						class="h-2.5 w-2.5 rounded-full {selectedBean.stocked ? 'bg-success' : 'bg-danger'}"
+						aria-hidden="true"
+					></span>
+					{selectedBean.stocked ? 'In stock' : 'Out of stock'}
+				</span>
 			</div>
 		{/if}
-	</div>
+	</section>
 
 	<!-- Catalog Bean Information -->
 	{#if selectedBean.coffee_catalog}
@@ -190,10 +298,13 @@
 
 		<!-- Header with source name and product link -->
 		<div class="rounded-lg bg-surface-canvas p-4 ring-1 ring-line">
-			<div class="mb-4 flex items-center justify-between">
-				<h3 class="font-semibold text-ink">
-					{cat.source ? formatSourceName(cat.source) + ' Bean Information' : 'Bean Information'}
-				</h3>
+			<div class="mb-4 flex flex-wrap items-start justify-between gap-3">
+				<div>
+					<h3 class="font-semibold text-ink">
+						{cat.source ? `${formatSourceName(cat.source)} listing` : 'Supplier listing'}
+					</h3>
+					<p class="mt-0.5 text-xs text-muted">Details from the supplier, updated automatically.</p>
+				</div>
 				<div class="flex items-center gap-2">
 					{#if cat.wholesale}
 						<span
@@ -214,7 +325,7 @@
 							rel="noopener noreferrer"
 							class="inline-flex items-center rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-ink transition-all duration-200 hover:bg-opacity-90"
 						>
-							View Product Page
+							Supplier page
 							<svg class="ml-1.5 h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path
 									stroke-linecap="round"
@@ -240,31 +351,29 @@
 			<!-- Origin & Source -->
 			{#if hasOriginData}
 				<div class="mb-4">
-					<h4 class="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">
-						Origin & Source
-					</h4>
+					<h4 class="mb-3 text-sm font-semibold text-ink">Origin & source</h4>
 					<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
 						{#if locationStr}
 							<div class="rounded-lg bg-surface-panel p-3 ring-1 ring-line">
-								<h5 class="text-xs font-medium text-muted">LOCATION</h5>
+								<h5 class="text-xs font-semibold text-muted">Location</h5>
 								<div class="mt-1 text-sm text-ink">{locationStr}</div>
 							</div>
 						{/if}
 						{#if cat.cultivar_detail}
 							<div class="rounded-lg bg-surface-panel p-3 ring-1 ring-line">
-								<h5 class="text-xs font-medium text-muted">CULTIVAR</h5>
+								<h5 class="text-xs font-semibold text-muted">Cultivar</h5>
 								<div class="mt-1 text-sm text-ink">{cat.cultivar_detail}</div>
 							</div>
 						{/if}
 						{#if cat.processing}
 							<div class="rounded-lg bg-surface-panel p-3 ring-1 ring-line">
-								<h5 class="text-xs font-medium text-muted">PROCESSING</h5>
+								<h5 class="text-xs font-semibold text-muted">Processing</h5>
 								<div class="mt-1 text-sm text-ink">{cat.processing}</div>
 							</div>
 						{/if}
 						{#if decafPresentation.isDecaffeinated}
 							<div class="rounded-lg bg-surface-panel p-3 ring-1 ring-line">
-								<h5 class="text-xs font-medium text-muted">DECAFFEINATION</h5>
+								<h5 class="text-xs font-semibold text-muted">Decaffeination</h5>
 								<div class="mt-1 text-sm text-ink">
 									<DecafBadge presentation={decafPresentation} />
 								</div>
@@ -272,25 +381,25 @@
 						{/if}
 						{#if cat.drying_method}
 							<div class="rounded-lg bg-surface-panel p-3 ring-1 ring-line">
-								<h5 class="text-xs font-medium text-muted">DRYING METHOD</h5>
+								<h5 class="text-xs font-semibold text-muted">Drying method</h5>
 								<div class="mt-1 text-sm text-ink">{cat.drying_method}</div>
 							</div>
 						{/if}
 						{#if cat.grade}
 							<div class="rounded-lg bg-surface-panel p-3 ring-1 ring-line">
-								<h5 class="text-xs font-medium text-muted">GRADE / ELEVATION</h5>
+								<h5 class="text-xs font-semibold text-muted">Grade / elevation</h5>
 								<div class="mt-1 text-sm text-ink">{cat.grade}</div>
 							</div>
 						{/if}
 						{#if cat.appearance}
 							<div class="rounded-lg bg-surface-panel p-3 ring-1 ring-line">
-								<h5 class="text-xs font-medium text-muted">APPEARANCE</h5>
+								<h5 class="text-xs font-semibold text-muted">Appearance</h5>
 								<div class="mt-1 text-sm text-ink">{cat.appearance}</div>
 							</div>
 						{/if}
 						{#if cat.arrival_date}
 							<div class="rounded-lg bg-surface-panel p-3 ring-1 ring-line">
-								<h5 class="text-xs font-medium text-muted">ARRIVAL DATE</h5>
+								<h5 class="text-xs font-semibold text-muted">Arrival date</h5>
 								<div class="mt-1 text-sm text-ink">
 									{formatDisplayDate(cat.arrival_date)}
 								</div>
@@ -303,13 +412,11 @@
 			<!-- Pricing & Availability -->
 			{#if hasPricingData}
 				<div class="mb-4">
-					<h4 class="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">
-						Pricing & Availability
-					</h4>
+					<h4 class="mb-3 text-sm font-semibold text-ink">Pricing & availability</h4>
 					<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
 						{#if (cat.price_per_lb ?? cat.cost_lb) != null}
 							<div class="rounded-lg bg-surface-panel p-3 ring-1 ring-line">
-								<h5 class="text-xs font-medium text-muted">COST PER LB</h5>
+								<h5 class="text-xs font-semibold text-muted">Cost per lb</h5>
 								<div class="mt-1 text-sm font-medium text-ink">
 									{formatCostPerLb((cat.price_per_lb ?? cat.cost_lb) as number)}
 								</div>
@@ -317,7 +424,7 @@
 						{/if}
 						{#if cat.price_tiers && Array.isArray(cat.price_tiers) && cat.price_tiers.length > 0}
 							<div class="rounded-lg bg-surface-panel p-3 ring-1 ring-line sm:col-span-2">
-								<h5 class="text-xs font-medium text-muted">PRICE TIERS</h5>
+								<h5 class="text-xs font-semibold text-muted">Price tiers</h5>
 								<div class="mt-1 text-sm text-ink">
 									{formatPriceTiers(cat.price_tiers)}
 								</div>
@@ -325,19 +432,19 @@
 						{/if}
 						{#if cat.lot_size}
 							<div class="rounded-lg bg-surface-panel p-3 ring-1 ring-line">
-								<h5 class="text-xs font-medium text-muted">LOT SIZE</h5>
+								<h5 class="text-xs font-semibold text-muted">Lot size</h5>
 								<div class="mt-1 text-sm text-ink">{cat.lot_size}</div>
 							</div>
 						{/if}
 						{#if cat.bag_size}
 							<div class="rounded-lg bg-surface-panel p-3 ring-1 ring-line">
-								<h5 class="text-xs font-medium text-muted">BAG SIZE</h5>
+								<h5 class="text-xs font-semibold text-muted">Bag size</h5>
 								<div class="mt-1 text-sm text-ink">{cat.bag_size}</div>
 							</div>
 						{/if}
 						{#if cat.packaging}
 							<div class="rounded-lg bg-surface-panel p-3 ring-1 ring-line">
-								<h5 class="text-xs font-medium text-muted">PACKAGING</h5>
+								<h5 class="text-xs font-semibold text-muted">Packaging</h5>
 								<div class="mt-1 text-sm text-ink">{cat.packaging}</div>
 							</div>
 						{/if}
@@ -348,13 +455,11 @@
 			<!-- Descriptions & Notes -->
 			{#if hasDescriptionData}
 				<div class="mb-4">
-					<h4 class="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">
-						Descriptions & Notes
-					</h4>
+					<h4 class="mb-3 text-sm font-semibold text-ink">Descriptions & notes</h4>
 					<div class="space-y-3">
 						{#if cat.description_short}
 							<div class="rounded-lg bg-surface-panel p-3 ring-1 ring-line">
-								<h5 class="text-xs font-medium text-muted">SHORT DESCRIPTION</h5>
+								<h5 class="text-xs font-semibold text-muted">Short description</h5>
 								<div class="mt-1 whitespace-pre-wrap text-sm text-ink">
 									{cat.description_short}
 								</div>
@@ -362,7 +467,7 @@
 						{/if}
 						{#if cat.description_long}
 							<div class="rounded-lg bg-surface-panel p-3 ring-1 ring-line">
-								<h5 class="text-xs font-medium text-muted">FULL DESCRIPTION</h5>
+								<h5 class="text-xs font-semibold text-muted">Full description</h5>
 								<div class="mt-1 whitespace-pre-wrap text-sm text-ink">
 									{cat.description_long}
 								</div>
@@ -370,7 +475,7 @@
 						{/if}
 						{#if cat.farm_notes}
 							<div class="rounded-lg bg-surface-panel p-3 ring-1 ring-line">
-								<h5 class="text-xs font-medium text-muted">FARM NOTES</h5>
+								<h5 class="text-xs font-semibold text-muted">Farm notes</h5>
 								<div class="mt-1 whitespace-pre-wrap text-sm text-ink">
 									{cat.farm_notes}
 								</div>
@@ -378,7 +483,7 @@
 						{/if}
 						{#if cat.roast_recs}
 							<div class="rounded-lg bg-surface-panel p-3 ring-1 ring-line">
-								<h5 class="text-xs font-medium text-muted">ROAST RECOMMENDATIONS</h5>
+								<h5 class="text-xs font-semibold text-muted">Roast recommendations</h5>
 								<div class="mt-1 whitespace-pre-wrap text-sm text-ink">
 									{cat.roast_recs}
 								</div>
@@ -391,11 +496,11 @@
 			<!-- Supplier Info -->
 			{#if hasSupplierData}
 				<div>
-					<h4 class="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Supplier</h4>
+					<h4 class="mb-3 text-sm font-semibold text-ink">Supplier</h4>
 					<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
 						{#if cat.source}
 							<div class="rounded-lg bg-surface-panel p-3 ring-1 ring-line">
-								<h5 class="text-xs font-medium text-muted">SOURCE</h5>
+								<h5 class="text-xs font-semibold text-muted">Source</h5>
 								<div class="mt-1 text-sm text-ink">
 									{formatSourceName(cat.source)}
 								</div>
@@ -403,7 +508,7 @@
 						{/if}
 						{#if cat.type}
 							<div class="rounded-lg bg-surface-panel p-3 ring-1 ring-line">
-								<h5 class="text-xs font-medium text-muted">IMPORTER / TYPE</h5>
+								<h5 class="text-xs font-semibold text-muted">Importer / type</h5>
 								<div class="mt-1 text-sm text-ink">{cat.type}</div>
 							</div>
 						{/if}
@@ -413,22 +518,15 @@
 		</div>
 	{/if}
 
-	<!-- Action Buttons for Overview Tab -->
-	{#if canManagePortfolio}
-		<div class="mt-6 flex flex-wrap justify-end gap-2 border-t border-line pt-4">
+	<!-- Deleting stays apart from the purchase edits above. -->
+	{#if canManagePortfolio && !isEditing}
+		<div class="mt-6 flex justify-end border-t border-line pt-4">
 			<button
-				class="rounded-md {isEditing
-					? 'bg-success text-white hover:bg-success-strong'
-					: 'border border-accent text-accent hover:bg-accent hover:text-ink'} min-w-[80px] px-3 py-1 font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
-				onclick={onToggleEdit}
-			>
-				{isEditing ? 'Save' : 'Edit'}
-			</button>
-			<button
+				type="button"
 				class="min-w-[80px] rounded-md border border-danger px-3 py-1 font-medium text-danger transition-all duration-200 hover:bg-danger hover:text-white focus:outline-none focus:ring-2 focus:ring-danger focus:ring-offset-2"
 				onclick={onDelete}
 			>
-				Delete
+				Delete coffee
 			</button>
 		</div>
 	{/if}
