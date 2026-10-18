@@ -795,4 +795,46 @@ describe('BeanForm catalog coffee picker', () => {
 		);
 		expect(optionLabels(select)).toEqual(['Brazil Cerrado', 'Ethiopia Guji']);
 	});
+
+	it('opens an untiered requested coffee with 1 lb at its per-lb price', async () => {
+		render(BeanForm, {
+			bean: null,
+			onClose: vi.fn(),
+			onSubmit: vi.fn(),
+			catalogBeans: PICKER_BEANS,
+			initialCatalogCoffee: PICKER_BEANS[0],
+			ownerId: 'user-a'
+		});
+
+		await screen.findByLabelText('Select Coffee Bean');
+		expect((screen.getByLabelText('Purchased Quantity (lbs)') as HTMLInputElement).value).toBe('1');
+		expect((screen.getByLabelText('Coffee Cost ($)') as HTMLInputElement).value).toBe('6');
+	});
+
+	it('clears row searches when the supplier filter resets the rows', async () => {
+		render(BeanForm, {
+			bean: null,
+			onClose: vi.fn(),
+			onSubmit: vi.fn(),
+			catalogBeans: PICKER_BEANS,
+			ownerId: 'user-a'
+		});
+		await fireEvent.click(screen.getByText('Select from Catalog'));
+		await fireEvent.input(screen.getByLabelText('Search Coffees'), {
+			target: { value: 'kasama' }
+		});
+		expect(optionLabels(screen.getByLabelText('Select Coffee Bean'))).toEqual([
+			"Zambia Kasama · Sweet Maria's"
+		]);
+
+		await fireEvent.change(screen.getByLabelText('Filter by Supplier'), {
+			target: { value: 'bodhi_leaf' }
+		});
+
+		expect((screen.getByLabelText('Search Coffees') as HTMLInputElement).value).toBe('');
+		await fireEvent.click(screen.getByText('Add Another Coffee'));
+		for (const search of screen.getAllByLabelText('Search Coffees')) {
+			expect((search as HTMLInputElement).value).toBe('');
+		}
+	});
 });

@@ -477,7 +477,11 @@
 		}
 	});
 
-	function populateFromCatalog(catalogBean: CoffeeCatalog, beanIndex: number = 0) {
+	function populateFromCatalog(
+		catalogBean: CoffeeCatalog,
+		beanIndex: number = 0,
+		defaultQty: number = 0
+	) {
 		if (!catalogBean) return;
 
 		const tiers = parsePriceTiers(catalogBean.price_tiers);
@@ -489,7 +493,9 @@
 				: parseFloat(String(batchBeans[beanIndex].purchased_qty_lbs || 0));
 
 		// If this coffee has tiers, default quantity to the minimum order so the form is valid immediately.
-		const qty = existingQty > 0 ? existingQty : tiers ? minOrder : existingQty;
+		// An untiered coffee takes the caller's default so its per-lb price can fill in the cost.
+		const qty =
+			existingQty > 0 ? existingQty : tiers ? minOrder : Math.max(existingQty, defaultQty);
 
 		const subtotalFromTiers = tiers ? calculatePurchaseTotal(tiers, qty) : null;
 		const priceTiersArr = Array.isArray(catalogBean.price_tiers)
@@ -526,7 +532,8 @@
 			prefilledCatalogId = coffee.id;
 			isManualEntry = false;
 			sourceFilter = typeof coffee.source === 'string' ? coffee.source : '';
-			populateFromCatalog(coffee, 0);
+			// A coffee without price tiers still opens with 1 lb and its per-lb price filled in.
+			populateFromCatalog(coffee, 0, 1);
 		});
 	});
 
@@ -860,7 +867,9 @@
 		if (!isUpdating) {
 			try {
 				isUpdating = true;
-				// Only reset bean selections, keep purchase details
+				// Only reset bean selections, keep purchase details. The row searches belong to
+				// the discarded rows, so they go too.
+				coffeeSearches = [];
 				batchBeans = [
 					{
 						manual_name: '',

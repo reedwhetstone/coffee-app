@@ -439,11 +439,21 @@
 		return isFormVisible && Number.isSafeInteger(id) && id > 0 ? id : null;
 	});
 	let requestedCatalogCoffee = $state<CoffeeCatalog | null>(null);
+	// The requested coffee's lookup has finished, whether it found the coffee or not.
+	let requestedCatalogSettledId = $state<number | null>(null);
+	// The form waits for the lookup so nothing typed in manual mode is overwritten by the prefill.
+	let requestedCatalogPending = $derived(
+		requestedCatalogId !== null &&
+			!isSharedPortfolioView &&
+			requestedCatalogCoffee?.id !== requestedCatalogId &&
+			requestedCatalogSettledId !== requestedCatalogId
+	);
 
 	$effect(() => {
 		const id = requestedCatalogId;
 		if (id === null || isSharedPortfolioView) {
 			requestedCatalogCoffee = null;
+			requestedCatalogSettledId = null;
 			return;
 		}
 		const listed = catalogData.find((coffee) => coffee.id === id);
@@ -460,6 +470,9 @@
 			})
 			.catch((err) => {
 				if (!controller.signal.aborted) console.error('Error loading catalog coffee:', err);
+			})
+			.finally(() => {
+				if (!controller.signal.aborted) requestedCatalogSettledId = id;
 			});
 		return () => controller.abort();
 	});
@@ -938,14 +951,27 @@
 
 			<!-- Form Modal -->
 			<FormShell visible={isFormVisible}>
-				<BeanForm
-					bean={null}
-					onClose={hideForm}
-					onSubmit={handleFormSubmit}
-					catalogBeans={catalogData}
-					initialCatalogCoffee={requestedCatalogCoffee}
-					ownerId={data.auth?.user?.id ?? null}
-				/>
+				{#if requestedCatalogPending}
+					<div class="flex flex-col items-center gap-4 py-8" role="status">
+						<p class="text-ink">Loading the coffee you chose…</p>
+						<button
+							type="button"
+							class="rounded-md px-4 py-2 text-sm text-muted ring-1 ring-line hover:text-ink"
+							onclick={hideForm}
+						>
+							Cancel
+						</button>
+					</div>
+				{:else}
+					<BeanForm
+						bean={null}
+						onClose={hideForm}
+						onSubmit={handleFormSubmit}
+						catalogBeans={catalogData}
+						initialCatalogCoffee={requestedCatalogCoffee}
+						ownerId={data.auth?.user?.id ?? null}
+					/>
+				{/if}
 			</FormShell>
 
 			<!-- Quick Actions -->
