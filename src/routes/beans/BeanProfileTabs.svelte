@@ -205,6 +205,11 @@
 		}
 	}
 
+	function cancelEdit() {
+		editedBean = cloneBeanForEdit(selectedBean);
+		isEditing = false;
+	}
+
 	// Update editedBean when selectedBean changes
 	$effect(() => {
 		// Read selectedBean to track it as a dependency
@@ -433,7 +438,9 @@
 				{isEditing}
 				bind:editedBean
 				{canManagePortfolio}
+				saving={processingUpdate}
 				onToggleEdit={toggleEdit}
+				onCancelEdit={cancelEdit}
 				onDelete={deleteBean}
 			/>
 			{#if priceHistoryCatalogId}
