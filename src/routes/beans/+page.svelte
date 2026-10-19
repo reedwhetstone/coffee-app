@@ -19,7 +19,8 @@
 	} from '$lib/portfolio/panel-url';
 	import { newRoastHref } from '$lib/roast/coffee-links';
 	import { roastDayLabel } from '$lib/roast/coffee-trend';
-	import { loadBeanPickerCatalog } from './catalogPicker';
+	import { loadBeanPickerCatalog, loadCatalogCoffeeForForm } from './catalogPicker';
+	import { ADD_FROM_CATALOG_PARAM, addCatalogCoffeeHref } from '$lib/portfolio/add-from-catalog';
 	import { deletePortfolioBean } from './deleteBean';
 	import { createTrackedLotStateController } from '$lib/client/trackedLots';
 	import type { PageAuthView } from '$lib/types/auth.types';
@@ -432,6 +433,49 @@
 
 	// State for form and bean selection
 	let isFormVisible = $derived(page.url.searchParams.get('modal') === 'new');
+	// /beans?modal=new&catalog_id=<id> opens the form with that catalog coffee chosen.
+	let requestedCatalogId = $derived.by(() => {
+		const id = Number(page.url.searchParams.get(ADD_FROM_CATALOG_PARAM));
+		return isFormVisible && Number.isSafeInteger(id) && id > 0 ? id : null;
+	});
+	let requestedCatalogCoffee = $state<CoffeeCatalog | null>(null);
+	// The requested coffee's lookup has finished, whether it found the coffee or not.
+	let requestedCatalogSettledId = $state<number | null>(null);
+	// The form waits for the lookup so nothing typed in manual mode is overwritten by the prefill.
+	let requestedCatalogPending = $derived(
+		requestedCatalogId !== null &&
+			!isSharedPortfolioView &&
+			requestedCatalogCoffee?.id !== requestedCatalogId &&
+			requestedCatalogSettledId !== requestedCatalogId
+	);
+
+	$effect(() => {
+		const id = requestedCatalogId;
+		if (id === null || isSharedPortfolioView) {
+			requestedCatalogCoffee = null;
+			requestedCatalogSettledId = null;
+			return;
+		}
+		const listed = catalogData.find((coffee) => coffee.id === id);
+		if (listed) {
+			requestedCatalogCoffee = listed;
+			return;
+		}
+		if (requestedCatalogCoffee?.id === id) return;
+		// The picker lists stocked coffees only; a delisted coffee is read on its own.
+		const controller = new AbortController();
+		void loadCatalogCoffeeForForm(id, controller.signal)
+			.then((coffee) => {
+				if (!controller.signal.aborted && coffee) requestedCatalogCoffee = coffee;
+			})
+			.catch((err) => {
+				if (!controller.signal.aborted) console.error('Error loading catalog coffee:', err);
+			})
+			.finally(() => {
+				if (!controller.signal.aborted) requestedCatalogSettledId = id;
+			});
+		return () => controller.abort();
+	});
 
 	$effect(() => {
 		const shareToken = page.url.searchParams.get('share');
@@ -531,6 +575,7 @@
 	function hideForm() {
 		const url = new URL(page.url);
 		url.searchParams.delete('modal');
+		url.searchParams.delete(ADD_FROM_CATALOG_PARAM);
 		const search = url.searchParams.toString();
 		goto(url.pathname + (search ? '?' + search : ''), {
 			replaceState: true,
@@ -861,6 +906,9 @@
 								annotation={watchlistAnnotation(lot)}
 								tracked={trackedIds.has(lot.catalogId)}
 								onToggleTrack={handleToggleTrack}
+								addToPortfolioHref={canAddPortfolioCoffee
+									? addCatalogCoffeeHref(lot.catalogId)
+									: undefined}
 							/>
 						{/if}
 					{/each}
@@ -903,13 +951,27 @@
 
 			<!-- Form Modal -->
 			<FormShell visible={isFormVisible}>
-				<BeanForm
-					bean={null}
-					onClose={hideForm}
-					onSubmit={handleFormSubmit}
-					catalogBeans={catalogData}
-					ownerId={data.auth?.user?.id ?? null}
-				/>
+				{#if requestedCatalogPending}
+					<div class="flex flex-col items-center gap-4 py-8" role="status">
+						<p class="text-ink">Loading the coffee you chose…</p>
+						<button
+							type="button"
+							class="rounded-md px-4 py-2 text-sm text-muted ring-1 ring-line hover:text-ink"
+							onclick={hideForm}
+						>
+							Cancel
+						</button>
+					</div>
+				{:else}
+					<BeanForm
+						bean={null}
+						onClose={hideForm}
+						onSubmit={handleFormSubmit}
+						catalogBeans={catalogData}
+						initialCatalogCoffee={requestedCatalogCoffee}
+						ownerId={data.auth?.user?.id ?? null}
+					/>
+				{/if}
 			</FormShell>
 
 			<!-- Quick Actions -->

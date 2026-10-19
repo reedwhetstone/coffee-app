@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { browser } from '$app/environment';
 	import LoadingButton from '$lib/components/LoadingButton.svelte';
 	import {
@@ -64,14 +65,40 @@
 		onClose,
 		onSubmit,
 		catalogBeans = [],
+		initialCatalogCoffee = null,
 		ownerId = null
 	} = $props<{
 		bean: InventoryWithCatalog | null;
 		onClose: () => void;
 		onSubmit: (beans: CoffeeFormData[]) => void;
 		catalogBeans?: CoffeeCatalog[];
+		/** A catalog coffee to start the form with, such as one opened from the catalog page. */
+		initialCatalogCoffee?: CoffeeCatalog | null;
 		ownerId?: string | null;
 	}>();
+
+	const OPTIONAL_FIELD_LABELS: Record<keyof typeof MANUAL_COFFEE_FIELD_MAP, string> = {
+		region: 'Region',
+		processing: 'Processing Method',
+		drying_method: 'Drying Method',
+		roast_recs: 'Roast Recommendations',
+		lot_size: 'Lot Size',
+		bag_size: 'Bag Size',
+		packaging: 'Packaging',
+		cultivar_detail: 'Cultivar Detail',
+		grade: 'Grade',
+		appearance: 'Appearance',
+		description_short: 'Short Description',
+		farm_notes: 'Farm Notes',
+		type: 'Type',
+		description_long: 'Long Description',
+		cost_lb: 'Cost per Lb',
+		source: 'Source',
+		cupping_notes: 'Cupping Notes',
+		arrival_date: 'Arrival Date',
+		score_value: 'Score Value'
+	};
+	const coffeeNameCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 
 	let isManualEntry = $state(true);
 	let sourceFilter = $state('');
@@ -312,9 +339,14 @@
 
 	function removeBeanFromBatch(index: number) {
 		batchBeans = batchBeans.filter((_, i) => i !== index);
+		// Rows that were never searched have no entry; fill them so every row after the removed one keeps its own search.
+		coffeeSearches = Array.from(coffeeSearches, (search) => search ?? '').filter(
+			(_, i) => i !== index
+		);
 	}
 
 	function resetFormData() {
+		coffeeSearches = [];
 		sharedFormData = {
 			purchase_date: '',
 			tax_ship_cost: 0.0,
@@ -331,15 +363,81 @@
 		];
 	}
 
-	// Filter catalog beans based on stocked status
-	let filteredCatalogBeans = $derived(catalogBeans.filter((bean: CoffeeCatalog) => bean.stocked));
+	// Stocked catalog coffees in name order. A coffee the form was opened with stays
+	// selectable even after its supplier delists it.
+	let filteredCatalogBeans = $derived.by((): CoffeeCatalog[] => {
+		const beans = (catalogBeans as CoffeeCatalog[]).filter(
+			(catalogBean) => catalogBean.stocked || catalogBean.id === initialCatalogCoffee?.id
+		);
+		if (initialCatalogCoffee && !beans.some((b) => b.id === initialCatalogCoffee.id)) {
+			beans.push(initialCatalogCoffee);
+		}
+		return beans.sort((a, b) => coffeeNameCollator.compare(a.name ?? '', b.name ?? ''));
+	});
 	let catalogSourceOptions = $derived.by((): string[] => {
-		const sources = (filteredCatalogBeans as CoffeeCatalog[]).reduce<string[]>((labels, bean) => {
+		const sources = filteredCatalogBeans.reduce<string[]>((labels, bean) => {
 			if (typeof bean.source === 'string') labels.push(bean.source);
 			return labels;
 		}, []);
-		return [...new Set(sources)];
+		return [...new Set(sources)].sort((a, b) =>
+			coffeeNameCollator.compare(formatSourceName(a), formatSourceName(b))
+		);
 	});
+
+	// One search box per coffee row, so each row can look up a different coffee.
+	let coffeeSearches = $state<string[]>([]);
+
+	function normalizeSearchText(value: string): string {
+		return value
+			.normalize('NFD')
+			.replace(/[\u0300-\u036f]/g, '')
+			.toLowerCase();
+	}
+
+	function coffeeOptionsForRow(index: number, selectedId: number | null): CoffeeCatalog[] {
+		const terms = normalizeSearchText(coffeeSearches[index] ?? '')
+			.split(/\s+/)
+			.filter(Boolean);
+		return filteredCatalogBeans.filter((catalogBean) => {
+			if (catalogBean.id === selectedId) return true;
+			if (sourceFilter && catalogBean.source !== sourceFilter) return false;
+			if (terms.length === 0) return true;
+			const haystack = normalizeSearchText(
+				[
+					catalogBean.name,
+					catalogBean.source ? formatSourceName(catalogBean.source) : '',
+					catalogBean.country,
+					catalogBean.region,
+					catalogBean.processing
+				]
+					.filter(Boolean)
+					.join(' ')
+			);
+			return terms.every((term) => haystack.includes(term));
+		});
+	}
+
+	function coffeeOptionLabel(catalogBean: CoffeeCatalog): string {
+		const name = catalogBean.name ?? 'Unnamed coffee';
+		if (sourceFilter || !catalogBean.source) return name;
+		return `${name} · ${formatSourceName(catalogBean.source)}`;
+	}
+
+	let coffeeSubtotal = $derived(
+		batchBeans.reduce((sum, beanData) => {
+			const cost = Number(beanData.bean_cost);
+			return Number.isFinite(cost) ? sum + cost : sum;
+		}, 0)
+	);
+	let taxShipAmount = $derived.by(() => {
+		const amount = Number(sharedFormData.tax_ship_cost);
+		return Number.isFinite(amount) ? amount : 0;
+	});
+	let orderTotal = $derived(Math.round((coffeeSubtotal + taxShipAmount) * 100) / 100);
+
+	function formatDollars(amount: number): string {
+		return `$${amount.toFixed(2)}`;
+	}
 
 	// When selecting from catalog, auto-calculate bean_cost from price_tiers when available.
 	// This keeps the form aligned with the tiered pricing model (bean_cost is total $ for this line item).
@@ -382,7 +480,11 @@
 		}
 	});
 
-	function populateFromCatalog(catalogBean: CoffeeCatalog, beanIndex: number = 0) {
+	function populateFromCatalog(
+		catalogBean: CoffeeCatalog,
+		beanIndex: number = 0,
+		defaultQty: number = 0
+	) {
 		if (!catalogBean) return;
 
 		const tiers = parsePriceTiers(catalogBean.price_tiers);
@@ -394,7 +496,9 @@
 				: parseFloat(String(batchBeans[beanIndex].purchased_qty_lbs || 0));
 
 		// If this coffee has tiers, default quantity to the minimum order so the form is valid immediately.
-		const qty = existingQty > 0 ? existingQty : tiers ? minOrder : existingQty;
+		// An untiered coffee takes the caller's default so its per-lb price can fill in the cost.
+		const qty =
+			existingQty > 0 ? existingQty : tiers ? minOrder : Math.max(existingQty, defaultQty);
 
 		const subtotalFromTiers = tiers ? calculatePurchaseTotal(tiers, qty) : null;
 		const priceTiersArr = Array.isArray(catalogBean.price_tiers)
@@ -420,6 +524,21 @@
 		};
 		batchBeans = [...batchBeans]; // Trigger reactivity
 	}
+
+	// Start in catalog mode with the requested coffee chosen, once, unless an
+	// unresolved batch has locked the draft.
+	let prefilledCatalogId: number | null = null;
+	$effect(() => {
+		const coffee = initialCatalogCoffee;
+		if (!coffee || bean || draftLocked || prefilledCatalogId === coffee.id) return;
+		untrack(() => {
+			prefilledCatalogId = coffee.id;
+			isManualEntry = false;
+			sourceFilter = typeof coffee.source === 'string' ? coffee.source : '';
+			// A coffee without price tiers still opens with 1 lb and its per-lb price filled in.
+			populateFromCatalog(coffee, 0, 1);
+		});
+	});
 
 	function manualCoffee(
 		beanData: (typeof batchBeans)[number],
@@ -751,7 +870,9 @@
 		if (!isUpdating) {
 			try {
 				isUpdating = true;
-				// Only reset bean selections, keep purchase details
+				// Only reset bean selections, keep purchase details. The row searches belong to
+				// the discarded rows, so they go too.
+				coffeeSearches = [];
 				batchBeans = [
 					{
 						manual_name: '',
@@ -885,56 +1006,14 @@
 			</div>
 		</div>
 
-		<!-- Purchase Details -->
-		<div class="rounded-lg bg-surface-canvas p-4 ring-1 ring-line">
-			<h3 class="mb-4 text-lg font-semibold text-ink">Purchase Details</h3>
-			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-				<div class="space-y-2">
-					<label for="purchase_date" class="block text-sm font-medium text-ink">
-						Purchase Date
-					</label>
-					<input
-						id="purchase_date"
-						type="date"
-						bind:value={sharedFormData.purchase_date}
-						disabled={draftLocked}
-						class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
-						required
-					/>
-				</div>
-
-				<div class="space-y-2">
-					<label for="tax_ship_cost" class="block text-sm font-medium text-ink">
-						Total Tax & Shipping ($)
-					</label>
-					<input
-						id="tax_ship_cost"
-						type="number"
-						step="0.01"
-						min="0"
-						placeholder="0.00"
-						bind:value={sharedFormData.tax_ship_cost}
-						disabled={draftLocked}
-						class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line placeholder:text-muted focus:ring-2 focus:ring-accent"
-						required
-					/>
-					<p class="text-xs text-muted">
-						{#if isManualEntry}
-							This total will be allocated across the manual batch in exact cents
-						{:else}
-							This total will be allocated across the catalog batch in exact cents
-						{/if}
-					</p>
-				</div>
-			</div>
-		</div>
-
 		{#if !isManualEntry}
 			<!-- Catalog Selection Filter -->
 			<div class="rounded-lg bg-surface-canvas p-4 ring-1 ring-line">
-				<h3 class="mb-4 text-lg font-semibold text-ink">Filter Options</h3>
+				<h3 class="mb-4 text-lg font-semibold text-ink">Supplier</h3>
 				<div class="space-y-2">
-					<label for="source" class="block text-sm font-medium text-ink"> Filter by Source </label>
+					<label for="source" class="block text-sm font-medium text-ink">
+						Filter by Supplier
+					</label>
 					<select
 						id="source"
 						bind:value={sourceFilter}
@@ -942,7 +1021,7 @@
 						disabled={draftLocked}
 						class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
 					>
-						<option value="">All Sources</option>
+						<option value="">All Suppliers</option>
 						{#each catalogSourceOptions as source}
 							<option value={source}>{formatSourceName(source)}</option>
 						{/each}
@@ -954,15 +1033,15 @@
 		<!-- Beans in Purchase -->
 		<div class="rounded-lg bg-surface-canvas p-4 ring-1 ring-line">
 			<div class="mb-4 flex items-center justify-between">
-				<h3 class="text-lg font-semibold text-ink">Beans in Purchase</h3>
+				<h3 class="text-lg font-semibold text-ink">Coffees in This Purchase</h3>
 				<button
 					type="button"
 					class="flex items-center gap-2 rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-ink transition-all duration-200 hover:bg-opacity-90"
 					onclick={addBeanToBatch}
 					disabled={draftLocked}
 				>
-					<span class="text-lg">+</span>
-					<span>Add Bean</span>
+					<span class="text-lg" aria-hidden="true">+</span>
+					<span>Add Another Coffee</span>
 				</button>
 			</div>
 
@@ -989,6 +1068,7 @@
 							<button
 								type="button"
 								class="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-danger text-xs text-white hover:bg-danger-strong"
+								aria-label="Remove coffee {index + 1}"
 								onclick={() => removeBeanFromBatch(index)}
 								disabled={draftLocked}
 							>
@@ -1014,6 +1094,30 @@
 									/>
 								</div>
 							{:else}
+								{@const coffeeOptions = coffeeOptionsForRow(index, beanData.catalog_id)}
+								<div class="space-y-2 sm:col-span-2">
+									<label for="catalog-search-{index}" class="block text-sm font-medium text-ink">
+										Search Coffees
+									</label>
+									<input
+										id="catalog-search-{index}"
+										type="search"
+										bind:value={coffeeSearches[index]}
+										placeholder="Name, supplier, origin, or process"
+										autocomplete="off"
+										disabled={draftLocked}
+										aria-describedby="catalog-search-count-{index}"
+										class="block w-full rounded-md border-0 bg-surface-canvas px-3 py-2 text-ink shadow-sm ring-1 ring-line placeholder:text-muted focus:ring-2 focus:ring-accent"
+									/>
+									<p
+										id="catalog-search-count-{index}"
+										class="text-xs text-muted"
+										aria-live="polite"
+									>
+										{coffeeOptions.length}
+										{coffeeOptions.length === 1 ? 'coffee' : 'coffees'}, listed A to Z
+									</p>
+								</div>
 								<div class="space-y-2 sm:col-span-2">
 									<label for="catalog-bean-{index}" class="block text-sm font-medium text-ink">
 										Select Coffee Bean
@@ -1026,9 +1130,11 @@
 										value={beanData.catalog_id || ''}
 										onchange={(e) => handleBeanSelect(e, index)}
 									>
-										<option value="">Select a coffee bean...</option>
-										{#each filteredCatalogBeans.filter((b: CoffeeCatalog) => !sourceFilter || b.source === sourceFilter) as catalogBean}
-											<option value={catalogBean.id}>{catalogBean.name}</option>
+										<option value="">
+											{coffeeOptions.length === 0 ? 'No coffees match' : 'Select a coffee bean...'}
+										</option>
+										{#each coffeeOptions as catalogBean (catalogBean.id)}
+											<option value={catalogBean.id}>{coffeeOptionLabel(catalogBean)}</option>
 										{/each}
 									</select>
 								</div>
@@ -1064,9 +1170,6 @@
 												<div class="text-xs text-muted">
 													Subtotal: ${subtotal.toFixed(2)}
 												</div>
-												<div class="text-xs text-muted">
-													Batch tax and shipping is allocated in exact cents.
-												</div>
 											{:else if minOrder}
 												<div class="mt-2 text-xs text-danger">
 													Minimum order is {minOrder} lb
@@ -1096,11 +1199,7 @@
 
 							<div class="space-y-2">
 								<label for="bean_cost-{index}" class="block text-sm font-medium text-ink">
-									{#if !isManualEntry && tiers}
-										Bean Subtotal ($)
-									{:else}
-										Bean Cost ($)
-									{/if}
+									Coffee Cost ($)
 								</label>
 								<input
 									id="bean_cost-{index}"
@@ -1110,19 +1209,81 @@
 									placeholder="0.00"
 									bind:value={beanData.bean_cost}
 									disabled={draftLocked || (!isManualEntry && !!tiers)}
+									aria-describedby="bean_cost_help-{index}"
 									class="block w-full rounded-md border-0 bg-surface-canvas px-3 py-2 text-ink shadow-sm ring-1 ring-line placeholder:text-muted focus:ring-2 focus:ring-accent"
 									required
 								/>
-								{#if !isManualEntry && tiers}
-									<p class="text-xs text-muted">
-										Auto-calculated from volume pricing tiers. Adjust quantity to update.
-									</p>
-								{/if}
+								<p id="bean_cost_help-{index}" class="text-xs text-muted">
+									{#if !isManualEntry && tiers}
+										Calculated from the supplier's volume pricing. Change the quantity to update it.
+									{:else}
+										What you paid for this coffee, before tax and shipping.
+									{/if}
+								</p>
 							</div>
 						</div>
 					</div>
 				{/each}
 			</div>
+		</div>
+
+		<!-- Purchase Details -->
+		<div class="rounded-lg bg-surface-canvas p-4 ring-1 ring-line">
+			<h3 class="mb-4 text-lg font-semibold text-ink">Purchase Details</h3>
+			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+				<div class="space-y-2">
+					<label for="purchase_date" class="block text-sm font-medium text-ink">
+						Purchase Date
+					</label>
+					<input
+						id="purchase_date"
+						type="date"
+						bind:value={sharedFormData.purchase_date}
+						disabled={draftLocked}
+						class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line focus:ring-2 focus:ring-accent"
+						required
+					/>
+				</div>
+
+				<div class="space-y-2">
+					<label for="tax_ship_cost" class="block text-sm font-medium text-ink">
+						Tax & Shipping Only ($)
+					</label>
+					<input
+						id="tax_ship_cost"
+						type="number"
+						step="0.01"
+						min="0"
+						placeholder="0.00"
+						bind:value={sharedFormData.tax_ship_cost}
+						disabled={draftLocked}
+						aria-describedby="tax_ship_cost_help"
+						class="block w-full rounded-md border-0 bg-surface-panel px-3 py-2 text-ink shadow-sm ring-1 ring-line placeholder:text-muted focus:ring-2 focus:ring-accent"
+						required
+					/>
+					<p id="tax_ship_cost_help" class="text-xs text-muted">
+						Leave out the coffee itself. This amount is split across the coffees in this purchase.
+					</p>
+				</div>
+			</div>
+
+			<dl
+				class="mt-4 space-y-1 rounded-md bg-surface-panel p-3 text-sm ring-1 ring-line"
+				aria-label="Order total"
+			>
+				<div class="flex justify-between text-muted">
+					<dt>Coffee</dt>
+					<dd>{formatDollars(coffeeSubtotal)}</dd>
+				</div>
+				<div class="flex justify-between text-muted">
+					<dt>Tax & shipping</dt>
+					<dd>{formatDollars(taxShipAmount)}</dd>
+				</div>
+				<div class="flex justify-between border-t border-line pt-1 font-semibold text-ink">
+					<dt>Order total</dt>
+					<dd>{formatDollars(orderTotal)}</dd>
+				</div>
+			</dl>
 		</div>
 
 		<!-- Additional Information -->
@@ -1149,25 +1310,9 @@
 							}}
 						>
 							<option value="">Select field to add...</option>
-							<option value="region">Region</option>
-							<option value="processing">Processing Method</option>
-							<option value="drying_method">Drying Method</option>
-							<option value="roast_recs">Roast Recommendations</option>
-							<option value="lot_size">Lot Size</option>
-							<option value="bag_size">Bag Size</option>
-							<option value="packaging">Packaging</option>
-							<option value="cultivar_detail">Cultivar Detail</option>
-							<option value="grade">Grade</option>
-							<option value="appearance">Appearance</option>
-							<option value="description_short">Short Description</option>
-							<option value="farm_notes">Farm Notes</option>
-							<option value="type">Type</option>
-							<option value="description_long">Long Description</option>
-							<option value="cost_lb">Cost per Lb</option>
-							<option value="source">Source</option>
-							<option value="cupping_notes">Cupping Notes</option>
-							<option value="arrival_date">Arrival Date</option>
-							<option value="score_value">Score Value</option>
+							{#each Object.entries(OPTIONAL_FIELD_LABELS) as [field, label] (field)}
+								<option value={field}>{label}</option>
+							{/each}
 						</select>
 					</div>
 
@@ -1176,7 +1321,8 @@
 						<div class="flex gap-2">
 							<div class="flex-1 space-y-2">
 								<label for={`field-${fieldName}`} class="block text-sm font-medium text-ink">
-									{fieldName.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
+									{OPTIONAL_FIELD_LABELS[fieldName as keyof typeof OPTIONAL_FIELD_LABELS] ??
+										fieldName}
 								</label>
 								{#if fieldName === 'description_long' || fieldName === 'farm_notes' || fieldName === 'cupping_notes'}
 									<textarea

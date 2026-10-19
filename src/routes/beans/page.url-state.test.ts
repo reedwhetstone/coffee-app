@@ -279,6 +279,57 @@ describe('/beans?coffee=&tab= round trip', () => {
 		expect(lastWrite().address).toBe('/beans?modal=new&coffee=7');
 	});
 
+	it('holds the add form until the requested catalog coffee has loaded', async () => {
+		const requested = {
+			id: 416,
+			name: 'Brazil Fazenda Vila Boa',
+			stocked: false,
+			source: 'captain_coffee',
+			price_tiers: null,
+			price_per_lb: 9.49,
+			cost_lb: 9.49
+		};
+		let release: (reply: Response) => void = () => {};
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async (input: RequestInfo | URL) => {
+				const url = new URL(String(input), ORIGIN);
+				if (url.pathname === '/api/catalog' && url.searchParams.get('coffeeIds') === '416') {
+					return new Promise<Response>((resolve) => (release = resolve));
+				}
+				return respond(input);
+			})
+		);
+
+		renderPortfolio('/beans?modal=new&catalog_id=416');
+
+		await screen.findByText('Loading the coffee you chose…');
+		expect(screen.queryByLabelText('Coffee Name')).toBeNull();
+
+		release(json({ data: [requested] }));
+
+		const select = (await screen.findByLabelText('Select Coffee Bean')) as HTMLSelectElement;
+		expect(select.value).toBe('416');
+		expect(screen.queryByText('Loading the coffee you chose…')).toBeNull();
+	});
+
+	it('opens the add form in manual mode when the requested coffee cannot be read', async () => {
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async (input: RequestInfo | URL) => {
+				const url = new URL(String(input), ORIGIN);
+				if (url.pathname === '/api/catalog') return json({ error: 'nope' }, 500);
+				return respond(input);
+			})
+		);
+
+		renderPortfolio('/beans?modal=new&catalog_id=416');
+
+		expect(await screen.findByLabelText('Coffee Name')).toBeTruthy();
+		expect(screen.queryByText('Loading the coffee you chose…')).toBeNull();
+	});
+
 	it('opens a linked coffee that is not among the cards on screen', async () => {
 		renderPortfolio('/beans?coffee=99&tab=roasting');
 

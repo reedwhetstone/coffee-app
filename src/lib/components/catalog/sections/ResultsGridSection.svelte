@@ -3,6 +3,7 @@
 	import { filterStore } from '$lib/stores/filterStore';
 	import CoffeeCard from '$lib/components/CoffeeCard.svelte';
 	import { loadCatalogCoffeeDetail } from '$lib/catalog/loadCatalogCoffeeDetail';
+	import { addCatalogCoffeeHref } from '$lib/portfolio/add-from-catalog';
 	import type { CoffeeCatalog } from '$lib/types/component.types';
 	import type { TastingNotes } from '$lib/types/coffee.types';
 	import type { LotPriceContext, OriginPriceStats } from '$lib/catalog/priceContext';
@@ -30,6 +31,8 @@
 		canUseBeanMatching: boolean;
 		canViewPriceHistory: boolean;
 		canUseSourcingIntelligence: boolean;
+		/** Signed-in accounts that keep a portfolio get an "Add to portfolio" action on each coffee. */
+		canAddToPortfolio?: boolean;
 		trackedOnlyView: boolean;
 		trackedLotsKnown: boolean;
 		deepLinkCoffeeId: number | null;
@@ -62,6 +65,7 @@
 		canUseBeanMatching,
 		canViewPriceHistory,
 		canUseSourcingIntelligence,
+		canAddToPortfolio = false,
 		trackedOnlyView,
 		trackedLotsKnown,
 		deepLinkCoffeeId,
@@ -185,6 +189,9 @@
 							{onToggleCompare}
 							compareSelected={compareIds.has(Number(coffee.id))}
 							initialDetailsOpen={deepLinkCoffeeId === catalogCoffeeId(coffee)}
+							addToPortfolioHref={canAddToPortfolio
+								? addCatalogCoffeeHref(Number(coffee.id))
+								: undefined}
 						/>
 					{/each}
 

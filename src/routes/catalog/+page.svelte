@@ -8,6 +8,8 @@
 
 	import CatalogPageSkeleton from '$lib/components/CatalogPageSkeleton.svelte';
 	import CoffeeCard from '$lib/components/CoffeeCard.svelte';
+	import { canManagePortfolio } from '$lib/services/portfolioAccess';
+	import { addCatalogCoffeeHref } from '$lib/portfolio/add-from-catalog';
 	import type {
 		PageSourcingBriefMatchSummary,
 		SourcingBriefMatchSummary
@@ -62,6 +64,9 @@
 	let isSignedIn = $derived(auth.isSignedIn);
 	let role = $derived(auth.role);
 	let ppiAccess = $derived(auth.ppiAccess);
+	let canAddToPortfolio = $derived(
+		isSignedIn && canManagePortfolio((role ?? 'viewer') as UserRole, ppiAccess === true)
+	);
 
 	// Deferred enrichment (origin stats, tracked ids, brief matches, deep-link card)
 	// arrives from the server load as streamed promises. Tests and any non-streamed
@@ -759,6 +764,7 @@
 		{canUseBeanMatching}
 		{canViewPriceHistory}
 		canUseSourcingIntelligence={canUseSourcingIntelligence && trackedIdsReady}
+		{canAddToPortfolio}
 		{trackedOnlyView}
 		trackedLotsKnown={trackedIdsReady}
 		{deepLinkCoffeeId}
@@ -926,6 +932,9 @@
 						initialDetailsOpen={true}
 						detailCloseLabel="Back to map"
 						onDetailClose={onClose}
+						addToPortfolioHref={canAddToPortfolio
+							? addCatalogCoffeeHref(Number(coffee.id))
+							: undefined}
 					/>
 				{/snippet}
 				{#snippet resultsRail()}

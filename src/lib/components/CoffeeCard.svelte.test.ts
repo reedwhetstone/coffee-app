@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/svelte';
+import { fireEvent, render, screen, within } from '@testing-library/svelte';
 import { describe, expect, it, vi } from 'vitest';
 
 const pageState = vi.hoisted(() => ({ data: {} as Record<string, unknown> }));
@@ -327,6 +327,48 @@ describe('CoffeeCard Purveyor Score hierarchy', () => {
 		expect(screen.getByRole('link', { name: /view in catalog/i }).getAttribute('href')).toBe(
 			'/catalog?coffee=43'
 		);
+	});
+
+	it('offers adding the coffee to the portfolio only when the surface allows it', () => {
+		const { unmount } = render(CoffeeCard, {
+			coffee: createCoffee({ id: 44 }),
+			parseTastingNotes,
+			initialDetailsOpen: true,
+			addToPortfolioHref: '/beans?modal=new&catalog_id=44'
+		});
+
+		expect(screen.getByRole('link', { name: /add to portfolio/i }).getAttribute('href')).toBe(
+			'/beans?modal=new&catalog_id=44'
+		);
+		unmount();
+
+		render(CoffeeCard, {
+			coffee: createCoffee({ id: 44 }),
+			parseTastingNotes,
+			initialDetailsOpen: true
+		});
+		expect(screen.queryByRole('link', { name: /add to portfolio/i })).toBeNull();
+	});
+
+	it('groups adding to the portfolio and tracking the lot as quiet actions in the detail header', async () => {
+		const onToggleTrack = vi.fn();
+		render(CoffeeCard, {
+			coffee: createCoffee({ id: 45 }),
+			parseTastingNotes,
+			initialDetailsOpen: true,
+			addToPortfolioHref: '/beans?modal=new&catalog_id=45',
+			onToggleTrack
+		});
+
+		const dialog = screen.getByRole('dialog');
+		const add = within(dialog).getByRole('link', { name: /add to portfolio/i });
+		const track = within(dialog).getByRole('button', { name: 'Track lot' });
+		expect(add.parentElement).toBe(track.parentElement);
+		expect(track).toHaveAttribute('aria-pressed', 'false');
+		expect(within(dialog).queryByText('Not on your watchlist')).toBeNull();
+
+		await fireEvent.click(track);
+		expect(onToggleTrack).toHaveBeenCalledWith(45);
 	});
 
 	it('keeps the mobile detail sheet below app chrome with a persistent close action', async () => {
