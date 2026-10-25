@@ -1,0 +1,23 @@
+---
+title: 'Where Compressing a Model''s Output Saves Money and Where It Costs Quality'
+date: '2026-10-25'
+description: 'A Portuguese essay grader cut its measured cost sharply by shrinking repeated output structure, and its failed first attempt shows where compression stops paying.'
+tags: ['coffee', 'technology', 'ideas']
+pillar: 'market-intelligence'
+draft: false
+format: 'market-brief'
+newsletter: 'fieldnotes'
+edition: 10
+---
+
+## Savings came from fixed output structure, and compressing the grade itself cost quality
+
+Dharma-AI runs a Portuguese essay grader on Qwen3-4B that returns a JSON report with a grade and comment for each competency. In a preview of a paper still under review, the team says it rebuilt the tokenizer, the table that decides how text is cut into pieces, so repeated phrases became single tokens. Across seven versions differing only in tokenizer, on the same 500 requests, average response length fell from 350 to 101 tokens and measured cost fell 77.0%. [[1]](https://huggingface.co/blog/Dharma-AI/vocabx-vocabulary-specialization)
+
+Decoding writes one token at a time, and on their machine a generated token cost 7.4 times a token read, a ratio they say varies with setup. That asymmetry is why trimming the response pays most. The authors put the largest waste in long repeated spans, the JSON envelope among them. I read those as structure the model is not deciding, so the 77.0% reflects what one rigid format in one language allowed, not a rate to expect elsewhere. [[1]](https://huggingface.co/blog/Dharma-AI/vocabx-vocabulary-specialization)
+
+The first vocabulary fused each grade into the surrounding JSON as one token. It was the most compact option, but its measured saving was 73.3%, under the 77.0% of the version that gave the grade its own token for 2 extra tokens; the source does not say why. Quality also dropped on the authors' bench score, which combines grading accuracy with screening of off-topic or rule-breaking essays, where higher is better: 0.689 against 0.703 for the production grader, then 0.810 with the grade separate. A builder paying for structured output should sort response tokens into boilerplate and decision, since compressing the decision is where this saving stopped being free. [[1]](https://huggingface.co/blog/Dharma-AI/vocabx-vocabulary-specialization)
+
+## Sources
+
+1. [How Specializing the Vocabulary of SLMs Can Cut Inference Cost by 77% in Real Applications (Hugging Face)](https://huggingface.co/blog/Dharma-AI/vocabx-vocabulary-specialization)
