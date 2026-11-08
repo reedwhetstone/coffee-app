@@ -1,0 +1,34 @@
+---
+title: 'Simulation Limits and a Seat-Budget Miss'
+date: '2026-11-08'
+description: 'Why AI progress is uneven across kinds of work, and what a survey of enterprise AI spending says about budgeting by seat versus usage.'
+tags: ['coffee', 'technology', 'ideas']
+pillar: 'market-intelligence'
+draft: false
+format: 'market-brief'
+newsletter: 'fieldnotes'
+edition: 11
+---
+
+## The floor and the hammer: where AI can practice and where it cannot
+
+Understanding AI, a newsletter on AI, uses robotics to explain why model progress is so uneven. A robot can learn to walk in simulation because the floor is static and never reacts to the robot. A hammer pushes back through force and friction, so a slightly wrong simulation teaches a technique that fails in reality. Go, programming and, through the Lean language, mathematics have precise rules and automatic checking, so practice transfers. [[1]](https://www.understandingai.org/p/this-robotics-concept-helps-explain)
+
+Where a task cannot be simulated, the author says, companies can pay people to demonstrate it, or ship a robot that works poorly and let it improve by trial and error. Both are slower and costlier than simulation. Tau Robotics, a company whose robots clean apartments, shows the first: MIT Technology Review reports the robots are piloted remotely by humans, prices stay low because the recorded data is valuable to Tau, and only a couple hundred cleanings are done so far. [[1]](https://www.understandingai.org/p/this-robotics-concept-helps-explain), [[2]](https://www.technologyreview.com/2026/11/06/1148090/i-watched-a-humanoid-robot-clean-my-apartment-it-felt-like-a-taste-of-the-future/)
+
+The author expects less white-collar disruption in 2027 or 2028 than many predict, because office work involves people, which he calls almost impossible to simulate. That is a forecast, not a finding. OpenAI's GDPval, where a model turns a supplied document into a new one, saw its best score climb from 47.6% to more than 85% in a year. Because those tasks start and end as documents, the jump says most about the part of office work that already lives in a document, the part labs can build environments for, and it does not by itself contradict a forecast about work that depends on people. The AI Daily Brief's summary of an investor survey makes a loosely similar remark about spending, that verifiable domains benefited most, but that is commentary and no test of the author's idea. Evidence that dealing with people can be simulated, or demonstration data well beyond Tau's couple hundred cleanings, would change the reading. [[1]](https://www.understandingai.org/p/this-robotics-concept-helps-explain), [[2]](https://www.technologyreview.com/2026/11/06/1148090/i-watched-a-humanoid-robot-clean-my-apartment-it-felt-like-a-taste-of-the-future/), [[3]](https://aidailybrief.beehiiv.com/p/companies-are-spending-5x-more-on-ai-now)
+
+## A seat-based AI budget missed by a wide margin, and the average hides who spent it
+
+A seat budget pays for each licensed user. Token billing meters the work a model does, so spend can climb without a single new user. Menlo Ventures' State of Enterprise AI report, as summarized by The AI Daily Brief, a newsletter on AI, found enterprises planned about 1.9x growth in AI spend this year, mostly through more seats, and saw 4.7x. Adoption barely moved, from 55% to 65% of enterprises, so the growth came from heavier use, which the newsletter credits to agents that run in parallel and keep working after people step away. [[3]](https://aidailybrief.beehiiv.com/p/companies-are-spending-5x-more-on-ai-now)
+
+An average per enterprise is a poor guide to any one budget. The newsletter itself points to concentration among a few heavy spenders, and the 35% of enterprises still reporting no use shows how little adoption broadened. Agents that work side by side and carry on once their users leave would multiply usage inside the companies already using them, which is the newsletter's explanation. That the 4.7x does not describe a typical company is our inference from it. The figures come from a mid-September Morning Consult survey of about 400 US decision-makers, which Menlo published in its report, and the newsletter notes that Menlo has a large stake in this market, with Anthropic among its holdings. [[3]](https://aidailybrief.beehiiv.com/p/companies-are-spending-5x-more-on-ai-now)
+
+Self-hosted AI is counted in different units again. Dharma-AI's small document-extraction model is one customers host themselves, and the company states its benchmark cost as GPU time, $2.24 an hour on a single card, rather than tokens. That is the operating cost of its own test setup, not what any vendor charges; the company says it is not a sales price, since the real figure depends on hardware, volume and latency. For a buyer, the useful question is which of their own workflows could run agents unattended, since that is where a seat count stops predicting cost. [[4]](https://huggingface.co/blog/Dharma-AI/dharma-field-extractor)
+
+## Sources
+
+1. [This robotics concept helps explain the jaggedness of frontier capabilities (Understanding AI)](https://www.understandingai.org/p/this-robotics-concept-helps-explain)
+2. [I watched a humanoid robot clean my apartment. It felt like a taste of the future. (MIT Technology Review)](https://www.technologyreview.com/2026/11/06/1148090/i-watched-a-humanoid-robot-clean-my-apartment-it-felt-like-a-taste-of-the-future/)
+3. [Companies Are Spending 5x More on AI Now (The AI Daily Brief)](https://aidailybrief.beehiiv.com/p/companies-are-spending-5x-more-on-ai-now)
+4. [Dharma Field Extractor: Any Document In, Structured Fields in JSON Out (Hugging Face)](https://huggingface.co/blog/Dharma-AI/dharma-field-extractor)
