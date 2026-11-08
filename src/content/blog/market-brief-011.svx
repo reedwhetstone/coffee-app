@@ -1,7 +1,7 @@
 ---
 title: 'Simulation Limits and a Seat-Budget Miss'
 date: '2026-11-08'
-description: 'Two separate takes: why AI progress is uneven across kinds of work, and what a survey of enterprise AI spending shows about budgeting by seats.'
+description: 'Why AI progress is uneven across kinds of work, and what a survey of enterprise AI spending says about budgeting by seat versus usage.'
 tags: ['coffee', 'technology', 'ideas']
 pillar: 'market-intelligence'
 draft: false
@@ -22,9 +22,9 @@ The author expects less white-collar disruption in 2027 or 2028 than many predic
 
 A seat budget pays for each licensed user. Token billing meters the work a model does, so spend can climb without a single new user. Menlo Ventures' State of Enterprise AI report, as summarized by The AI Daily Brief, a newsletter on AI, found enterprises planned about 1.9x growth in AI spend this year, mostly through more seats, and saw 4.7x. Adoption barely moved, from 55% to 65% of enterprises, so the growth came from heavier use, which the newsletter credits to agents that run in parallel and keep working after people step away. [[3]](https://aidailybrief.beehiiv.com/p/companies-are-spending-5x-more-on-ai-now)
 
-An average per enterprise is a poor guide to any one budget. The newsletter itself points to concentration among a few heavy spenders, and the 35% of enterprises still reporting no use shows how little adoption broadened. Agents that work side by side and carry on once their users leave would multiply usage inside the companies already using them, which is the newsletter's explanation. That the 4.7x does not describe a typical company is our inference from it. The figures come from a survey of about 400 US decision-makers, run by Menlo, and the newsletter notes that Menlo has a large stake in this market, with Anthropic among its holdings. [[3]](https://aidailybrief.beehiiv.com/p/companies-are-spending-5x-more-on-ai-now)
+An average per enterprise is a poor guide to any one budget. The newsletter itself points to concentration among a few heavy spenders, and the 35% of enterprises still reporting no use shows how little adoption broadened. Agents that work side by side and carry on once their users leave would multiply usage inside the companies already using them, which is the newsletter's explanation. That the 4.7x does not describe a typical company is our inference from it. The figures come from a mid-September Morning Consult survey of about 400 US decision-makers, which Menlo published in its report, and the newsletter notes that Menlo has a large stake in this market, with Anthropic among its holdings. [[3]](https://aidailybrief.beehiiv.com/p/companies-are-spending-5x-more-on-ai-now)
 
-The unit of the bill also differs between vendors. Dharma-AI, which sells a small document-extraction model that customers host themselves, prices its cost as GPU time, $2.24 an hour on a single card, rather than tokens. It adds that this is not a sales price, since the real figure depends on hardware, volume and latency. For a buyer, the useful question is which of their own workflows could run agents unattended, since that is where a seat count stops predicting cost. [[4]](https://huggingface.co/blog/Dharma-AI/dharma-field-extractor)
+Self-hosted AI is counted in different units again. Dharma-AI's small document-extraction model is one customers host themselves, and the company states its benchmark cost as GPU time, $2.24 an hour on a single card, rather than tokens. That is the operating cost of its own test setup, not what any vendor charges; the company says it is not a sales price, since the real figure depends on hardware, volume and latency. For a buyer, the useful question is which of their own workflows could run agents unattended, since that is where a seat count stops predicting cost. [[4]](https://huggingface.co/blog/Dharma-AI/dharma-field-extractor)
 
 ## Sources
 
