@@ -7,6 +7,7 @@ import type {
 	TableColumn
 } from './component.types';
 import type { TastingNotes } from './coffee.types';
+import type { BlockState, BlockStateValue, UINode } from '$lib/genui/catalog';
 
 // ─── UIBlock Discriminated Union ───────────────────────────────────────────────
 // All blocks include a `version` field for schema evolution on persisted data.
@@ -24,7 +25,15 @@ export type UIBlock =
 	| BeanFormBlock
 	| RoastFormBlock
 	| SaleFormBlock
-	| ErrorBlock;
+	| ErrorBlock
+	| UITreeBlock;
+
+/** Model-composed component tree validated against the genUI catalog. */
+export interface UITreeBlock {
+	type: 'ui-tree';
+	version: 1;
+	data: { title?: string; root: UINode };
+}
 
 export interface CoffeeCardAnnotation {
 	id: number;
@@ -250,10 +259,12 @@ export interface CanvasBlock {
 	 * the block type.
 	 */
 	title?: string;
+	/** Shared interactive state (checklist ticks, field values) keyed by node id. */
+	state?: BlockState;
 }
 
 export type CanvasMutation =
-	| { type: 'add'; block: UIBlock; messageId: string; title?: string }
+	| { type: 'add'; block: UIBlock; messageId: string; title?: string; state?: BlockState }
 	| { type: 'remove'; blockId: string }
 	| { type: 'focus'; blockId: string }
 	| { type: 'clear' }
@@ -263,6 +274,7 @@ export type CanvasMutation =
 	| { type: 'unpin'; blockId: string }
 	| { type: 'minimize'; blockId: string }
 	| { type: 'restore'; blockId: string }
+	| { type: 'set-block-state'; blockId: string; key: string; value: BlockStateValue }
 	| { type: 'update-action'; blockId: string; data: Partial<ActionCardPayload> };
 
 /** Human-friendly default tab label for a block type when no AI title is set. */
@@ -280,7 +292,8 @@ export function defaultBlockTitle(blockType: UIBlock['type']): string {
 		'bean-form': 'Add bean',
 		'roast-form': 'Log roast',
 		'sale-form': 'Record sale',
-		error: 'Error'
+		error: 'Error',
+		'ui-tree': 'Workspace'
 	};
 	return labels[blockType] ?? blockType.replace(/-/g, ' ');
 }

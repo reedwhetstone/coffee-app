@@ -9,6 +9,8 @@
 	import ErrorBlock from './blocks/ErrorBlock.svelte';
 	import RoastChartBlock from './blocks/RoastChartBlock.svelte';
 	import ActionCardBlock from './blocks/ActionCardBlock.svelte';
+	import UITreeBlock from './blocks/UITreeBlock.svelte';
+	import UITreePreview from './previews/UITreePreview.svelte';
 	// Preview components (chat mode)
 	import InlineCoffeeResults from './inline/InlineCoffeeResults.svelte';
 	import InventoryPreview from './previews/InventoryPreview.svelte';
@@ -62,6 +64,8 @@
 			<ActionCardPreview {block} {onAction} {canvasBlockId} />
 		{:else if block.type === 'data-table'}
 			<DataTablePreview {block} {onAction} {canvasBlockId} />
+		{:else if block.type === 'ui-tree'}
+			<UITreePreview {block} {onAction} {canvasBlockId} />
 		{:else if block.type === 'error'}
 			<ErrorPreview {block} />
 		{/if}
@@ -83,6 +87,8 @@
 			<TastingRadarBlock {block} {onAction} />
 		{:else if block.type === 'data-table'}
 			<DataTableBlock {block} {onAction} />
+		{:else if block.type === 'ui-tree'}
+			<UITreeBlock {block} blockId={canvasBlockId} {onAction} />
 		{:else if block.type === 'error'}
 			<ErrorBlock {block} />
 		{/if}

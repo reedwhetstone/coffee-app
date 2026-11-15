@@ -65,7 +65,8 @@ function dispatch(mutation: CanvasMutation, source: 'user' | 'agent' = 'user') {
 				pinned: false,
 				minimized: false,
 				addedAt: Date.now(),
-				title: mutation.title
+				title: mutation.title,
+				...(mutation.state ? { state: mutation.state } : {})
 			};
 			blocks = [...blocks, newBlock];
 			blockMessageRegistry.set(id, mutation.messageId);
@@ -180,6 +181,15 @@ function dispatch(mutation: CanvasMutation, source: 'user' | 'agent' = 'user') {
 		case 'restore': {
 			blocks = blocks.map((b) => (b.id === mutation.blockId ? { ...b, minimized: false } : b));
 			focusBlockId = mutation.blockId;
+			break;
+		}
+
+		case 'set-block-state': {
+			blocks = blocks.map((b) =>
+				b.id === mutation.blockId
+					? { ...b, state: { ...(b.state ?? {}), [mutation.key]: mutation.value } }
+					: b
+			);
 			break;
 		}
 
