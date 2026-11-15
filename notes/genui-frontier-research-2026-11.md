@@ -2,7 +2,7 @@
 
 **Scope:** frontier scan of generative UI and agent-UI developments from roughly May to November 2026, grounded in the current Cherry and coffee-app state, ending in a prioritized build list.
 
-**Evidence labels:** *Verified* means read from a primary source (spec, vendor blog, repo) on 2026-11-15. *Secondary* means a trade or aggregator write-up. *Unverified* means I could not reach a primary source (the search provider rate-limited several queries), so treat it as a lead. Items older than May 2026 are marked *older*.
+**Evidence labels:** _Verified_ means read from a primary source (spec, vendor blog, repo) on 2026-11-15. _Secondary_ means a trade or aggregator write-up. _Unverified_ means I could not reach a primary source (the search provider rate-limited several queries), so treat it as a lead. Items older than May 2026 are marked _older_.
 
 ---
 
@@ -59,11 +59,13 @@ Cherry the repo is **not a runtime**. It is CoffeeBench, the evaluation harness:
 The field converged on a split: a **transport/sandbox layer** (MCP Apps) and a **declarative component layer** (A2UI, json-render, AG-UI as the pipe between agent and frontend). This is the most important thing to understand before picking work.
 
 **MCP Apps (SEP-1865).**
-- Became MCP's first official extension in January 2026 (*older*, before the window), co-authored by OpenAI and Anthropic maintainers and folding in MCP-UI and OpenAI's Apps SDK ideas. Sources: [MCP blog 2026-01-26](https://blog.modelcontextprotocol.io/posts/2026-01-26-mcp-apps/) (*Verified*), WorkOS write-up 2026-01-27 (*Secondary*).
-- **New in the window:** the 2026-07-28 spec release candidate (final published 2026-07-28 per the RC post and secondary coverage) made MCP stateless at the protocol layer (no `initialize` handshake, no `Mcp-Session-Id`) and carried MCP Apps in the same release. Per the RC post, servers declare UI templates ahead of time so hosts can prefetch, cache and security-review them before anything runs, and render them in a sandboxed iframe. Tasks (long-running work) graduated to an extension in the same release. Source: [MCP RC post, 2026-07-24](https://blog.modelcontextprotocol.io/posts/2026-07-28-release-candidate/) (*Verified*). Note it contains breaking changes.
-- Implication: any MCP server we expose can now return real UI into Claude, ChatGPT-style hosts and Gemini, per Google's A2UI post naming Claude and Gemini as MCP Apps hosts (*Verified*, 2026-11-11). I did not independently verify each host's current MCP Apps support level (*Unverified* per host).
 
-**A2UI 1.0 (Google, 2026-11-11, four days ago).** Source: [Google Developers Blog](https://developers.googleblog.com/a2ui-10-build-delightful-fast-reliable-agentic-experiences/) (*Verified*); CopilotKit's [A2UI 1.0 write-up](https://www.copilotkit.ai/blog/introducing-a2ui-1-0) (*Verified* as vendor post).
+- Became MCP's first official extension in January 2026 (_older_, before the window), co-authored by OpenAI and Anthropic maintainers and folding in MCP-UI and OpenAI's Apps SDK ideas. Sources: [MCP blog 2026-01-26](https://blog.modelcontextprotocol.io/posts/2026-01-26-mcp-apps/) (_Verified_), WorkOS write-up 2026-01-27 (_Secondary_).
+- **New in the window:** the 2026-07-28 spec release candidate (final published 2026-07-28 per the RC post and secondary coverage) made MCP stateless at the protocol layer (no `initialize` handshake, no `Mcp-Session-Id`) and carried MCP Apps in the same release. Per the RC post, servers declare UI templates ahead of time so hosts can prefetch, cache and security-review them before anything runs, and render them in a sandboxed iframe. Tasks (long-running work) graduated to an extension in the same release. Source: [MCP RC post, 2026-07-24](https://blog.modelcontextprotocol.io/posts/2026-07-28-release-candidate/) (_Verified_). Note it contains breaking changes.
+- Implication: any MCP server we expose can now return real UI into Claude, ChatGPT-style hosts and Gemini, per Google's A2UI post naming Claude and Gemini as MCP Apps hosts (_Verified_, 2026-11-11). I did not independently verify each host's current MCP Apps support level (_Unverified_ per host).
+
+**A2UI 1.0 (Google, 2026-11-11, four days ago).** Source: [Google Developers Blog](https://developers.googleblog.com/a2ui-10-build-delightful-fast-reliable-agentic-experiences/) (_Verified_); CopilotKit's [A2UI 1.0 write-up](https://www.copilotkit.ai/blog/introducing-a2ui-1-0) (_Verified_ as vendor post).
+
 - First stable release of the declarative protocol. UI is **data, never code**: the agent can only reference component names and functions allowlisted in the app's catalog; anything outside the catalog is rejected before render.
 - **New in 1.0:** bidirectional function calls (UI can call agent functions and the reverse, with typed validation), multiple catalogs on one screen, accessibility support, extensions metadata.
 - **Server-side data binding** so sensitive values never reach the model. This maps directly to our "private roast and inventory data" posture.
@@ -72,24 +74,25 @@ The field converged on a split: a **transport/sandbox layer** (MCP Apps) and a *
 - Named adopters: Atlassian (Jira cards for agent follow-ups), Alation (metric cards and charts, each showing its SQL and data), Bloomberg, ByteDance (Lynx renderer, June 2026). The Alation pattern, a chart that can show the query behind it, is the closest analogue to Purveyors provenance.
 - Caveat: the A2UI repo README contains a reference to a "Jev" decision-model product; ignore it, it is unrelated to our stack.
 
-**AG-UI (CopilotKit).** Event-based protocol between agent backends and frontends. A2UI 1.0 travels natively over AG-UI, so any AG-UI agent gets A2UI without custom integration (*Verified*, CopilotKit 2026-11-11). CopilotKit's new Generative UI product ships a 70-component standard catalog. AG-UI is React-centric in tooling; I did not verify a Svelte client (*Unverified*). Useful as a spec for event shapes (state snapshots and deltas, tool lifecycle), less so as a dependency.
+**AG-UI (CopilotKit).** Event-based protocol between agent backends and frontends. A2UI 1.0 travels natively over AG-UI, so any AG-UI agent gets A2UI without custom integration (_Verified_, CopilotKit 2026-11-11). CopilotKit's new Generative UI product ships a 70-component standard catalog. AG-UI is React-centric in tooling; I did not verify a Svelte client (_Unverified_). Useful as a spec for event shapes (state snapshots and deltas, tool lifecycle), less so as a dependency.
 
 **Vercel AI SDK and json-render.**
-- AI SDK 6 has native tool-execution approval via `useChat` tool states (`approval-requested`, `approval-responded`, `output-denied`) (*Verified*, vercel.com/blog/ai-sdk-6; release itself is *older*).
-- **json-render** (vercel-labs): define a catalog with Zod prop schemas, pass `catalog.prompt()` to `streamText`, stream and render progressively. Guardrailed to catalog components. **Has an `@json-render/svelte` package**, plus React, Vue, Solid, React Native, PDF, HTML email, and terminal targets (*Verified*, GitHub README, repo active 2026-11-13). Vercel's docs (page dated 2026-10-05) now present it as the way to "let the model compose the interface." The Chat SDK adapter (2026-11-06) streams json-render to bots such as Slack. A critical secondary note (iMasters, 2026-11-08) points out that silent degradation across surfaces is risky when a card carries an action button.
-- Vercel positions this as experimental; the New Stack piece is from 2026-01-23 (*older*).
+
+- AI SDK 6 has native tool-execution approval via `useChat` tool states (`approval-requested`, `approval-responded`, `output-denied`) (_Verified_, vercel.com/blog/ai-sdk-6; release itself is _older_).
+- **json-render** (vercel-labs): define a catalog with Zod prop schemas, pass `catalog.prompt()` to `streamText`, stream and render progressively. Guardrailed to catalog components. **Has an `@json-render/svelte` package**, plus React, Vue, Solid, React Native, PDF, HTML email, and terminal targets (_Verified_, GitHub README, repo active 2026-11-13). Vercel's docs (page dated 2026-10-05) now present it as the way to "let the model compose the interface." The Chat SDK adapter (2026-11-06) streams json-render to bots such as Slack. A critical secondary note (iMasters, 2026-11-08) points out that silent degradation across surfaces is risky when a card carries an action button.
+- Vercel positions this as experimental; the New Stack piece is from 2026-01-23 (_older_).
 
 **Why this matters for us:** we already use AI SDK 6 and Svelte 5. json-render is the only mainstream genUI framework with a Svelte renderer that I could verify, and its catalog concept is almost exactly our `UIBlock` union with a schema and a prompt generator attached.
 
 ### 2.2 Declarative catalogs beat code generation for production (consensus)
 
 - A2UI, json-render and MCP Apps all push the same safety story: constrain the agent to a registered vocabulary or a sandboxed iframe with pre-declared templates, not arbitrary generated code.
-- Counter-signal: benchmarks of free-form generation tools (Design Theater, arXiv 2607.22928, 2026-07-24, evaluating ChatGPT, Claude, Firebase Studio, v0, Bolt; *Verified* via search snippet only) discuss design homogenization. Free-form generation is strong for one-off artifacts, weak for a branded product surface.
-- My read: code-gen is right for *artifacts* a user asks for ("build me a sourcing worksheet"), catalog-driven is right for *the product's own surface*. We should do the second, and consider the first only as a sandboxed MCP-Apps-style artifact later.
+- Counter-signal: benchmarks of free-form generation tools (Design Theater, arXiv 2607.22928, 2026-07-24, evaluating ChatGPT, Claude, Firebase Studio, v0, Bolt; _Verified_ via search snippet only) discuss design homogenization. Free-form generation is strong for one-off artifacts, weak for a branded product surface.
+- My read: code-gen is right for _artifacts_ a user asks for ("build me a sourcing worksheet"), catalog-driven is right for _the product's own surface_. We should do the second, and consider the first only as a sandboxed MCP-Apps-style artifact later.
 
 ### 2.3 Evals for genUI are finally appearing
 
-- **EvoGenUI-Bench** (arXiv 2608.29387, 2026-08-29): 150 five-turn tasks, 750 turns, across information presentation, executable interaction and tool-grounded external state. Tests whether a model can *maintain* an interface as requirements change over turns (*Verified* via abstract snippets; I did not read the full paper).
+- **EvoGenUI-Bench** (arXiv 2608.29387, 2026-08-29): 150 five-turn tasks, 750 turns, across information presentation, executable interaction and tool-grounded external state. Tests whether a model can _maintain_ an interface as requirements change over turns (_Verified_ via abstract snippets; I did not read the full paper).
 - **Design Theater** (2026-07-24) benchmarks generative UI tools on design quality metrics.
 - A third-party vendor benchmark (gendesigns.ai, 2026-08-08) compares models on HTML generation speed and size; low rigor, mention only as market noise.
 - Takeaway: multi-turn **interface maintenance** and **tool-grounded state** are the realistic eval axes for us. Cherry's CoffeeBench harness (frozen cases, jury, run artifacts) is better infrastructure for this than anything off the shelf.
@@ -98,13 +101,13 @@ The field converged on a split: a **transport/sandbox layer** (MCP Apps) and a *
 
 - Bidirectional agent-UI state is now in a stable spec (A2UI 1.0 function calls) and in AG-UI's event model. This is the shift from "agent renders, user reads" to "user edits, agent reacts."
 - Human-in-the-loop is mainstream: AI SDK 6 approval states, and A2UI's own examples hold side effects until the user confirms ("nothing is sent until you confirm", Google post).
-- Persistence of generated views: I found no primary-source standard for saving generated UI as durable artifacts. Alation's feeds (same feed in Claude and in-product) are the best shipping example of "a generated view that is also a product object." This is an open lane, and it is where Cherry's canvas can differentiate. (*My inference, not a sourced trend.*)
+- Persistence of generated views: I found no primary-source standard for saving generated UI as durable artifacts. Alation's feeds (same feed in Claude and in-product) are the best shipping example of "a generated view that is also a product object." This is an open lane, and it is where Cherry's canvas can differentiate. (_My inference, not a sourced trend._)
 
 ### 2.5 Safety and sandboxing
 
-- MCP Apps: sandboxed iframes, templates declared before execution so hosts can review them (*Verified*, RC post).
-- A2UI: data-only messages, allowlisted catalog and functions, server-side binding to keep sensitive values out of the model (*Verified*).
-- Risk flagged by commentary: surface-dependent degradation of interactive elements (iMasters on json-render and Chat SDK, *Secondary*).
+- MCP Apps: sandboxed iframes, templates declared before execution so hosts can review them (_Verified_, RC post).
+- A2UI: data-only messages, allowlisted catalog and functions, server-side binding to keep sensitive values out of the model (_Verified_).
+- Risk flagged by commentary: surface-dependent degradation of interactive elements (iMasters on json-render and Chat SDK, _Secondary_).
 
 ### 2.6 Not verified (do not rely on)
 
@@ -123,6 +126,7 @@ Older context: MCP Apps extension itself (Jan 2026), AI SDK 6 approvals, MCP-UI 
 Ordered by leverage per effort. "Depends on" names existing code.
 
 ### 1. Turn the block union into a catalog with schemas and a generated prompt
+
 - **Owner:** coffee-app for the registry and renderers; **Parchment** for any generated prompt text or `present_results` schema change.
 - **What:** define each block (coffee-cards, inventory-table, roast-chart, etc.) as a Zod schema plus description, in one registry. Generate renderer-side validation from it; the model-facing prompt block docs and `present_results` schema live in Parchment, so publishing the catalog to the runtime needs a Parchment contract (for example a shared schema package or SDK export) and is a separate step. Evaluate adopting `@json-render/core` + `@json-render/svelte` versus a thin in-house version that emits an A2UI-compatible shape.
 - **Why now:** json-render shipped a Svelte renderer and Vercel now documents catalog-driven composition (docs 2026-10-05); A2UI 1.0 (2026-11-11) makes "catalog.json of allowlisted components" the standard. Doing this once makes both formats reachable later.
@@ -131,6 +135,7 @@ Ordered by leverage per effort. "Depends on" names existing code.
 - **Opinion:** prototype json-render behind a flag first; keep our block components as the registry implementations. Do not adopt it wholesale before checking Svelte 5 runes compatibility and bundle cost.
 
 ### 2. GenUI evals in the cherry repo (CoffeeBench-GenUI)
+
 - **Owner:** cherry (measurement); it needs a way to drive the Parchment runtime and read emitted blocks.
 - **What:** a small frozen suite measuring block selection, prop validity, grounding (every number traces to a tool result), and multi-turn canvas maintenance, scored deterministically where possible and by the existing jury otherwise. Start with 30 to 40 cases drawn from real chat transcripts.
 - **Why now:** EvoGenUI-Bench (2026-08-29) frames multi-turn interface maintenance as the real failure mode, and nobody has a coffee-domain version. We already own the harness, freeze process and jury.
@@ -139,6 +144,7 @@ Ordered by leverage per effort. "Depends on" names existing code.
 - **Opinion:** this is Cherry's actual moat. Ship it before more block types.
 
 ### 3. Provenance on every block ("show the query and data behind this")
+
 - **Owner:** coffee-app for the affordance; **Parchment** for attaching provenance (source tool, snapshot date, rows) to tool output and blocks.
 - **What:** a standard provenance affordance on blocks: source tool, snapshot date, supplier, and the underlying rows or query, expandable in place and exportable.
 - **Why now:** Alation's A2UI feeds show the SQL and data behind each chart (Google post, 2026-11-11); A2UI's server-side binding keeps raw values out of the model. Trust is the differentiator in a market where a bad price comparison costs real money.
@@ -146,12 +152,14 @@ Ordered by leverage per effort. "Depends on" names existing code.
 - **Effort:** small to medium. **Depends on:** Parchment tool output shaping (`chat/toolModelOutput.ts`, `chat/tools/tastingEnvelope.ts`) and a block payload contract change; coffee-app block detail views (`blockDetail.ts`).
 
 ### 4. Saved, versioned canvas views (living artifacts)
+
 - **What:** let a canvas state be saved as a named view (sourcing brief, watchlist board, comparison) with version history, re-run ("refresh with today's prices"), and a shareable read-only link. Blocks store tool-call references plus params, not frozen data.
 - **Why now:** no standard exists for persisting generated UI; Alation's "same feed in the assistant and in the product" shows demand. It also directly delivers the intelligence-first note's research boards, watchlists and sourcing briefs.
 - **User value:** the highest in this list for buyers: a recurring sourcing brief that stays fresh without re-asking.
 - **Effort:** medium to large. **Owner:** coffee-app (canvas, workspaces, share); re-running tool calls needs Parchment to expose replayable tool-call references. **Depends on:** workspaces API and schema, `CanvasBlock` and `CanvasMutation`, `canvasPersistence.ts`, existing `/api/share`, chat persistence.
 
 ### 5. Typed UI-to-agent actions (bidirectional blocks)
+
 - **What:** let blocks invoke named, schema-validated functions ("compare these two", "add to watchlist", "rerun with this ratio") that go through the same tool layer and approval path, instead of only navigate or focus.
 - **Why now:** A2UI 1.0's headline feature is function calls in both directions (2026-11-11); this is the step from display to workspace.
 - **User value:** removes the type-a-follow-up loop for common moves.
@@ -159,6 +167,7 @@ Ordered by leverage per effort. "Depends on" names existing code.
 - **Risk:** keep every side effect behind the existing confirm step (see item 7).
 
 ### 6. Expose Purveyors intelligence as an MCP server with MCP Apps UI
+
 - **What:** a remote MCP server (stateless, per the 2026-07-28 spec) offering catalog search, comparison and market tools, returning a small set of MCP Apps views (coffee cards, comparison). Start read-only and public-tier, authenticated per the existing API key and tier model.
 - **Why now:** MCP Apps is final in the 2026-07-28 spec; the A2UI post names Claude and Gemini as MCP Apps hosts. Purveyors becomes discoverable where buyers already ask questions, and it matches "agents as customers" and the CLI/API-first principle in the intelligence-first note.
 - **User value:** reach, not in-app UX. Strategic more than operational.
@@ -166,12 +175,14 @@ Ordered by leverage per effort. "Depends on" names existing code.
 - **Opinion:** do this after items 1 to 3, because the catalog, provenance and evals are what make it trustworthy and cheap to ship. Verify per-host MCP Apps support before committing.
 
 ### 7. Adopt AI SDK 6 native tool approval for write tools
+
 - **Owner:** **Parchment** (write tools and the tool loop) with a coffee-app presentation change; not a coffee-app-only item.
 - **What:** evaluate moving Parchment's write tools to `needsApproval` with `addToolApprovalResponse`, rendering the existing action-card as the approval UI. Today writes are proposed as action cards, optionally chained by `propose_action_plan`, and executed by coffee-app calling `confirmedActions.execute`; native approval would change that Parchment/SDK contract and must be weighed against it (including the multi-step plan flow) before committing.
 - **Why now:** it is the framework's supported path and what A2UI examples assume (nothing happens until the user confirms). It reduces custom code in the highest-risk area (writes to inventory, roasts, sales).
 - **Effort:** medium, cross-service. **Depends on:** Parchment `chat/tools/{roastTools,inventoryTools,actionPlanTools}.ts` and `chat/runtime.ts`, the SDK `confirmedActions` contract, coffee-app `ActionCardBlock` and `chatPersistence.ts` (approval states must survive reload).
 
 ### 8. Proactive "what changed" cards (lower priority)
+
 - **What:** on open, the agent surfaces watchlist price moves, stock changes and new arrivals as a short card set, using the saved views from item 4.
 - **Why now:** Atlassian's Jira cards show agents asking for follow-ups in place (2026-11-11). Our Phase 4 plan already calls for proactive suggestions.
 - **Effort:** medium. **Owner:** coffee-app. **Depends on:** items 4 and 3, `suggestionEngine.ts`.
