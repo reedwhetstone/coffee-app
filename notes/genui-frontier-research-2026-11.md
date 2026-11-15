@@ -8,20 +8,32 @@
 
 ## 1. Where we are
 
-### What exists in coffee-app (read from `origin/main`)
+### Runtime ownership (read this first)
 
-- **Chat backend:** `src/routes/api/chat/+server.ts` uses Vercel AI SDK 6 (`ai ^6`, `@ai-sdk/svelte ^4`) `streamText` against OpenRouter (`CHERRY_RUNTIME_MODEL`), with `pruneMessages` and `stepCountIs`. The transition plan's LangChain references are stale.
-- **Tool layer:** `src/lib/services/tools/` has catalog, inventory, market, presentation, roast, tasting and Parchment tools, plus `toolModelOutput` shaping, `schemaService`, `ragService`, `suggestionEngine` and `slashCommands`. Tool selection and Cherry identity already have eval tests (`toolSelection.eval.test.ts`, `cherryIdentity.eval.test.ts`).
-- **GenUI block system:** `src/lib/types/genui.ts` defines a closed `UIBlock` union: coffee-cards, inventory-table, roast-chart, roast-comparison, roast-profiles, profit-summary, tasting-radar, data-table, action-card, bean/roast/sale forms, error. Components live under `src/lib/components/genui/{blocks,previews}`, with `GenUIBlockRenderer.svelte` and `blockExtractor.ts` / `blockDetail.ts`.
-- **Canvas:** `CanvasLayout` (focus, comparison, dashboard, stack), `CanvasMutation` (add, remove, focus, clear, layout), a mobile overlay, and agent- or user-sourced layout.
-- **Persistence and memory:** `chatPersistence.ts`, a workspace identity layer, `/api/memory` plus `MemoryPanel.svelte`, `/api/workspaces`, conversation export.
-- **Writes:** `action-card` plus form blocks provide a human-confirm pattern. `grep needsApproval` finds no uses, so the AI SDK 6 native approval flow (which the transition plan itself names for Phase 3) is not adopted. Approvals run through our own action-card mechanism.
+Per `AGENTS.md`, coffee-app owns browser session admission and presentation transport; **Parchment owns the model-facing runtime**: prompt, model and provider credential, tool loop, request bounds, and write execution. Recommendations below are therefore tagged by owner: **[coffee-app]** (presentation, blocks, canvas, persistence), **[Parchment]** (prompt, tools, model, approvals; needs a Parchment change and an SDK contract bump), or **[cherry]** (evaluation). Anything tagged [Parchment] is a cross-service change and must be sequenced with `parchment-api`, not scheduled as coffee-app work.
+
+### What exists in coffee-app (read from `origin/main` at `c22e3878`)
+
+- **Chat transport (not the runtime):** `src/routes/api/chat/+server.ts` is a same-origin streaming adapter. It admits the browser session and forwards the request to `client.conversation.chat.stream` from `@purveyors/sdk`, relaying the AI SDK stream. It does not call `streamText` or select a model. `ai ^6` and `@ai-sdk/svelte ^4` are used for client-side presentation (`useChat`-style rendering over that stream).
+- **Write execution is delegated:** `src/routes/api/chat/execute-action/+server.ts` forwards confirmed actions to `client.confirmedActions.execute`; Parchment performs the write.
+- **Tool layer is not local:** `src/lib/services/tools/` holds only `pagination.ts` and a thin `parchment.ts` SDK helper. There is no local `inventoryTools.ts`, `roastTools.ts`, `presentationTools.ts`, `tastingEnvelope.ts` or `ragService`. `src/lib/services/toolModelOutput.ts` exists but has no non-test importer on this head. Local services that do exist: `actionPlans`, `actionReceipts`, `blockExtractor`, `blockDetail`, `canvasPersistence`, `chatPersistence`, `coffeeEvidence`, `coffeeReferences`, `inlineCoffeeResults`, `schemaService` (SEO structured data, unrelated to tools), `slashCommands`, `suggestionEngine`.
+- **GenUI block system:** `src/lib/types/genui.ts` defines a closed `UIBlock` union: coffee-cards, inventory-table, roast-chart, roast-comparison, roast-profiles, profit-summary, tasting-radar, data-table, action-card, bean/roast/sale forms, error. Components live under `src/lib/components/genui/{blocks,previews}`, with `GenUIBlockRenderer.svelte` and `blockExtractor.ts` / `blockDetail.ts`. `roast-comparison`, `profit-summary` and the bean/roast/sale form types are declared in the union, but `GenUIBlockRenderer.svelte` has no branch for them and `genui/blocks/` has no matching component; verify how (or whether) they render before planning around them.
+- **Canvas:** `CanvasLayout` (focus, comparison, dashboard, stack), `CanvasMutation` (add, remove, focus, clear, layout, replace, pin, unpin, minimize, restore, update-action), `canvasStore.svelte.ts`, `canvasPersistence.ts`, a mobile overlay, and agent- or user-sourced layout.
+- **Persistence and memory:** `chatPersistence.ts`, `/api/memory` plus `MemoryPanel.svelte`, `/api/workspaces`, `/api/share`, conversation export.
+- **Writes:** `action-card` plus form blocks provide a human-confirm pattern, and `actionPlans.ts` resolves chained write steps. `needsApproval` appears in neither coffee-app nor `parchment-api` `origin/main`, so the AI SDK 6 native approval flow is not adopted anywhere; approvals run through Parchment's `propose_action_plan` and action cards, executed through `confirmedActions`.
+
+### What exists in `parchment-api` (read from `origin/main`; owns the runtime)
+
+- `packages/api/src/chat/runtime.ts` calls `streamText` against OpenRouter using `CHERRY_RUNTIME_MODEL` (`chat/identity.ts`), with `pruneMessages` and `stepCountIs(5)`.
+- `packages/api/src/chat/tools/` holds the catalog, inventory, market, presentation (`present_results`), roast, tasting, reference-profile, current-page, workspace-evidence and action-plan tools, plus `tastingEnvelope.ts` and `chat/toolModelOutput.ts`.
+- I did not find `toolSelection.eval.test.ts` or `cherryIdentity.eval.test.ts` in either repo's current tree; earlier drafts of this report cited them in error. Treat "existing tool-selection eval tests" as unverified.
+- The existing in-flight work on this runtime is tracked in `notes/implementation-plans/2026-09-11-cherry-agent-overhaul.md`; check it for overlap before starting any item tagged [Parchment].
 
 ### What exists in `repos/cherry`
 
-Cherry the repo is **not a runtime**. It is CoffeeBench, the evaluation harness: a frozen 20-case suite, model and system tracks, a four-treatment harness panel, a jury, and run artifacts. Its README says it contains no production inference. The in-app "Cherry Runtime" (PRODUCT_VISION item 10) lives in coffee-app. So "Cherry harness" improvements split into:
+Cherry the repo is **not a runtime**. It is CoffeeBench, the evaluation harness: a frozen 20-case suite, model and system tracks, a four-treatment harness panel, a jury, and run artifacts. Its README says it contains no production inference. The in-app "Cherry Runtime" (PRODUCT_VISION item 10) executes in Parchment, with coffee-app providing transport and presentation. So "Cherry harness" improvements split into:
 
-1. **Runtime** (coffee-app): tools, blocks, canvas, prompt, memory.
+1. **Runtime**: Parchment owns the prompt, tools, model and approvals; coffee-app owns blocks, canvas, persistence and presentation.
 2. **Measurement** (cherry repo): CoffeeBench. No genUI-specific eval exists in either repo yet.
 
 ### Planned but not shipped (from `genui-platform-transition-plan.md` and `intelligence-first-chat-layer-idea.md`)
@@ -31,7 +43,7 @@ Cherry the repo is **not a runtime**. It is CoffeeBench, the evaluation harness:
 
 ### Gaps that matter
 
-1. The block set is **closed and hand-rolled**: one TypeScript union, one Svelte component per block, no catalog schema the model can read, no JSON-schema validation of block props beyond TypeScript.
+1. The block set is **closed and hand-rolled**: one TypeScript union in coffee-app, one Svelte component per block, and no catalog schema shared with the model-facing runtime in Parchment (no JSON-schema validation of block props beyond TypeScript).
 2. **No partial-render streaming contract** for blocks. Blocks are extracted from messages rather than streamed as incrementally valid UI.
 3. **No bidirectional state:** block interactions can navigate or focus the canvas but cannot call back into the agent as typed functions.
 4. **Canvas views are not first-class saved objects** (no versioning, sharing, or reopening as a living artifact).
@@ -111,36 +123,39 @@ Older context: MCP Apps extension itself (Jan 2026), AI SDK 6 approvals, MCP-UI 
 Ordered by leverage per effort. "Depends on" names existing code.
 
 ### 1. Turn the block union into a catalog with schemas and a generated prompt
-- **What:** define each block (coffee-cards, inventory-table, roast-chart, etc.) as a Zod schema plus description, in one registry. Generate the system-prompt block docs and runtime validation from it. Evaluate adopting `@json-render/core` + `@json-render/svelte` versus a thin in-house version that emits an A2UI-compatible shape.
+- **Owner:** coffee-app for the registry and renderers; **Parchment** for any generated prompt text or `present_results` schema change.
+- **What:** define each block (coffee-cards, inventory-table, roast-chart, etc.) as a Zod schema plus description, in one registry. Generate renderer-side validation from it; the model-facing prompt block docs and `present_results` schema live in Parchment, so publishing the catalog to the runtime needs a Parchment contract (for example a shared schema package or SDK export) and is a separate step. Evaluate adopting `@json-render/core` + `@json-render/svelte` versus a thin in-house version that emits an A2UI-compatible shape.
 - **Why now:** json-render shipped a Svelte renderer and Vercel now documents catalog-driven composition (docs 2026-10-05); A2UI 1.0 (2026-11-11) makes "catalog.json of allowlisted components" the standard. Doing this once makes both formats reachable later.
 - **User value:** fewer malformed or wrong blocks, and the model can compose richer layouts (a comparison with an annotation row) without a new TypeScript type each time.
-- **Effort:** medium (1 to 2 weeks). **Depends on:** `src/lib/types/genui.ts`, `GenUIBlockRenderer.svelte`, `blockExtractor.ts`, `presentationTools.ts`.
+- **Effort:** medium (1 to 2 weeks). **Depends on:** coffee-app `src/lib/types/genui.ts`, `GenUIBlockRenderer.svelte`, `blockExtractor.ts`; Parchment `packages/api/src/chat/tools/presentationTools.ts` for the prompt/tool side.
 - **Opinion:** prototype json-render behind a flag first; keep our block components as the registry implementations. Do not adopt it wholesale before checking Svelte 5 runes compatibility and bundle cost.
 
 ### 2. GenUI evals in the cherry repo (CoffeeBench-GenUI)
+- **Owner:** cherry (measurement); it needs a way to drive the Parchment runtime and read emitted blocks.
 - **What:** a small frozen suite measuring block selection, prop validity, grounding (every number traces to a tool result), and multi-turn canvas maintenance, scored deterministically where possible and by the existing jury otherwise. Start with 30 to 40 cases drawn from real chat transcripts.
 - **Why now:** EvoGenUI-Bench (2026-08-29) frames multi-turn interface maintenance as the real failure mode, and nobody has a coffee-domain version. We already own the harness, freeze process and jury.
 - **User value:** every prompt or model change stops being a vibe check; protects roasters from wrong numbers rendered confidently in a chart.
-- **Effort:** medium. **Depends on:** cherry `eval/` and `adapters/`, existing `toolSelection.eval.test.ts` as seed cases.
+- **Effort:** medium. **Depends on:** cherry `eval/` and `adapters/`, plus a runtime adapter against Parchment's conversation endpoint. Seed cases come from real chat transcripts; no existing tool-selection eval suite was found to reuse.
 - **Opinion:** this is Cherry's actual moat. Ship it before more block types.
 
 ### 3. Provenance on every block ("show the query and data behind this")
+- **Owner:** coffee-app for the affordance; **Parchment** for attaching provenance (source tool, snapshot date, rows) to tool output and blocks.
 - **What:** a standard provenance affordance on blocks: source tool, snapshot date, supplier, and the underlying rows or query, expandable in place and exportable.
 - **Why now:** Alation's A2UI feeds show the SQL and data behind each chart (Google post, 2026-11-11); A2UI's server-side binding keeps raw values out of the model. Trust is the differentiator in a market where a bad price comparison costs real money.
 - **User value:** buyers can defend a purchase decision; roasters can audit a claim.
-- **Effort:** small to medium. **Depends on:** tool output shaping (`toolModelOutput.ts`, `tastingEnvelope.ts`), block detail views (`blockDetail.ts`).
+- **Effort:** small to medium. **Depends on:** Parchment tool output shaping (`chat/toolModelOutput.ts`, `chat/tools/tastingEnvelope.ts`) and a block payload contract change; coffee-app block detail views (`blockDetail.ts`).
 
 ### 4. Saved, versioned canvas views (living artifacts)
 - **What:** let a canvas state be saved as a named view (sourcing brief, watchlist board, comparison) with version history, re-run ("refresh with today's prices"), and a shareable read-only link. Blocks store tool-call references plus params, not frozen data.
 - **Why now:** no standard exists for persisting generated UI; Alation's "same feed in the assistant and in the product" shows demand. It also directly delivers the intelligence-first note's research boards, watchlists and sourcing briefs.
 - **User value:** the highest in this list for buyers: a recurring sourcing brief that stays fresh without re-asking.
-- **Effort:** medium to large. **Depends on:** workspaces API and schema, `CanvasBlock` and `CanvasMutation`, existing `/api/share`, chat persistence.
+- **Effort:** medium to large. **Owner:** coffee-app (canvas, workspaces, share); re-running tool calls needs Parchment to expose replayable tool-call references. **Depends on:** workspaces API and schema, `CanvasBlock` and `CanvasMutation`, `canvasPersistence.ts`, existing `/api/share`, chat persistence.
 
 ### 5. Typed UI-to-agent actions (bidirectional blocks)
 - **What:** let blocks invoke named, schema-validated functions ("compare these two", "add to watchlist", "rerun with this ratio") that go through the same tool layer and approval path, instead of only navigate or focus.
 - **Why now:** A2UI 1.0's headline feature is function calls in both directions (2026-11-11); this is the step from display to workspace.
 - **User value:** removes the type-a-follow-up loop for common moves.
-- **Effort:** medium. **Depends on:** `BlockAction` in `genui.ts`, `action-card` flow, tool registry.
+- **Owner:** coffee-app for the block-side action contract; **Parchment** for the tool registry and any new typed functions. **Effort:** medium. **Depends on:** `BlockAction` in `genui.ts`, `action-card` flow, `confirmedActions` and Parchment's tool layer.
 - **Risk:** keep every side effect behind the existing confirm step (see item 7).
 
 ### 6. Expose Purveyors intelligence as an MCP server with MCP Apps UI
@@ -151,27 +166,29 @@ Ordered by leverage per effort. "Depends on" names existing code.
 - **Opinion:** do this after items 1 to 3, because the catalog, provenance and evals are what make it trustworthy and cheap to ship. Verify per-host MCP Apps support before committing.
 
 ### 7. Adopt AI SDK 6 native tool approval for write tools
-- **What:** move write tools to `needsApproval` with `addToolApprovalResponse`, rendering the existing action-card as the approval UI, rather than a parallel custom mechanism.
+- **Owner:** **Parchment** (write tools and the tool loop) with a coffee-app presentation change; not a coffee-app-only item.
+- **What:** evaluate moving Parchment's write tools to `needsApproval` with `addToolApprovalResponse`, rendering the existing action-card as the approval UI. Today writes are proposed as action cards, optionally chained by `propose_action_plan`, and executed by coffee-app calling `confirmedActions.execute`; native approval would change that Parchment/SDK contract and must be weighed against it (including the multi-step plan flow) before committing.
 - **Why now:** it is the framework's supported path and what A2UI examples assume (nothing happens until the user confirms). It reduces custom code in the highest-risk area (writes to inventory, roasts, sales).
-- **Effort:** small to medium. **Depends on:** `ActionCardBlock`, write tools in `roastTools.ts` and `inventoryTools.ts`, `chatPersistence.ts` (approval states must survive reload).
+- **Effort:** medium, cross-service. **Depends on:** Parchment `chat/tools/{roastTools,inventoryTools,actionPlanTools}.ts` and `chat/runtime.ts`, the SDK `confirmedActions` contract, coffee-app `ActionCardBlock` and `chatPersistence.ts` (approval states must survive reload).
 
 ### 8. Proactive "what changed" cards (lower priority)
 - **What:** on open, the agent surfaces watchlist price moves, stock changes and new arrivals as a short card set, using the saved views from item 4.
 - **Why now:** Atlassian's Jira cards show agents asking for follow-ups in place (2026-11-11). Our Phase 4 plan already calls for proactive suggestions.
-- **Effort:** medium. **Depends on:** items 4 and 3, `suggestionEngine.ts`.
+- **Effort:** medium. **Owner:** coffee-app. **Depends on:** items 4 and 3, `suggestionEngine.ts`.
 
 ### Deliberately do NOT do
 
 1. **Do not let the model generate arbitrary HTML/JS or free-form components for the product surface.** Design Theater (2026-07-24) discusses homogenization in free-form tools, and A2UI's whole safety case is data-only. Sandboxed free-form artifacts, if ever wanted, belong in an MCP Apps-style iframe, not in the Cherry canvas.
-2. **Do not build a custom wire protocol or adopt a heavyweight React-first stack (AG-UI/CopilotKit) as a dependency.** We already have AI SDK 6 streaming and a Svelte 5 app. Borrow event and catalog shapes, keep the transport we have. Revisit only if a verified Svelte client appears and we need cross-framework rendering. Also do not chase every new protocol this quarter; A2UI is four days past 1.0 and renderer support for Svelte is absent.
+2. **Do not build a custom wire protocol or adopt a heavyweight React-first stack (AG-UI/CopilotKit) as a dependency.** We already have AI SDK 6 streaming (Parchment-side, relayed through coffee-app) and a Svelte 5 app. Borrow event and catalog shapes, keep the transport we have. Revisit only if a verified Svelte client appears and we need cross-framework rendering. Also do not chase every new protocol this quarter; A2UI is four days past 1.0 and renderer support for Svelte is absent.
 
 ### Suggested sequence
 
-Weeks 1 to 2: items 1 and 7 (catalog, approvals), plus a flagged json-render spike. Weeks 2 to 4: items 2 and 3 (evals, provenance). Month 2: items 4 and 5. Month 3: item 6, then 8.
+Weeks 1 to 2: item 1 (coffee-app catalog and a flagged json-render spike). Item 7 (approvals) is Parchment-owned; schedule it with `parchment-api` and the existing Cherry agent overhaul plan rather than as coffee-app work. Weeks 2 to 4: items 2 and 3 (evals, provenance). Month 2: items 4 and 5. Month 3: item 6, then 8.
 
 ### Open questions for Reed
 
-- Is the cherry repo meant to stay evaluation-only, or should a runtime package eventually live there? The recommendations assume runtime stays in coffee-app and evals live in cherry.
+- Is the cherry repo meant to stay evaluation-only, or should a runtime package eventually live there? The recommendations assume the runtime stays in Parchment, presentation stays in coffee-app, and evals live in cherry.
+- Which [Parchment]-tagged items (1's prompt side, 3, 5, 7) does Reed want sequenced with `parchment-api` work, and does the SDK contract bump cadence allow them in the weeks listed?
 - Appetite for a public MCP server (item 6): it is outward-facing and touches tier/quota policy.
 
 ---
