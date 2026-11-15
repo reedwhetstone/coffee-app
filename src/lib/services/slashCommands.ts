@@ -4,7 +4,7 @@ export interface SlashCommand {
 	/** If set, this text replaces the command as a chat message to the AI */
 	chatText?: string;
 	/** If set, this action type is dispatched directly (no AI call) */
-	action?: 'clear-canvas' | 'pin-focused' | 'unpin-focused';
+	action?: 'clear-canvas' | 'pin-focused' | 'unpin-focused' | 'roast-plan';
 	/** Mallard Studio-only command for roasting, sales, or production workflows. */
 	requiresMemberAccess?: boolean;
 }
@@ -36,6 +36,11 @@ export const SLASH_COMMANDS: SlashCommand[] = [
 		description: 'Show profit and sales summary',
 		chatText: 'Give me a summary of my recent sales and profit margins.',
 		requiresMemberAccess: true
+	},
+	{
+		name: '/roast-plan',
+		description: 'Add a roast plan checklist to the canvas',
+		action: 'roast-plan'
 	},
 	{
 		name: '/clear',

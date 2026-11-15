@@ -29,6 +29,7 @@
 	import type { BlockAction, CanvasBlock } from '$lib/types/genui';
 	import { getSuggestions } from '$lib/services/suggestionEngine';
 	import { planHasActionableSteps, resolveReadyPlanSteps } from '$lib/services/actionPlans';
+	import { buildRoastPlanBlock } from '$lib/genui/templates';
 	import { matchSlashCommand, getSlashCompletions } from '$lib/services/slashCommands';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
@@ -753,7 +754,11 @@
 							type: 'add',
 							block: cb.block,
 							messageId: cb.messageId || '',
-							title: cb.title
+							title: cb.title,
+							state:
+								cb.state && typeof cb.state === 'object' && !Array.isArray(cb.state)
+									? cb.state
+									: undefined
 						});
 						// Restore pinned state
 						if (cb.pinned) {
@@ -804,7 +809,8 @@
 				messageId: b.messageId,
 				pinned: b.pinned,
 				minimized: b.minimized,
-				title: b.title
+				title: b.title,
+				...(b.state ? { state: b.state } : {})
 			})),
 			layout: canvasStore.layout,
 			focusBlockId: canvasStore.focusBlockId,
@@ -986,7 +992,8 @@
 						: null,
 				title: b.title ?? null,
 				p: b.pinned,
-				m: b.minimized
+				m: b.minimized,
+				s: b.state ?? null
 			}))
 		});
 	}
@@ -1641,7 +1648,14 @@
 		if (cmd && !cmd.chatText) {
 			inputMessage = '';
 			if (cmd.action === 'clear-canvas') canvasStore.clearAll();
-			else if (cmd.action === 'pin-focused') {
+			else if (cmd.action === 'roast-plan') {
+				const coffee = text.trim().slice(cmd.name.length).trim();
+				canvasStore.dispatch({
+					type: 'add',
+					block: buildRoastPlanBlock(coffee),
+					messageId: ''
+				});
+			} else if (cmd.action === 'pin-focused') {
 				const fid = canvasStore.focusBlockId;
 				if (fid) canvasStore.dispatch({ type: 'pin', blockId: fid });
 			} else if (cmd.action === 'unpin-focused') {

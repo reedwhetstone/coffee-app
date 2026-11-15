@@ -1,3 +1,4 @@
+import { describeTreeState } from '$lib/genui/catalog';
 import type { CanvasBlock, UIBlock } from '$lib/types/genui';
 
 /** Parchment rejects a workspace canvas description longer than this on every chat request. */
@@ -9,15 +10,19 @@ const LOCKED_NOTE = ' [LOCKED — do not replace, remove, or reorder]';
 const LOCKED_TAG = ' [LOCKED]';
 const LOCKED_LEGEND = '[LOCKED] blocks are user-owned: do not replace, remove, or reorder them.';
 
-type DescribedBlock = Pick<CanvasBlock, 'block' | 'pinned'>;
+type DescribedBlock = Pick<CanvasBlock, 'block' | 'pinned'> & Partial<Pick<CanvasBlock, 'state'>>;
 
 function shorten(value: unknown, maxChars = 24): string {
 	const text = typeof value === 'string' && value.trim() ? value.trim() : 'Unknown';
 	return text.length <= maxChars ? text : `${text.slice(0, maxChars - 1).trimEnd()}…`;
 }
 
-function describeBlock(block: UIBlock, pos: number): string {
+function describeBlock(block: UIBlock, pos: number, state?: CanvasBlock['state']): string {
 	switch (block.type) {
+		case 'ui-tree': {
+			const summary = describeTreeState(block.data.root, state);
+			return `${pos}. ${block.data.title ?? 'Workspace'}${summary ? ` — ${summary}` : ''}`;
+		}
 		case 'coffee-cards': {
 			const items = Array.isArray(block.data) ? block.data : [];
 			const names = items
@@ -50,8 +55,12 @@ function describeBlock(block: UIBlock, pos: number): string {
 }
 
 /** One short line per block that keeps its position, kind, and primary identity. */
-function summarizeBlock(block: UIBlock, pos: number): string {
+function summarizeBlock(block: UIBlock, pos: number, state?: CanvasBlock['state']): string {
 	switch (block.type) {
+		case 'ui-tree': {
+			const summary = describeTreeState(block.data.root, state, 90);
+			return `${pos}. ${shorten(block.data.title ?? 'Workspace', 30)}${summary ? ` — ${summary}` : ''}`;
+		}
 		case 'coffee-cards': {
 			const items = Array.isArray(block.data) ? block.data : [];
 			if (items.length === 0) return `${pos}. Coffee cards (0)`;
@@ -89,13 +98,13 @@ export function describeCanvasForCherry(
 	if (blocks.length === 0) return '';
 
 	const detailed = blocks
-		.map((b, i) => `${describeBlock(b.block, i + 1)}${b.pinned ? LOCKED_NOTE : ''}`)
+		.map((b, i) => `${describeBlock(b.block, i + 1, b.state)}${b.pinned ? LOCKED_NOTE : ''}`)
 		.join('\n');
 	if (detailed.length <= maxChars) return detailed;
 
 	const header = blocks.some((b) => b.pinned) ? [LOCKED_LEGEND] : [];
 	const compact = blocks.map(
-		(b, i) => `${summarizeBlock(b.block, i + 1)}${b.pinned ? LOCKED_TAG : ''}`
+		(b, i) => `${summarizeBlock(b.block, i + 1, b.state)}${b.pinned ? LOCKED_TAG : ''}`
 	);
 	const allCompact = [...header, ...compact].join('\n');
 	if (allCompact.length <= maxChars) return allCompact;

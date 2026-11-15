@@ -15,6 +15,7 @@ import type {
 	CanvasLayout,
 	DataTableBlock
 } from '$lib/types/genui';
+import { sanitizeTree } from '$lib/genui/catalog';
 import type { TastingNotes, TastingNote } from '$lib/types/coffee.types';
 import type { UIMessage } from 'ai';
 
@@ -136,6 +137,9 @@ export function extractBlockFromPart(part: any, options?: BlockExtractorOptions)
 	if (options?.hasPresentResults && PRESENTABLE_TOOLS.has(toolName)) {
 		return null;
 	}
+
+	// present_ui: a model-composed component tree, validated against the catalog.
+	if (toolName === 'present_ui') return buildUITreeBlock(output);
 
 	// Handle present_results tool → create annotated block from cached data
 	if (toolName === 'present_results' && 'presentation' in output) {
@@ -335,6 +339,21 @@ function presentationCacheMissBlock(sourceTool: string): ErrorBlock {
  * Build a UIBlock from a present_results tool output.
  * Merges AI-provided annotations with cached search data.
  */
+function buildUITreeBlock(output: Record<string, unknown>): UIBlock {
+	const ui = (output.ui ?? output) as { title?: unknown; root?: unknown };
+	const { root } = sanitizeTree(ui.root);
+	if (!root) {
+		return {
+			type: 'error',
+			version: 1,
+			data: { message: 'This layout could not be displayed.', retryable: true, severity: 'notice' }
+		} satisfies ErrorBlock;
+	}
+	const title =
+		typeof ui.title === 'string' && ui.title.trim() ? ui.title.trim().slice(0, 80) : undefined;
+	return { type: 'ui-tree', version: 1, data: { ...(title ? { title } : {}), root } };
+}
+
 function buildPresentedBlock(
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	presentation: any,
@@ -672,6 +691,7 @@ export function extractCanvasMutationsFromPart(
 	if (part.state !== 'output-available') return null;
 
 	const toolName = part.toolName ?? part.type.replace('tool-', '');
+	if (toolName === 'present_ui') return presentUIMutations(part.output, block, messageId);
 	if (toolName !== 'present_results') return null;
 
 	const output = part.output;
@@ -716,6 +736,24 @@ export function extractCanvasMutationsFromPart(
 	}
 
 	return mutations.length > 0 ? mutations : null;
+}
+
+function presentUIMutations(
+	output: unknown,
+	block: UIBlock | null,
+	messageId: string
+): CanvasMutation[] | null {
+	if (!block || block.type !== 'ui-tree') return null;
+	const ui = ((output as { ui?: Record<string, unknown> } | null)?.ui ?? {}) as Record<
+		string,
+		unknown
+	>;
+	const rawTitle = ui.canvas_title ?? ui.title;
+	const title =
+		typeof rawTitle === 'string' && rawTitle.trim() ? rawTitle.trim().slice(0, 60) : undefined;
+	return ui.canvas_action === 'replace'
+		? [{ type: 'replace', blocks: [{ block, messageId, title }] }]
+		: [{ type: 'add', block, messageId, title }];
 }
 
 export interface ToolCanvasDispatchPlan {
