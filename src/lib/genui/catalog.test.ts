@@ -35,7 +35,6 @@ describe('catalog', () => {
 			'roast-profiles',
 			'tasting-radar',
 			'data-table',
-			'action-card',
 			'error'
 		])
 			expect(names).toContain(n);
@@ -52,6 +51,7 @@ describe('catalog', () => {
 		for (const c of CATALOG.filter((c) => c.kind === 'block'))
 			expect(canvasBranch, c.name).toContain(`block.type === '${c.name}'`);
 		for (const n of [
+			'action-card',
 			'roast-comparison',
 			'profit-summary',
 			'bean-form',
@@ -70,7 +70,6 @@ describe('catalog', () => {
 			{ type: 'roast-chart', props: {} },
 			{ type: 'coffee-cards', props: [{ name: 'no id' }] },
 			{ type: 'tasting-radar', props: { beanName: 'x' } },
-			{ type: 'action-card', props: { summary: 'x' } },
 			{ type: 'error' }
 		];
 		const { root, issues } = sanitizeTree({ type: 'stack', children: bad });

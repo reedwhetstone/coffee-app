@@ -107,6 +107,8 @@ const tableProps = z.object({
 // ─── Existing coffee blocks (props are the block's `data`) ────────────────────
 //
 // Only blocks that GenUIBlockRenderer can render in canvas mode are registered.
+// action-card is excluded: its Execute needs the canvas execution handler, which
+// embedded nodes do not receive, and typed write actions are a later phase.
 // Each schema requires the fields its renderer dereferences unguarded, so a
 // malformed embedded block degrades to the placeholder instead of throwing.
 // Deeper row/card fields stay loose: those renderers already tolerate absence.
@@ -134,26 +136,6 @@ const dataTableData = z.looseObject({
 		)
 		.min(1),
 	rows: z.array(z.record(z.string(), z.unknown()))
-});
-const actionCardData = z.looseObject({
-	actionType: z.enum([
-		'add_bean_to_inventory',
-		'update_bean',
-		'create_roast_session',
-		'create_generated_reference',
-		'update_roast_notes',
-		'record_sale'
-	]),
-	summary: z.string(),
-	status: z.enum(['waiting', 'proposed', 'executing', 'success', 'failed']),
-	fields: z.array(
-		z.looseObject({
-			key: z.string(),
-			label: z.string(),
-			type: z.enum(['text', 'number', 'date', 'select', 'textarea', 'hidden']),
-			editable: z.boolean()
-		})
-	)
 });
 const errorData = z.looseObject({ message: z.string(), retryable: z.boolean() });
 
@@ -233,7 +215,6 @@ export const CATALOG: readonly CatalogComponent[] = [
 		tastingRadarData
 	),
 	block('data-table', 'Sortable data table. props: { columns, rows }.', dataTableData),
-	block('action-card', 'Confirmable write proposal.', actionCardData),
 	block('error', 'Error notice. props: { message, retryable }.', errorData)
 ];
 
