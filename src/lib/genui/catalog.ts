@@ -105,9 +105,57 @@ const tableProps = z.object({
 });
 
 // ─── Existing coffee blocks (props are the block's `data`) ────────────────────
+//
+// Only blocks that GenUIBlockRenderer can render in canvas mode are registered.
+// Each schema requires the fields its renderer dereferences unguarded, so a
+// malformed embedded block degrades to the placeholder instead of throwing.
+// Deeper row/card fields stay loose: those renderers already tolerate absence.
 
-const records = z.array(z.record(z.string(), z.unknown()));
-const looseObject = z.record(z.string(), z.unknown());
+const numericId = z.number().finite();
+const coffeeRecords = z.array(z.looseObject({ id: numericId }));
+const inventoryRecords = z.array(z.looseObject({ id: numericId }));
+const roastProfileRecords = z.array(z.looseObject({ roast_id: numericId }));
+const roastChartData = z.looseObject({ roastId: numericId });
+const tastingRadarData = z.looseObject({
+	beanName: z.string(),
+	beanId: numericId,
+	notes: z.record(z.string(), z.unknown()),
+	source: z.enum(['user', 'supplier', 'both'])
+});
+const dataTableData = z.looseObject({
+	columns: z
+		.array(
+			z.looseObject({
+				key: z.string(),
+				label: z.string(),
+				sortable: z.boolean().optional(),
+				align: z.enum(['left', 'center', 'right']).optional()
+			})
+		)
+		.min(1),
+	rows: z.array(z.record(z.string(), z.unknown()))
+});
+const actionCardData = z.looseObject({
+	actionType: z.enum([
+		'add_bean_to_inventory',
+		'update_bean',
+		'create_roast_session',
+		'create_generated_reference',
+		'update_roast_notes',
+		'record_sale'
+	]),
+	summary: z.string(),
+	status: z.enum(['waiting', 'proposed', 'executing', 'success', 'failed']),
+	fields: z.array(
+		z.looseObject({
+			key: z.string(),
+			label: z.string(),
+			type: z.enum(['text', 'number', 'date', 'select', 'textarea', 'hidden']),
+			editable: z.boolean()
+		})
+	)
+});
+const errorData = z.looseObject({ message: z.string(), retryable: z.boolean() });
 
 // ─── Registry ─────────────────────────────────────────────────────────────────
 
@@ -163,23 +211,30 @@ export const CATALOG: readonly CatalogComponent[] = [
 		interactive: true
 	}),
 	primitive('table', 'Static table of simple values.', tableProps),
-	block('coffee-cards', 'Coffee catalog cards. props: array of catalog coffees.', records),
+	block(
+		'coffee-cards',
+		'Coffee catalog cards. props: array of catalog coffees (each with a numeric id).',
+		coffeeRecords
+	),
 	block(
 		'inventory-table',
-		'Green coffee inventory table. props: array of inventory rows.',
-		records
+		'Green coffee inventory table. props: array of inventory rows (each with a numeric id).',
+		inventoryRecords
 	),
-	block('roast-chart', 'Roast temperature curve. props: { roastId }.', looseObject),
-	block('roast-comparison', 'Side-by-side roast comparison.', looseObject),
-	block('roast-profiles', 'Roast profile summary table. props: array of profiles.', records),
-	block('profit-summary', 'Profit and margin summary.', looseObject),
-	block('tasting-radar', 'Tasting radar for one bean.', looseObject),
-	block('data-table', 'Sortable data table. props: { columns, rows }.', looseObject),
-	block('action-card', 'Confirmable write proposal.', looseObject),
-	block('bean-form', 'Add-bean form.', looseObject),
-	block('roast-form', 'Log-roast form.', looseObject),
-	block('sale-form', 'Record-sale form.', looseObject),
-	block('error', 'Error notice. props: { message }.', looseObject)
+	block('roast-chart', 'Roast temperature curve. props: { roastId }.', roastChartData),
+	block(
+		'roast-profiles',
+		'Roast profile summary table. props: array of profiles (each with a numeric roast_id).',
+		roastProfileRecords
+	),
+	block(
+		'tasting-radar',
+		'Tasting radar for one bean. props: { beanName, beanId, notes, source }.',
+		tastingRadarData
+	),
+	block('data-table', 'Sortable data table. props: { columns, rows }.', dataTableData),
+	block('action-card', 'Confirmable write proposal.', actionCardData),
+	block('error', 'Error notice. props: { message, retryable }.', errorData)
 ];
 
 const byName = new Map(CATALOG.map((c) => [c.name, c]));
@@ -280,8 +335,12 @@ export function sanitizeTree(raw: unknown): SanitizedTree {
 		const result: UINode = { type: node.type, props: parsed.data as Record<string, unknown> };
 		if (entry.interactive || entry.container) {
 			let id = typeof node.id === 'string' && node.id.trim() ? node.id.trim().slice(0, 60) : '';
-			if (!id || usedIds.has(id))
-				id = `${node.type}-${path.replace(/[^0-9]+/g, '-').replace(/^-|-$/g, '') || '0'}`;
+			if (!id || usedIds.has(id)) {
+				// Path-derived ids can collide with an explicit id used earlier, so probe until free.
+				const base = `${node.type}-${path.replace(/[^0-9]+/g, '-').replace(/^-|-$/g, '') || '0'}`;
+				id = base;
+				for (let n = 2; usedIds.has(id); n += 1) id = `${base}-${n}`;
+			}
 			usedIds.add(id);
 			result.id = id;
 		}

@@ -91,9 +91,12 @@
 				>
 			{/each}
 		</div>
-		{#if node.children?.[activeTab]}
-			<UINodeView node={node.children[activeTab]} {blockState} {onState} {onAction} />
-		{/if}
+		<!-- Keyed so each panel remounts: embedded blocks (e.g. roast-chart) load data on mount. -->
+		{#key activeTab}
+			{#if node.children?.[activeTab]}
+				<UINodeView node={node.children[activeTab]} {blockState} {onState} {onAction} />
+			{/if}
+		{/key}
 	</div>
 {:else if node.type === 'card'}
 	<section class="rounded-lg bg-surface-panel p-4 ring-1 ring-line">
@@ -231,6 +234,7 @@
 		</table>
 	</div>
 {:else if kind === 'block'}
+	<!-- sanitizeTree validates each block's props against its renderer's required fields. -->
 	<GenUIBlockRenderer
 		block={{ type: node.type, version: 1, data: node.props } as unknown as UIBlock}
 		{onAction}

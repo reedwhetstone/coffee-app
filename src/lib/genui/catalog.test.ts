@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
 	CATALOG,
@@ -13,7 +15,7 @@ import { describeCanvasForCherry } from '$lib/components/chat/workspaceCanvasCon
 import { extractBlockFromPart, buildToolCanvasDispatchPlan } from '$lib/services/blockExtractor';
 
 describe('catalog', () => {
-	it('registers primitives and all 13 existing blocks', () => {
+	it('registers primitives and every existing block the canvas renderer supports', () => {
 		const names = CATALOG.map((c) => c.name);
 		for (const n of [
 			'stack',
@@ -30,18 +32,78 @@ describe('catalog', () => {
 			'coffee-cards',
 			'inventory-table',
 			'roast-chart',
-			'roast-comparison',
 			'roast-profiles',
-			'profit-summary',
 			'tasting-radar',
 			'data-table',
 			'action-card',
-			'bean-form',
-			'roast-form',
-			'sale-form',
 			'error'
 		])
 			expect(names).toContain(n);
+	});
+
+	it('advertises only blocks GenUIBlockRenderer renders in canvas mode', () => {
+		const rendererSource = readFileSync(
+			resolve(__dirname, '../components/genui/GenUIBlockRenderer.svelte'),
+			'utf8'
+		);
+		const canvasBranch = rendererSource.slice(
+			rendererSource.indexOf('<!-- Canvas full blocks -->')
+		);
+		for (const c of CATALOG.filter((c) => c.kind === 'block'))
+			expect(canvasBranch, c.name).toContain(`block.type === '${c.name}'`);
+		for (const n of [
+			'roast-comparison',
+			'profit-summary',
+			'bean-form',
+			'roast-form',
+			'sale-form'
+		]) {
+			expect(CATALOG.map((c) => c.name)).not.toContain(n);
+			expect(catalogIndex()).not.toContain(n);
+		}
+	});
+
+	it('degrades embedded blocks whose props lack renderer-required fields', () => {
+		const bad = [
+			{ type: 'data-table', props: {} },
+			{ type: 'data-table', props: { columns: [{ key: 'a', label: 'A' }] } },
+			{ type: 'roast-chart', props: {} },
+			{ type: 'coffee-cards', props: [{ name: 'no id' }] },
+			{ type: 'tasting-radar', props: { beanName: 'x' } },
+			{ type: 'action-card', props: { summary: 'x' } },
+			{ type: 'error' }
+		];
+		const { root, issues } = sanitizeTree({ type: 'stack', children: bad });
+		expect(root?.children?.every((c) => c.type === '__unavailable')).toBe(true);
+		expect(issues).toHaveLength(bad.length);
+		const good = sanitizeTree({
+			type: 'stack',
+			children: [
+				{ type: 'data-table', props: { columns: [{ key: 'a', label: 'A' }], rows: [{ a: 1 }] } },
+				{ type: 'roast-chart', props: { roastId: 7 } },
+				{ type: 'error', props: { message: 'm', retryable: false } }
+			]
+		});
+		expect(good.issues).toEqual([]);
+		expect(good.root?.children?.map((c) => c.type)).toEqual(['data-table', 'roast-chart', 'error']);
+	});
+
+	it('never reuses an id when a generated id collides with an explicit one', () => {
+		const field = { type: 'text-field', props: { label: 'L' } };
+		const forward = sanitizeTree({
+			type: 'stack',
+			children: [{ ...field, id: 'text-field-0-1' }, field]
+		});
+		const backward = sanitizeTree({
+			type: 'stack',
+			children: [field, { ...field, id: 'text-field-0-1' }, { ...field, id: 'text-field-0-1' }]
+		});
+		for (const { root } of [forward, backward]) {
+			const ids = collectInteractive(root!).map((n) => n.id);
+			expect(ids).toHaveLength(new Set(ids).size);
+			const all = [root!.id, ...ids];
+			expect(all).toHaveLength(new Set(all).size);
+		}
 	});
 
 	it('index is one line and lists every component; schemas are on demand', () => {
