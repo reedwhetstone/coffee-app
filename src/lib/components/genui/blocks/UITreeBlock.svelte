@@ -25,5 +25,10 @@
 	{#if block.data.title}
 		<h2 class="text-base font-semibold text-ink">{block.data.title}</h2>
 	{/if}
-	<UINodeView node={block.data.root} {blockState} onState={blockId ? setState : undefined} {onAction} />
+	<UINodeView
+		node={block.data.root}
+		{blockState}
+		onState={blockId ? setState : undefined}
+		{onAction}
+	/>
 </div>

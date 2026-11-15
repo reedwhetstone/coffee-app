@@ -372,3 +372,20 @@ it.each(['success', 'failed'] as const)(
 		expect(canvasStore.blocks.map((block) => block.messageId)).toEqual(['action', 'focused']);
 	}
 );
+
+describe('set-block-state', () => {
+	it('persists per-block state and seeds it on add', async () => {
+		const { canvasStore: store } = await import('./canvasStore.svelte');
+		store.resetAll();
+		store.dispatch({
+			type: 'add',
+			block: { type: 'error', version: 1, data: { message: 'x' } } as never,
+			messageId: 'm',
+			state: { a: ['1'] }
+		});
+		const id = store.blocks[0].id;
+		store.dispatch({ type: 'set-block-state', blockId: id, key: 'b', value: 4 });
+		expect(store.blocks[0].state).toEqual({ a: ['1'], b: 4 });
+		store.resetAll();
+	});
+});
