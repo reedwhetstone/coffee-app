@@ -1,0 +1,21 @@
+---
+title: 'When the GPUs will be free'
+date: '2026-11-22'
+description: 'Past training runs helped Dharma-AI forecast when a job would finish. The longest bookings were still the hardest to call.'
+tags: ['coffee', 'technology', 'ideas']
+pillar: 'market-intelligence'
+draft: false
+format: 'market-brief'
+newsletter: 'fieldnotes'
+edition: 13
+---
+
+## Booking the next training run
+
+If you’re waiting for a set of GPUs, the clock you care about starts when the current job gets the chips and stops when it releases them. Dharma-AI tested how well it could predict that interval before a job started. In five-fold cross-validation on 272 fine-tuning jobs from its H200 pool, a CatBoost model using information available at submission missed by 1.71 hours on average, counting errors in either direction. An estimate based on the amount of computation missed by 12.41 hours. [[1]](https://huggingface.co/blog/Dharma-AI/predicting-fine-tuning-time)
+
+For the person booking the next slot, an hour early and an hour late have different consequences. Only the late finish pushes the reservation back. Errors grew on longer jobs, and just 13 runs lasted more than 60 hours. Before promising a start time after a multi-day run, I’d want to see how often comparable jobs ran over and by how much. Adding the average miss to the schedule doesn’t tell me how often I’ll keep that promise. [[1]](https://huggingface.co/blog/Dharma-AI/predicting-fine-tuning-time)
+
+## Sources
+
+1. [Why your fine-tuning job takes longer than the FLOPs say (Hugging Face)](https://huggingface.co/blog/Dharma-AI/predicting-fine-tuning-time)
